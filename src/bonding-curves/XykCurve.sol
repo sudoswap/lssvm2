@@ -22,12 +22,9 @@ contract XykCurve is ICurve, CurveErrorCodes {
     /**
         @dev See {ICurve-validateDelta}
      */
-    function validateDelta(uint128 delta)
-        external
-        pure
-        override
-        returns (bool)
-    {
+    function validateDelta(
+        uint128 /*delta*/
+    ) external pure override returns (bool) {
         // all values are valid
         return true;
     }
@@ -35,12 +32,9 @@ contract XykCurve is ICurve, CurveErrorCodes {
     /**
         @dev See {ICurve-validateSpotPrice}
      */
-    function validateSpotPrice(uint128 newSpotPrice)
-        external
-        pure
-        override
-        returns (bool)
-    {
+    function validateSpotPrice(
+        uint128 /*newSpotPrice*/
+    ) external pure override returns (bool) {
         // all values are valid
         return true;
     }
@@ -84,14 +78,8 @@ contract XykCurve is ICurve, CurveErrorCodes {
             (nftBalance - numItems);
 
         // add the fees to the amount to send in
-        protocolFee = inputValueWithoutFee.fmul(
-            protocolFeeMultiplier,
-            FixedPointMathLib.WAD
-        );
-        uint256 fee = inputValueWithoutFee.fmul(
-            feeMultiplier,
-            FixedPointMathLib.WAD
-        );
+        protocolFee = inputValueWithoutFee.mulWadDown(protocolFeeMultiplier);
+        uint256 fee = inputValueWithoutFee.mulWadDown(feeMultiplier);
         inputValue = inputValueWithoutFee + fee + protocolFee;
 
         // set the new virtual reserves
@@ -136,14 +124,8 @@ contract XykCurve is ICurve, CurveErrorCodes {
             (nftBalance + numItems);
 
         // subtract fees from amount to send out
-        protocolFee = outputValueWithoutFee.fmul(
-            protocolFeeMultiplier,
-            FixedPointMathLib.WAD
-        );
-        uint256 fee = outputValueWithoutFee.fmul(
-            feeMultiplier,
-            FixedPointMathLib.WAD
-        );
+        protocolFee = outputValueWithoutFee.mulWadDown(protocolFeeMultiplier);
+        uint256 fee = outputValueWithoutFee.mulWadDown(feeMultiplier);
         outputValue = outputValueWithoutFee - fee - protocolFee;
 
         // set the new virtual reserves

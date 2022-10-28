@@ -1134,10 +1134,6 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
 
             RoyaltyType royaltyType = _fetchRoyaltyType(swap.pair);
 
-            ILSSVMPairFactoryLike.PairVariant pairVariant = swap
-                .pair
-                .pairVariant();
-
             if (royaltyType == RoyaltyType.ERC20) {
                 // avoids using _issueTokenRoyalties internal function because needs ERC20 token for reimbursing to tokenRecipient
                 ERC20 token = LSSVMPairERC20(address(swap.pair)).token();

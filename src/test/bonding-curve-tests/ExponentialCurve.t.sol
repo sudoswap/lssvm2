@@ -67,17 +67,16 @@ contract ExponentialCurveTest is DSTest {
         (
             CurveErrorCodes.Error error,
             uint256 newSpotPrice,
-            uint256 newDelta,
+            ,
             uint256 inputValue,
 
         ) = curve.getBuyInfo(spotPrice, delta, numItems, 0, 0);
-        uint256 deltaPowN = uint256(delta).fpow(
+        uint256 deltaPowN = uint256(delta).rpow(
             numItems,
             FixedPointMathLib.WAD
         );
-        uint256 fullWidthNewSpotPrice = uint256(spotPrice).fmul(
-            deltaPowN,
-            FixedPointMathLib.WAD
+        uint256 fullWidthNewSpotPrice = uint256(spotPrice).mulWadDown(
+            deltaPowN
         );
         if (fullWidthNewSpotPrice > type(uint128).max) {
             assertEq(

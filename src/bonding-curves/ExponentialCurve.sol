@@ -66,16 +66,13 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0);
         }
 
-        uint256 deltaPowN = uint256(delta).fpow(
+        uint256 deltaPowN = uint256(delta).rpow(
             numItems,
             FixedPointMathLib.WAD
         );
 
         // For an exponential curve, the spot price is multiplied by delta for each item bought
-        uint256 newSpotPrice_ = uint256(spotPrice).fmul(
-            deltaPowN,
-            FixedPointMathLib.WAD
-        );
+        uint256 newSpotPrice_ = uint256(spotPrice).mulWadDown(deltaPowN);
         if (newSpotPrice_ > type(uint128).max) {
             return (Error.SPOT_PRICE_OVERFLOW, 0, 0, 0, 0);
         }
@@ -87,30 +84,22 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         // The same person could then sell for (S * delta) ETH, netting them delta ETH profit.
         // If spot price for buy and sell differ by delta, then buying costs (S * delta) ETH.
         // The new spot price would become (S * delta), so selling would also yield (S * delta) ETH.
-        uint256 buySpotPrice = uint256(spotPrice).fmul(
-            delta,
-            FixedPointMathLib.WAD
-        );
+        uint256 buySpotPrice = uint256(spotPrice).mulWadDown(delta);
 
         // If the user buys n items, then the total cost is equal to:
         // buySpotPrice + (delta * buySpotPrice) + (delta^2 * buySpotPrice) + ... (delta^(numItems - 1) * buySpotPrice)
         // This is equal to buySpotPrice * (delta^n - 1) / (delta - 1)
-        inputValue = buySpotPrice.fmul(
-            (deltaPowN - FixedPointMathLib.WAD).fdiv(
-                delta - FixedPointMathLib.WAD,
-                FixedPointMathLib.WAD
-            ),
-            FixedPointMathLib.WAD
+        inputValue = buySpotPrice.mulWadDown(
+            (deltaPowN - FixedPointMathLib.WAD).divWadDown(
+                delta - FixedPointMathLib.WAD
+            )
         );
 
         // Account for the protocol fee, a flat percentage of the buy amount
-        protocolFee = inputValue.fmul(
-            protocolFeeMultiplier,
-            FixedPointMathLib.WAD
-        );
+        protocolFee = inputValue.mulWadDown(protocolFeeMultiplier);
 
         // Account for the trade fee, only for Trade pools
-        inputValue += inputValue.fmul(feeMultiplier, FixedPointMathLib.WAD);
+        inputValue += inputValue.mulWadDown(feeMultiplier);
 
         // Add the protocol fee to the required input amount
         inputValue += protocolFee;
@@ -153,18 +142,13 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0);
         }
 
-        uint256 invDelta = FixedPointMathLib.WAD.fdiv(
-            delta,
-            FixedPointMathLib.WAD
-        );
-        uint256 invDeltaPowN = invDelta.fpow(numItems, FixedPointMathLib.WAD);
+        uint256 invDelta = FixedPointMathLib.WAD.divWadDown(delta);
+        uint256 invDeltaPowN = invDelta.rpow(numItems, FixedPointMathLib.WAD);
 
         // For an exponential curve, the spot price is divided by delta for each item sold
         // safe to convert newSpotPrice directly into uint128 since we know newSpotPrice <= spotPrice
         // and spotPrice <= type(uint128).max
-        newSpotPrice = uint128(
-            uint256(spotPrice).fmul(invDeltaPowN, FixedPointMathLib.WAD)
-        );
+        newSpotPrice = uint128(uint256(spotPrice).mulWadDown(invDeltaPowN));
         if (newSpotPrice < MIN_PRICE) {
             newSpotPrice = uint128(MIN_PRICE);
         }
@@ -172,22 +156,17 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         // If the user sells n items, then the total revenue is equal to:
         // spotPrice + ((1 / delta) * spotPrice) + ((1 / delta)^2 * spotPrice) + ... ((1 / delta)^(numItems - 1) * spotPrice)
         // This is equal to spotPrice * (1 - (1 / delta^n)) / (1 - (1 / delta))
-        outputValue = uint256(spotPrice).fmul(
-            (FixedPointMathLib.WAD - invDeltaPowN).fdiv(
-                FixedPointMathLib.WAD - invDelta,
-                FixedPointMathLib.WAD
-            ),
-            FixedPointMathLib.WAD
+        outputValue = uint256(spotPrice).mulWadDown(
+            (FixedPointMathLib.WAD - invDeltaPowN).divWadDown(
+                FixedPointMathLib.WAD - invDelta
+            )
         );
 
         // Account for the protocol fee, a flat percentage of the sell amount
-        protocolFee = outputValue.fmul(
-            protocolFeeMultiplier,
-            FixedPointMathLib.WAD
-        );
+        protocolFee = outputValue.mulWadDown(protocolFeeMultiplier);
 
         // Account for the trade fee, only for Trade pools
-        outputValue -= outputValue.fmul(feeMultiplier, FixedPointMathLib.WAD);
+        outputValue -= outputValue.mulWadDown(feeMultiplier);
 
         // Remove the protocol fee from the output amount
         outputValue -= protocolFee;
