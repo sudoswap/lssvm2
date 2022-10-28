@@ -10,3 +10,6 @@
 [submodule "lib/royalty-registry-solidity"]
 	path = lib/royalty-registry-solidity
 	url = https://github.com/manifoldxyz/royalty-registry-solidity
+[submodule "lib/libraries-solidity"]
+	path = lib/libraries-solidity
+	url = https://github.com/manifoldxyz/libraries-solidity
