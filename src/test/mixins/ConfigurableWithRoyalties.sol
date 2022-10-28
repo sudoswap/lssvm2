@@ -3,16 +3,12 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
-import {Configurable, IERC721, LSSVMPair, ICurve, IERC721Mintable, LSSVMPairFactory} from "./Configurable.sol";
-
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
+
 import {Test2981} from "../../mocks/Test2981.sol";
 import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
 import {TestRoyaltyRegistry} from "../../mocks/TestRoyaltyRegistry.sol";
-
-interface IVM {
-    function etch(address where, bytes memory what) external;
-}
+import {Configurable, IERC721, LSSVMPair, ICurve, IERC721Mintable, LSSVMPairFactory} from "./Configurable.sol";
 
 abstract contract ConfigurableWithRoyalties is Configurable, Test {
     address public constant ROYALTY_RECEIVER = address(420);
@@ -32,7 +28,7 @@ abstract contract ConfigurableWithRoyalties is Configurable, Test {
         returns (RoyaltyRegistry royaltyRegistry)
     {
         royaltyRegistry = RoyaltyRegistry(new TestRoyaltyRegistry());
-        IVM(HEVM_ADDRESS).etch(ROYALTY_REGISTRY, address(royaltyRegistry).code);
+        vm.etch(ROYALTY_REGISTRY, address(royaltyRegistry).code);
         royaltyRegistry = RoyaltyRegistry(ROYALTY_REGISTRY);
         royaltyRegistry.initialize();
     }

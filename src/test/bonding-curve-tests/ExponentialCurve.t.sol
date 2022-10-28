@@ -2,12 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
+
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {ExponentialCurve} from "../../bonding-curves/ExponentialCurve.sol";
 import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
-
-import {Hevm} from "../utils/Hevm.sol";
+import {ExponentialCurve} from "../../bonding-curves/ExponentialCurve.sol";
 
 contract ExponentialCurveTest is Test {
     using FixedPointMathLib for uint256;

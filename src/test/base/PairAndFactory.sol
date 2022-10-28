@@ -2,25 +2,33 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {ICurve} from "../../bonding-curves/ICurve.sol";
-import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
-import {IMintable} from "../interfaces/IMintable.sol";
-import {Test20} from "../../mocks/Test20.sol";
-import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
-import {LSSVMPair} from "../../LSSVMPair.sol";
-import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
-import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
-import {Configurable} from "../mixins/Configurable.sol";
-import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import {Test721} from "../../mocks/Test721.sol";
-import {TestPairManager} from "../../mocks/TestPairManager.sol";
+
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import {Test1155} from "../../mocks/Test1155.sol";
+import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
-abstract contract PairAndFactory is Test, ERC721Holder, Configurable, ERC1155Holder {
+import {Test20} from "../../mocks/Test20.sol";
+import {LSSVMPair} from "../../LSSVMPair.sol";
+import {Test721} from "../../mocks/Test721.sol";
+import {Test1155} from "../../mocks/Test1155.sol";
+import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
+import {IMintable} from "../interfaces/IMintable.sol";
+import {ICurve} from "../../bonding-curves/ICurve.sol";
+import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
+import {Configurable} from "../mixins/Configurable.sol";
+import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
+import {TestPairManager} from "../../mocks/TestPairManager.sol";
+import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+
+abstract contract PairAndFactory is
+    Test,
+    ERC721Holder,
+    Configurable,
+    ERC1155Holder
+{
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 1 ether;
     uint256 tokenAmount = 10 ether;
@@ -316,13 +324,9 @@ abstract contract PairAndFactory is Test, ERC721Holder, Configurable, ERC1155Hol
             totalProtocolFee += protocolFee;
 
             // buy NFTs
-            pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
-                idList,
-                inputAmount,
-                address(this),
-                false,
-                address(0)
-            );
+            pair.swapTokenForSpecificNFTs{
+                value: modifyInputAmount(inputAmount)
+            }(idList, inputAmount, address(this), false, address(0));
             spotPrice = uint56(newSpotPrice);
         }
 

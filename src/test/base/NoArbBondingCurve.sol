@@ -2,17 +2,18 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import {Configurable} from "../mixins/Configurable.sol";
+
+import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
+import {Test721} from "../../mocks/Test721.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
+import {ICurve} from "../../bonding-curves/ICurve.sol";
+import {Configurable} from "../mixins/Configurable.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
-import {ICurve} from "../../bonding-curves/ICurve.sol";
-import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
-import {Test721} from "../../mocks/Test721.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
-import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
 
 abstract contract NoArbBondingCurve is Test, ERC721Holder, Configurable {
     uint256[] idList;

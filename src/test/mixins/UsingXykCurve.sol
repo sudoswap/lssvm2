@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {XykCurve} from "../../bonding-curves/XykCurve.sol";
-import {Test721Enumerable} from "../../mocks/Test721Enumerable.sol";
-import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
-import {ICurve} from "../../bonding-curves/ICurve.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {Configurable} from "./Configurable.sol";
+import {ICurve} from "../../bonding-curves/ICurve.sol";
+import {XykCurve} from "../../bonding-curves/XykCurve.sol";
 
 abstract contract UsingXykCurve is Configurable {
     function setupCurve() public override returns (ICurve) {

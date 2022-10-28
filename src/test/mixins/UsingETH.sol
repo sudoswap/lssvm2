@@ -2,14 +2,15 @@
 pragma solidity ^0.8.0;
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {ICurve} from "../../bonding-curves/ICurve.sol";
+
 import {LSSVMPair} from "../../LSSVMPair.sol";
-import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
+import {Configurable} from "./Configurable.sol";
+import {RouterCaller} from "./RouterCaller.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {LSSVMRouter2} from "../../LSSVMRouter2.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
-import {Configurable} from "./Configurable.sol";
-import {RouterCaller} from "./RouterCaller.sol";
+import {ICurve} from "../../bonding-curves/ICurve.sol";
+import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 
 abstract contract UsingETH is Configurable, RouterCaller {
     function modifyInputAmount(uint256 inputAmount)
@@ -131,15 +132,17 @@ abstract contract UsingETH is Configurable, RouterCaller {
         LSSVMRouter2.PairSwapSpecificPartialFill[] calldata buyList,
         LSSVMRouter2.PairSwapSpecificPartialFillForToken[] calldata sellList
     ) public payable override returns (uint256) {
-      return router.robustBuySellWithETHAndPartialFill{value: msg.value}(
-        buyList, sellList
-      );
+        return
+            router.robustBuySellWithETHAndPartialFill{value: msg.value}(
+                buyList,
+                sellList
+            );
     }
 
     function swapETHForSpecificNFTs(
         LSSVMRouter2 router,
         LSSVMRouter2.RobustPairSwapSpecific[] calldata buyList
     ) public payable override returns (uint256) {
-      return router.swapETHForSpecificNFTs{value: msg.value}(buyList);
+        return router.swapETHForSpecificNFTs{value: msg.value}(buyList);
     }
 }
