@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 import {LSSVMPair} from "./LSSVMPair.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
@@ -169,7 +171,6 @@ contract LSSVMRouter2 {
                     if (numItemsToFill == 0) {
                         continue;
                     } else {
-
                         // Figure out which items are actually still buyable from the list
                         uint256[] memory fillableIds = _findAvailableIds(
                             pair,
@@ -185,7 +186,9 @@ contract LSSVMRouter2 {
                                 continue;
                             }
                             // Otherwise, adjust the max amt sent to be down
-                            (,,,priceToFillAt,) = pair.getBuyNFTQuote(numItemsToFill); 
+                            (, , , priceToFillAt, ) = pair.getBuyNFTQuote(
+                                numItemsToFill
+                            );
                         }
 
                         // Now, do the partial fill swap with the updated price and ids

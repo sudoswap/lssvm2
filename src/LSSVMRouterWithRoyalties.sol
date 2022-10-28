@@ -14,10 +14,12 @@ pragma solidity ^0.8.0;
   https://defi.sucks
 */
 
-import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
-import {LSSVMRouter, IERC721, ERC20, SafeTransferLib, LSSVMPair, ILSSVMPairFactoryLike, CurveErrorCodes} from "./LSSVMRouter.sol";
+
+import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+
 import {LSSVMPairERC20} from "./LSSVMPairERC20.sol";
+import {LSSVMRouter, IERC721, ERC20, SafeTransferLib, LSSVMPair, ILSSVMPairFactoryLike, CurveErrorCodes} from "./LSSVMRouter.sol";
 
 contract LSSVMRouterWithRoyalties is LSSVMRouter {
     using SafeTransferLib for address payable;
