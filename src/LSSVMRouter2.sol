@@ -306,34 +306,34 @@ contract LSSVMRouter2 {
         // Start and end indices
         uint256 start = 0;
         uint256 end = maxNumNFTs - 1;
-        // while (start <= end) {
-        //     // Get price of mid number of items
-        //     uint256 mid = start + (end - start + 1) / 2;
-        //     (, , , uint256 currentPrice, ) = pair.getSellNFTQuote(mid + 1);
-        //     // If it costs more than there is ETH balance for, then recurse on the left half
-        //     if (currentPrice > pairBalance) {
-        //         if (mid == 1) {
-        //             break;
-        //         }
-        //         end = mid - 1;
-        //     }
-        //     // Otherwise, we can proceed
-        //     else {
-        //         // If we can get at least minOutput selling this number of items, recurse on the right half
-        //         if (currentPrice >= minOutputPerNumNFTs[mid]) {
-        //             numNFTs = mid + 1;
-        //             price = currentPrice;
-        //             start = mid + 1;
-        //         }
-        //         // Otherwise, recurse on the left to find something better priced
-        //         else {
-        //             if (mid == 1) {
-        //                 break;
-        //             }
-        //             end = mid - 1;
-        //         }
-        //     }
-        // }
+        while (start <= end) {
+            // Get price of mid number of items
+            uint256 mid = start + (end - start + 1) / 2;
+            (, , , uint256 currentPrice, ) = pair.getSellNFTQuote(mid + 1);
+            // If it costs more than there is ETH balance for, then recurse on the left half
+            if (currentPrice > pairBalance) {
+                if (mid == 1) {
+                    break;
+                }
+                end = mid - 1;
+            }
+            // Otherwise, we can proceed
+            else {
+                // If we can get at least minOutput selling this number of items, recurse on the right half
+                if (currentPrice >= minOutputPerNumNFTs[mid]) {
+                    numNFTs = mid + 1;
+                    price = currentPrice;
+                    start = mid + 1;
+                }
+                // Otherwise, recurse on the left to find something better priced
+                else {
+                    if (mid == 1) {
+                        break;
+                    }
+                    end = mid - 1;
+                }
+            }
+        }
         // Return numNFTs and price
     }
 
