@@ -93,23 +93,6 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         );
     }
 
-    function swapTokenForAnyNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.PairSwapAny[] calldata swapList,
-        address payable,
-        address nftRecipient,
-        uint256 deadline,
-        uint256 inputAmount
-    ) public payable override returns (uint256) {
-        return
-            router.swapERC20ForAnyNFTs(
-                swapList,
-                inputAmount,
-                nftRecipient,
-                deadline
-            );
-    }
-
     function swapTokenForSpecificNFTs(
         LSSVMRouter router,
         LSSVMRouter.PairSwapSpecific[] calldata swapList,
@@ -122,25 +105,6 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
             router.swapERC20ForSpecificNFTs(
                 swapList,
                 inputAmount,
-                nftRecipient,
-                deadline
-            );
-    }
-
-    function swapNFTsForAnyNFTsThroughToken(
-        LSSVMRouter router,
-        LSSVMRouter.NFTsForAnyNFTsTrade calldata trade,
-        uint256 minOutput,
-        address payable,
-        address nftRecipient,
-        uint256 deadline,
-        uint256 inputAmount
-    ) public payable override returns (uint256) {
-        return
-            router.swapNFTsForAnyNFTsThroughERC20(
-                trade,
-                inputAmount,
-                minOutput,
                 nftRecipient,
                 deadline
             );
@@ -160,23 +124,6 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
                 trade,
                 inputAmount,
                 minOutput,
-                nftRecipient,
-                deadline
-            );
-    }
-
-    function robustSwapTokenForAnyNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.RobustPairSwapAny[] calldata swapList,
-        address payable,
-        address nftRecipient,
-        uint256 deadline,
-        uint256 inputAmount
-    ) public payable override returns (uint256) {
-        return
-            router.robustSwapERC20ForAnyNFTs(
-                swapList,
-                inputAmount,
                 nftRecipient,
                 deadline
             );

@@ -12,10 +12,6 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
-import {LSSVMPairEnumerableETH} from "../../LSSVMPairEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableETH} from "../../LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "../../LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableERC20} from "../../LSSVMPairMissingEnumerableERC20.sol";
 import {Configurable} from "../mixins/Configurable.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {Test721} from "../../mocks/Test721.sol";
@@ -43,15 +39,11 @@ abstract contract PairAndFactory is DSTest, ERC721Holder, Configurable, ERC1155H
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairEnumerableETH enumerableETHTemplate = new LSSVMPairEnumerableETH();
-        LSSVMPairMissingEnumerableETH missingEnumerableETHTemplate = new LSSVMPairMissingEnumerableETH();
-        LSSVMPairEnumerableERC20 enumerableERC20Template = new LSSVMPairEnumerableERC20();
-        LSSVMPairMissingEnumerableERC20 missingEnumerableERC20Template = new LSSVMPairMissingEnumerableERC20();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH();
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
         factory = new LSSVMPairFactory(
-            enumerableETHTemplate,
-            missingEnumerableETHTemplate,
-            enumerableERC20Template,
-            missingEnumerableERC20Template,
+            ethTemplate,
+            erc20Template,
             feeRecipient,
             protocolFeeMultiplier
         );
@@ -183,13 +175,6 @@ abstract contract PairAndFactory is DSTest, ERC721Holder, Configurable, ERC1155H
         pair.multicall(calls, true);
     }
 
-    function test_getAllHeldNFTs() public {
-        uint256[] memory allIds = pair.getAllHeldIds();
-        for (uint256 i = 0; i < allIds.length; ++i) {
-            assertEq(allIds[i], idList[i]);
-        }
-    }
-
     function test_withdraw() public {
         withdrawTokens(pair);
         assertEq(getBalance(address(pair)), 0);
@@ -297,27 +282,6 @@ abstract contract PairAndFactory is DSTest, ERC721Holder, Configurable, ERC1155H
         spotPrice = uint56(newSpotPrice);
     }
 
-    function testFail_swapForAnyNFTsPastBalance() public {
-        (, uint128 newSpotPrice, , uint256 inputAmount, ) = bondingCurve
-            .getBuyInfo(
-                spotPrice,
-                delta,
-                numItems + 1,
-                0,
-                protocolFeeMultiplier
-            );
-
-        // buy any NFTs past pool inventory
-        pair.swapTokenForAnyNFTs{value: modifyInputAmount(inputAmount)}(
-            numItems + 1,
-            inputAmount,
-            address(this),
-            false,
-            address(0)
-        );
-        spotPrice = uint56(newSpotPrice);
-    }
-
     /**
      * Test Admin functions
      */
@@ -352,8 +316,8 @@ abstract contract PairAndFactory is DSTest, ERC721Holder, Configurable, ERC1155H
             totalProtocolFee += protocolFee;
 
             // buy NFTs
-            pair.swapTokenForAnyNFTs{value: modifyInputAmount(inputAmount)}(
-                numItems,
+            pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+                idList,
                 inputAmount,
                 address(this),
                 false,

@@ -12,11 +12,23 @@ import {ICurve} from "./bonding-curves/ICurve.sol";
     @title An NFT/Token pair where the token is ETH
     @author boredGenius and 0xmons
  */
-abstract contract LSSVMPairETH is LSSVMPair {
+contract LSSVMPairETH is LSSVMPair {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
     uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 61;
+
+    /**
+       @inheritdoc LSSVMPair
+     */
+    function pairVariant()
+        public
+        pure
+        override
+        returns (ILSSVMPairFactoryLike.PairVariant)
+    {
+        return ILSSVMPairFactoryLike.PairVariant.ETH;
+    }
 
     /// @inheritdoc LSSVMPair
     function _pullTokenInputAndPayProtocolFee(

@@ -11,10 +11,6 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
-import {LSSVMPairEnumerableETH} from "../../LSSVMPairEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableETH} from "../../LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "../../LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableERC20} from "../../LSSVMPairMissingEnumerableERC20.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {Hevm} from "../utils/Hevm.sol";
@@ -49,15 +45,11 @@ abstract contract RouterRobustSwapWithAssetRecipient is
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairEnumerableETH enumerableETHTemplate = new LSSVMPairEnumerableETH();
-        LSSVMPairMissingEnumerableETH missingEnumerableETHTemplate = new LSSVMPairMissingEnumerableETH();
-        LSSVMPairEnumerableERC20 enumerableERC20Template = new LSSVMPairEnumerableERC20();
-        LSSVMPairMissingEnumerableERC20 missingEnumerableERC20Template = new LSSVMPairMissingEnumerableERC20();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH();
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
         factory = new LSSVMPairFactory(
-            enumerableETHTemplate,
-            missingEnumerableETHTemplate,
-            enumerableERC20Template,
-            missingEnumerableERC20Template,
+            ethTemplate,
+            erc20Template,
             feeRecipient,
             protocolFeeMultiplier
         );
@@ -137,34 +129,6 @@ abstract contract RouterRobustSwapWithAssetRecipient is
             1 ether,
             address(router)
         );
-    }
-
-    // Swapping tokens for any NFT on sellPair1 works, but fails silently on sellPair2 if slippage is too tight
-    function test_robustSwapTokenForAnyNFTs() public {
-        uint256 sellPair1Price;
-        (, , , sellPair1Price, ) = sellPair1.getBuyNFTQuote(1);
-        LSSVMRouter.RobustPairSwapAny[]
-            memory swapList = new LSSVMRouter.RobustPairSwapAny[](2);
-        swapList[0] = LSSVMRouter.RobustPairSwapAny({
-            swapInfo: LSSVMRouter.PairSwapAny({pair: sellPair1, numItems: 1}),
-            maxCost: sellPair1Price
-        });
-        swapList[1] = LSSVMRouter.RobustPairSwapAny({
-            swapInfo: LSSVMRouter.PairSwapAny({pair: sellPair2, numItems: 1}),
-            maxCost: 0 ether
-        });
-        uint256 remainingValue = this.robustSwapTokenForAnyNFTs{
-            value: modifyInputAmount(2 ether)
-        }(
-            router,
-            swapList,
-            payable(address(this)),
-            address(this),
-            block.timestamp,
-            2 ether
-        );
-        assertEq(remainingValue + sellPair1Price, 2 ether);
-        assertEq(getBalance(sellPairRecipient), sellPair1Price);
     }
 
     // Swapping tokens to a specific NFT with sellPair2 works, but fails silently on sellPair1 if slippage is too tight

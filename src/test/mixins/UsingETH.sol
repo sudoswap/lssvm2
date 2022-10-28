@@ -63,23 +63,6 @@ abstract contract UsingETH is Configurable, RouterCaller {
         factory.withdrawETHProtocolFees();
     }
 
-    function swapTokenForAnyNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.PairSwapAny[] calldata swapList,
-        address payable ethRecipient,
-        address nftRecipient,
-        uint256 deadline,
-        uint256
-    ) public payable override returns (uint256) {
-        return
-            router.swapETHForAnyNFTs{value: msg.value}(
-                swapList,
-                ethRecipient,
-                nftRecipient,
-                deadline
-            );
-    }
-
     function swapTokenForSpecificNFTs(
         LSSVMRouter router,
         LSSVMRouter.PairSwapSpecific[] calldata swapList,
@@ -91,25 +74,6 @@ abstract contract UsingETH is Configurable, RouterCaller {
         return
             router.swapETHForSpecificNFTs{value: msg.value}(
                 swapList,
-                ethRecipient,
-                nftRecipient,
-                deadline
-            );
-    }
-
-    function swapNFTsForAnyNFTsThroughToken(
-        LSSVMRouter router,
-        LSSVMRouter.NFTsForAnyNFTsTrade calldata trade,
-        uint256 minOutput,
-        address payable ethRecipient,
-        address nftRecipient,
-        uint256 deadline,
-        uint256
-    ) public payable override returns (uint256) {
-        return
-            router.swapNFTsForAnyNFTsThroughETH{value: msg.value}(
-                trade,
-                minOutput,
                 ethRecipient,
                 nftRecipient,
                 deadline
@@ -129,23 +93,6 @@ abstract contract UsingETH is Configurable, RouterCaller {
             router.swapNFTsForSpecificNFTsThroughETH{value: msg.value}(
                 trade,
                 minOutput,
-                ethRecipient,
-                nftRecipient,
-                deadline
-            );
-    }
-
-    function robustSwapTokenForAnyNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.RobustPairSwapAny[] calldata swapList,
-        address payable ethRecipient,
-        address nftRecipient,
-        uint256 deadline,
-        uint256
-    ) public payable override returns (uint256) {
-        return
-            router.robustSwapETHForAnyNFTs{value: msg.value}(
-                swapList,
                 ethRecipient,
                 nftRecipient,
                 deadline

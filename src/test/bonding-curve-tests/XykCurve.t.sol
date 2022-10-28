@@ -7,12 +7,10 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {XykCurve} from "../../bonding-curves/XykCurve.sol";
 import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
-import {LSSVMPairEnumerableETH} from "../../LSSVMPairEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableETH} from "../../LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "../../LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableERC20} from "../../LSSVMPairMissingEnumerableERC20.sol";
 import {LSSVMPairCloner} from "../../lib/LSSVMPairCloner.sol";
 import {LSSVMPair} from "../../LSSVMPair.sol";
+import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
+import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -27,26 +25,17 @@ contract XykCurveTest is DSTest, ERC721Holder {
 
     XykCurve curve;
     LSSVMPairFactory factory;
-    LSSVMPairEnumerableETH enumerableETHTemplate;
-    LSSVMPairMissingEnumerableETH missingEnumerableETHTemplate;
-    LSSVMPairEnumerableERC20 enumerableERC20Template;
-    LSSVMPairMissingEnumerableERC20 missingEnumerableERC20Template;
     LSSVMPair ethPair;
     Test721 nft;
 
     receive() external payable {}
 
     function setUp() public {
-        enumerableETHTemplate = new LSSVMPairEnumerableETH();
-        missingEnumerableETHTemplate = new LSSVMPairMissingEnumerableETH();
-        enumerableERC20Template = new LSSVMPairEnumerableERC20();
-        missingEnumerableERC20Template = new LSSVMPairMissingEnumerableERC20();
-
+        LSSVMPairETH ethTemplate = new LSSVMPairETH();
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
         factory = new LSSVMPairFactory(
-            enumerableETHTemplate,
-            missingEnumerableETHTemplate,
-            enumerableERC20Template,
-            missingEnumerableERC20Template,
+            ethTemplate,
+            erc20Template,
             payable(0),
             0
         );
@@ -292,7 +281,7 @@ contract XykCurveTest is DSTest, ERC721Holder {
         );
     }
 
-    function test_swapTokenForAnyNFTs() public {
+    function test_swapTokenForSpecificNFTs() public {
         // arrange
         uint256 numNfts = 5;
         uint256 value = 0.8 ether;
@@ -308,13 +297,13 @@ contract XykCurveTest is DSTest, ERC721Holder {
             .getBuyNFTQuote(numItemsToBuy);
 
         // act
-        uint256 inputAmount = ethPair.swapTokenForAnyNFTs{value: inputValue}(
-            numItemsToBuy,
-            inputValue,
-            address(this),
-            false,
-            address(0)
-        );
+        uint256[] memory idList = new uint256[](numItemsToBuy);
+        for (uint256 i = 1; i <= numItemsToBuy; i++) {
+            idList[i - 1] = i;
+        }
+        uint256 inputAmount = ethPair.swapTokenForSpecificNFTs{
+            value: inputValue
+        }(idList, inputValue, address(this), false, address(0));
 
         // assert
         assertEq(

@@ -6,6 +6,7 @@ import {LSSVMPair} from "../../LSSVMPair.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
+import {Test721} from "../../mocks/Test721.sol";
 
 abstract contract Configurable {
     function getBalance(address a) public virtual returns (uint256);
@@ -26,7 +27,9 @@ abstract contract Configurable {
 
     function setupCurve() public virtual returns (ICurve);
 
-    function setup721() public virtual returns (IERC721Mintable);
+    function setup721() public virtual returns (IERC721Mintable) {
+        return IERC721Mintable(address(new Test721()));
+    }
 
     function modifyInputAmount(uint256 inputAmount)
         public

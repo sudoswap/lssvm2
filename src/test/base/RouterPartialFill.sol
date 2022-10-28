@@ -9,10 +9,6 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
-import {LSSVMPairEnumerableETH} from "../../LSSVMPairEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableETH} from "../../LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "../../LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableERC20} from "../../LSSVMPairMissingEnumerableERC20.sol";
 import {LSSVMRouter2} from "../../LSSVMRouter2.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
@@ -42,15 +38,11 @@ abstract contract RouterPartialFill is
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairEnumerableETH enumerableETHTemplate = new LSSVMPairEnumerableETH();
-        LSSVMPairMissingEnumerableETH missingEnumerableETHTemplate = new LSSVMPairMissingEnumerableETH();
-        LSSVMPairEnumerableERC20 enumerableERC20Template = new LSSVMPairEnumerableERC20();
-        LSSVMPairMissingEnumerableERC20 missingEnumerableERC20Template = new LSSVMPairMissingEnumerableERC20();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH();
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
         factory = new LSSVMPairFactory(
-            enumerableETHTemplate,
-            missingEnumerableETHTemplate,
-            enumerableERC20Template,
-            missingEnumerableERC20Template,
+            ethTemplate,
+            erc20Template,
             feeRecipient,
             protocolFeeMultiplier
         );

@@ -13,10 +13,6 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
-import {LSSVMPairEnumerableETH} from "../../LSSVMPairEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableETH} from "../../LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "../../LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableERC20} from "../../LSSVMPairMissingEnumerableERC20.sol";
 import {LSSVMRouterWithRoyalties, LSSVMRouter} from "../../LSSVMRouterWithRoyalties.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {Hevm} from "../utils/Hevm.sol";
@@ -57,15 +53,11 @@ abstract contract RouterRobustSwapWithRoyalties is
             address(test2981)
         );
 
-        LSSVMPairEnumerableETH enumerableETHTemplate = new LSSVMPairEnumerableETH();
-        LSSVMPairMissingEnumerableETH missingEnumerableETHTemplate = new LSSVMPairMissingEnumerableETH();
-        LSSVMPairEnumerableERC20 enumerableERC20Template = new LSSVMPairEnumerableERC20();
-        LSSVMPairMissingEnumerableERC20 missingEnumerableERC20Template = new LSSVMPairMissingEnumerableERC20();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH();
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
         factory = new LSSVMPairFactory(
-            enumerableETHTemplate,
-            missingEnumerableETHTemplate,
-            enumerableERC20Template,
-            missingEnumerableERC20Template,
+            ethTemplate,
+            erc20Template,
             feeRecipient,
             protocolFeeMultiplier
         );
@@ -146,67 +138,6 @@ abstract contract RouterRobustSwapWithRoyalties is
             test721.mint(address(this), nftIndex);
             nftIndex++;
         }
-    }
-
-    // Test where pair 1 and pair 2 swap tokens for NFT succeed but pair 3 fails
-    function test_robustSwapTokenForAny2NFTs() public {
-        LSSVMRouter.RobustPairSwapAny[]
-            memory swapList = new LSSVMRouter.RobustPairSwapAny[](3);
-
-        (, , , uint256 pair1InputAmount, ) = pair1.getBuyNFTQuote(2);
-        (, , , uint256 pair2InputAmount, ) = pair2.getBuyNFTQuote(2);
-
-        uint256 totalRoyaltyAmount = 0;
-
-        // calculate royalty and add it to the input amount
-        uint256 royaltyAmount = calcRoyalty(pair1InputAmount);
-        pair1InputAmount += royaltyAmount;
-        totalRoyaltyAmount += royaltyAmount;
-        royaltyAmount = calcRoyalty(pair2InputAmount);
-        pair2InputAmount += royaltyAmount;
-        totalRoyaltyAmount += royaltyAmount;
-
-        swapList[0] = LSSVMRouter.RobustPairSwapAny({
-            swapInfo: LSSVMRouter.PairSwapAny({pair: pair1, numItems: 2}),
-            maxCost: pair2InputAmount
-        });
-        swapList[1] = LSSVMRouter.RobustPairSwapAny({
-            swapInfo: LSSVMRouter.PairSwapAny({pair: pair2, numItems: 2}),
-            maxCost: pair2InputAmount
-        });
-        swapList[2] = LSSVMRouter.RobustPairSwapAny({
-            swapInfo: LSSVMRouter.PairSwapAny({pair: pair3, numItems: 2}),
-            maxCost: pair2InputAmount
-        });
-
-        uint256 beforeNFTBalance = test721.balanceOf(address(this));
-
-        // Expect to have the first two swapPairs succeed, and the last one silently fail
-        // with 10% protocol fee:
-        uint256 remainingValue = this.robustSwapTokenForAnyNFTs{
-            value: modifyInputAmount(pair2InputAmount * 3)
-        }(
-            router,
-            swapList,
-            payable(address(this)),
-            address(this),
-            block.timestamp,
-            pair2InputAmount * 3
-        );
-
-        uint256 afterNFTBalance = test721.balanceOf(address(this));
-
-        // If the first two swap pairs succeed, we gain 4 NFTs
-        assertEq((afterNFTBalance - beforeNFTBalance), 4, "Incorrect NFT swap");
-
-        assertEq(
-            remainingValue,
-            pair2InputAmount * 3 - (pair1InputAmount + pair2InputAmount),
-            "Incorrect refund"
-        );
-
-        // check that royalty has been issued
-        assertEq(getBalance(ROYALTY_RECEIVER), totalRoyaltyAmount);
     }
 
     // Test where pair 1 and pair 2 swap tokens for NFT succeed but pair 3 fails

@@ -14,10 +14,22 @@ import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
     @title An NFT/Token pair where the token is an ERC20
     @author boredGenius and 0xmons
  */
-abstract contract LSSVMPairERC20 is LSSVMPair {
+contract LSSVMPairERC20 is LSSVMPair {
     using SafeTransferLib for ERC20;
 
     uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 81;
+
+    /**
+       @inheritdoc LSSVMPair
+     */
+    function pairVariant()
+        public
+        pure
+        override
+        returns (ILSSVMPairFactoryLike.PairVariant)
+    {
+        return ILSSVMPairFactoryLike.PairVariant.ERC20;
+    }
 
     /**
         @notice Returns the ERC20 token associated with the pair

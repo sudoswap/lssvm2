@@ -66,94 +66,6 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
 
     /**
         @dev We assume msg.value >= sum of values in maxCostPerPair
-        @notice Swaps as much ETH for any NFTs as possible, respecting the per-swap max cost.
-        @param swapList The list of pairs to trade with and the number of NFTs to buy from each.
-        @param ethRecipient The address that will receive the unspent ETH input
-        @param nftRecipient The address that will receive the NFT output
-        @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
-        @return remainingValue The unspent token amount
-     */
-    function robustSwapETHForAnyNFTs(
-        RobustPairSwapAny[] calldata swapList,
-        address payable ethRecipient,
-        address nftRecipient,
-        uint256 deadline
-    )
-        external
-        payable
-        virtual
-        override
-        checkDeadline(deadline)
-        returns (uint256 remainingValue)
-    {
-        remainingValue = msg.value;
-
-        // Try doing each swap
-        uint256 pairCost;
-        uint256 numSwaps = swapList.length;
-        RobustPairSwapAny calldata swap;
-        for (uint256 i; i < numSwaps; ) {
-            swap = swapList[i];
-
-            // Locally scoped to avoid stack too deep error
-            {
-                CurveErrorCodes.Error error;
-                // Calculate actual cost per swap
-                (error, , , pairCost, ) = swap.swapInfo.pair.getBuyNFTQuote(
-                    swap.swapInfo.numItems
-                );
-                if (error != CurveErrorCodes.Error.OK) {
-                    unchecked {
-                        ++i;
-                    }
-                    continue;
-                }
-            }
-
-            (
-                address royaltyRecipient,
-                uint256 royaltyAmount
-            ) = _calculateRoyalties(swap.swapInfo.pair, pairCost);
-
-            // If within our maxCost and no error, proceed
-            if (pairCost + royaltyAmount <= swap.maxCost) {
-                // We know how much ETH to send because we already did the math above
-                // So we just send that much
-                remainingValue -= swap.swapInfo.pair.swapTokenForAnyNFTs{
-                    value: pairCost
-                }(
-                    swap.swapInfo.numItems,
-                    pairCost,
-                    nftRecipient,
-                    true,
-                    msg.sender
-                );
-                if (royaltyAmount > 0) {
-                    remainingValue -= royaltyAmount;
-                    payable(royaltyRecipient).safeTransferETH(royaltyAmount);
-                    emit RoyaltyIssued(
-                        msg.sender,
-                        address(swap.swapInfo.pair),
-                        royaltyRecipient,
-                        pairCost,
-                        royaltyAmount
-                    );
-                }
-            }
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        // Return remaining value to sender
-        if (remainingValue > 0) {
-            ethRecipient.safeTransferETH(remainingValue);
-        }
-    }
-
-    /**
-        @dev We assume msg.value >= sum of values in maxCostPerPair
         @param swapList The list of pairs to trade with and the IDs of the NFTs to buy from each.
         @param ethRecipient The address that will receive the unspent ETH input
         @param nftRecipient The address that will receive the NFT output
@@ -237,93 +149,6 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
         // Return remaining value to sender
         if (remainingValue > 0) {
             ethRecipient.safeTransferETH(remainingValue);
-        }
-    }
-
-    /**
-        @notice Swaps as many ERC20 tokens for any NFTs as possible, respecting the per-swap max cost.
-        @param swapList The list of pairs to trade with and the number of NFTs to buy from each.
-        @param inputAmount The amount of ERC20 tokens to add to the ERC20-to-NFT swaps
-        @param nftRecipient The address that will receive the NFT output
-        @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
-        @return remainingValue The unspent token amount
-
-     */
-    function robustSwapERC20ForAnyNFTs(
-        RobustPairSwapAny[] calldata swapList,
-        uint256 inputAmount,
-        address nftRecipient,
-        uint256 deadline
-    )
-        external
-        virtual
-        override
-        checkDeadline(deadline)
-        returns (uint256 remainingValue)
-    {
-        remainingValue = inputAmount;
-        uint256 pairCost;
-
-        // Try doing each swap
-        uint256 numSwaps = swapList.length;
-        RobustPairSwapAny calldata swap;
-        for (uint256 i; i < numSwaps; ) {
-            swap = swapList[i];
-
-            // Calculate actual cost per swap
-            {
-                CurveErrorCodes.Error error;
-                // Calculate actual cost per swap
-                (error, , , pairCost, ) = swap.swapInfo.pair.getBuyNFTQuote(
-                    swap.swapInfo.numItems
-                );
-                if (error != CurveErrorCodes.Error.OK) {
-                    unchecked {
-                        ++i;
-                    }
-                    continue;
-                }
-            }
-
-            (
-                address royaltyRecipient,
-                uint256 royaltyAmount
-            ) = _calculateRoyalties(swap.swapInfo.pair, pairCost);
-
-            // If within our maxCost and no error, proceed
-            if (pairCost + royaltyAmount <= swap.maxCost) {
-                pairCost = swap.swapInfo.pair.swapTokenForAnyNFTs(
-                    swap.swapInfo.numItems,
-                    pairCost,
-                    nftRecipient,
-                    true,
-                    msg.sender
-                );
-
-                remainingValue -= pairCost;
-
-                if (royaltyAmount > 0) {
-                    remainingValue -= royaltyAmount;
-                    ERC20 token = LSSVMPairERC20(address(swap.swapInfo.pair))
-                        .token();
-                    token.safeTransferFrom(
-                        msg.sender,
-                        royaltyRecipient,
-                        royaltyAmount
-                    );
-                    emit RoyaltyIssued(
-                        msg.sender,
-                        address(swap.swapInfo.pair),
-                        royaltyRecipient,
-                        pairCost,
-                        royaltyAmount
-                    );
-                }
-            }
-
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -896,62 +721,6 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
     }
 
     /**
-        @notice Internal function used to swap ETH for any NFTs
-        @param swapList The list of pairs and swap calldata
-        @param inputAmount The total amount of ETH to send
-        @param ethRecipient The address receiving excess ETH
-        @param nftRecipient The address receiving the NFTs from the pairs
-        @return remainingValue The unspent token amount
-     */
-    function _swapETHForAnyNFTs(
-        PairSwapAny[] calldata swapList,
-        uint256 inputAmount,
-        address payable ethRecipient,
-        address nftRecipient
-    ) internal virtual override returns (uint256 remainingValue) {
-        remainingValue = inputAmount;
-
-        uint256 pairCost;
-        CurveErrorCodes.Error error;
-
-        // Do swaps
-        uint256 numSwaps = swapList.length;
-        PairSwapAny calldata swap;
-        for (uint256 i; i < numSwaps; ) {
-            swap = swapList[i];
-
-            // Calculate the cost per swap first to send exact amount of ETH over, saves gas by avoiding the need to send back excess ETH
-            (error, , , pairCost, ) = swap.pair.getBuyNFTQuote(swap.numItems);
-
-            // Require no error
-            require(error == CurveErrorCodes.Error.OK, "Bonding curve error");
-
-            // Total ETH taken from sender cannot exceed inputAmount
-            // because otherwise the deduction from remainingValue will fail
-            pairCost = swap.pair.swapTokenForAnyNFTs{value: pairCost}(
-                swap.numItems,
-                remainingValue,
-                nftRecipient,
-                true,
-                msg.sender
-            );
-
-            remainingValue -=
-                pairCost +
-                _issueETHRoyalties(swap.pair, pairCost);
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        // Return remaining value to sender
-        if (remainingValue > 0) {
-            ethRecipient.safeTransferETH(remainingValue);
-        }
-    }
-
-    /**
         @notice Internal function used to swap ETH for a specific set of NFTs
         @param swapList The list of pairs and swap calldata
         @param inputAmount The total amount of ETH to send
@@ -1006,52 +775,6 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
         // Return remaining value to sender
         if (remainingValue > 0) {
             ethRecipient.safeTransferETH(remainingValue);
-        }
-    }
-
-    /**
-        @notice Internal function used to swap an ERC20 token for any NFTs
-        @dev Note that we don't need to query the pair's bonding curve first for pricing data because
-        we just calculate and take the required amount from the caller during swap time.
-        However, we can't "pull" ETH, which is why for the ETH->NFT swaps, we need to calculate the pricing info
-        to figure out how much the router should send to the pool.
-        @param swapList The list of pairs and swap calldata
-        @param inputAmount The total amount of ERC20 tokens to send
-        @param nftRecipient The address receiving the NFTs from the pairs
-        @return remainingValue The unspent token amount
-     */
-    function _swapERC20ForAnyNFTs(
-        PairSwapAny[] calldata swapList,
-        uint256 inputAmount,
-        address nftRecipient
-    ) internal virtual override returns (uint256 remainingValue) {
-        remainingValue = inputAmount;
-        uint256 pairCost;
-
-        // Do swaps
-        uint256 numSwaps = swapList.length;
-        PairSwapAny calldata swap;
-        for (uint256 i; i < numSwaps; ) {
-            swap = swapList[i];
-
-            // Tokens are transferred in by the pair calling router.pairTransferERC20From
-            // Total tokens taken from sender cannot exceed inputAmount
-            // because otherwise the deduction from remainingValue will fail
-            pairCost = swap.pair.swapTokenForAnyNFTs(
-                swap.numItems,
-                remainingValue,
-                nftRecipient,
-                true,
-                msg.sender
-            );
-
-            remainingValue -=
-                pairCost +
-                _issueTokenRoyalties(swap.pair, pairCost);
-
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -1262,7 +985,7 @@ contract LSSVMRouterWithRoyalties is LSSVMRouter {
         returns (RoyaltyType)
     {
         ILSSVMPairFactoryLike.PairVariant pairVariant = pair.pairVariant();
-        if (pairVariant >= ILSSVMPairFactoryLike.PairVariant.ENUMERABLE_ERC20) {
+        if (pairVariant == ILSSVMPairFactoryLike.PairVariant.ERC20) {
             return RoyaltyType.ERC20;
         } else {
             return RoyaltyType.ETH;

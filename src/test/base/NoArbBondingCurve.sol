@@ -1,16 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {DSTest} from "ds-test/test.sol";
+import "forge-std/Test.sol";
 import {Configurable} from "../mixins/Configurable.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
-import {LSSVMPairEnumerableETH} from "../../LSSVMPairEnumerableETH.sol";
-import {LSSVMPairMissingEnumerableETH} from "../../LSSVMPairMissingEnumerableETH.sol";
-import {LSSVMPairEnumerableERC20} from "../../LSSVMPairEnumerableERC20.sol";
-import {LSSVMPairMissingEnumerableERC20} from "../../LSSVMPairMissingEnumerableERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
@@ -18,7 +14,7 @@ import {Test721} from "../../mocks/Test721.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
-abstract contract NoArbBondingCurve is DSTest, ERC721Holder, Configurable {
+abstract contract NoArbBondingCurve is Test, ERC721Holder, Configurable {
     uint256[] idList;
     uint256 startingId;
     IERC721Mintable test721;
@@ -30,15 +26,11 @@ abstract contract NoArbBondingCurve is DSTest, ERC721Holder, Configurable {
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairEnumerableETH enumerableETHTemplate = new LSSVMPairEnumerableETH();
-        LSSVMPairMissingEnumerableETH missingEnumerableETHTemplate = new LSSVMPairMissingEnumerableETH();
-        LSSVMPairEnumerableERC20 enumerableERC20Template = new LSSVMPairEnumerableERC20();
-        LSSVMPairMissingEnumerableERC20 missingEnumerableERC20Template = new LSSVMPairMissingEnumerableERC20();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH();
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
         factory = new LSSVMPairFactory(
-            enumerableETHTemplate,
-            missingEnumerableETHTemplate,
-            enumerableERC20Template,
-            missingEnumerableERC20Template,
+            ethTemplate,
+            erc20Template,
             feeRecipient,
             protocolFeeMultiplier
         );
@@ -136,8 +128,8 @@ abstract contract NoArbBondingCurve is DSTest, ERC721Holder, Configurable {
                 0,
                 protocolFeeMultiplier
             );
-            pair.swapTokenForAnyNFTs{value: modifyInputAmount(inputAmount)}(
-                idList.length,
+            pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+                idList,
                 inputAmount,
                 address(this),
                 false,
@@ -213,8 +205,8 @@ abstract contract NoArbBondingCurve is DSTest, ERC721Holder, Configurable {
 
             // buy NFTs
             startBalance = getBalance(address(this));
-            pair.swapTokenForAnyNFTs{value: modifyInputAmount(inputAmount)}(
-                numItems,
+            pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+                idList,
                 inputAmount,
                 address(this),
                 false,

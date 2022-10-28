@@ -5,28 +5,9 @@ import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {LSSVMRouter2} from "../../LSSVMRouter2.sol";
 
 abstract contract RouterCaller {
-    function swapTokenForAnyNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.PairSwapAny[] calldata swapList,
-        address payable ethRecipient,
-        address nftRecipient,
-        uint256 deadline,
-        uint256 inputAmount
-    ) public payable virtual returns (uint256);
-
     function swapTokenForSpecificNFTs(
         LSSVMRouter router,
         LSSVMRouter.PairSwapSpecific[] calldata swapList,
-        address payable ethRecipient,
-        address nftRecipient,
-        uint256 deadline,
-        uint256 inputAmount
-    ) public payable virtual returns (uint256);
-
-    function swapNFTsForAnyNFTsThroughToken(
-        LSSVMRouter router,
-        LSSVMRouter.NFTsForAnyNFTsTrade calldata trade,
-        uint256 minOutput,
         address payable ethRecipient,
         address nftRecipient,
         uint256 deadline,
@@ -37,15 +18,6 @@ abstract contract RouterCaller {
         LSSVMRouter router,
         LSSVMRouter.NFTsForSpecificNFTsTrade calldata trade,
         uint256 minOutput,
-        address payable ethRecipient,
-        address nftRecipient,
-        uint256 deadline,
-        uint256 inputAmount
-    ) public payable virtual returns (uint256);
-
-    function robustSwapTokenForAnyNFTs(
-        LSSVMRouter router,
-        LSSVMRouter.RobustPairSwapAny[] calldata swapList,
         address payable ethRecipient,
         address nftRecipient,
         uint256 deadline,
