@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {DSTest} from "ds-test/test.sol";
+import "forge-std/Test.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {LinearCurve} from "../../bonding-curves/LinearCurve.sol";
@@ -9,7 +9,7 @@ import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
 
 import {Hevm} from "../utils/Hevm.sol";
 
-contract LinearCurveTest is DSTest {
+contract LinearCurveTest is Test {
     LinearCurve curve;
 
     function setUp() public {

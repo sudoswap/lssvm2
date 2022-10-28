@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {DSTest} from "ds-test/test.sol";
+import "forge-std/Test.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {XykCurve} from "../../bonding-curves/XykCurve.sol";
@@ -18,7 +18,7 @@ import {Test721} from "../../mocks/Test721.sol";
 
 import {Hevm} from "../utils/Hevm.sol";
 
-contract XykCurveTest is DSTest, ERC721Holder {
+contract XykCurveTest is Test, ERC721Holder {
     using FixedPointMathLib for uint256;
 
     uint256 constant MIN_PRICE = 1 gwei;

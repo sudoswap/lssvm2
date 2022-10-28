@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {DSTest} from "ds-test/test.sol";
+import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
@@ -20,7 +20,7 @@ import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol
 import {RouterCaller} from "../mixins/RouterCaller.sol";
 
 abstract contract RouterRobustSwapWithRoyalties is
-    DSTest,
+    Test,
     ERC721Holder,
     ConfigurableWithRoyalties,
     RouterCaller

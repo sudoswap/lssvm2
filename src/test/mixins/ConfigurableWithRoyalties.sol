@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
+import "forge-std/Test.sol";
+
 import {Configurable, IERC721, LSSVMPair, ICurve, IERC721Mintable, LSSVMPairFactory} from "./Configurable.sol";
 
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {Test2981} from "../../mocks/Test2981.sol";
 import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
 import {TestRoyaltyRegistry} from "../../mocks/TestRoyaltyRegistry.sol";
-import {DSTest} from "ds-test/test.sol";
 
 interface IVM {
     function etch(address where, bytes memory what) external;
 }
 
-abstract contract ConfigurableWithRoyalties is Configurable, DSTest {
+abstract contract ConfigurableWithRoyalties is Configurable, Test {
     address public constant ROYALTY_RECEIVER = address(420);
     uint96 public constant BPS = 30;
     uint96 public constant BASE = 10_000;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {DSTest} from "ds-test/test.sol";
+import "forge-std/Test.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
@@ -14,13 +14,12 @@ import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {Configurable} from "../mixins/Configurable.sol";
 import {RouterCaller} from "../mixins/RouterCaller.sol";
-import "../utils/console.sol";
 
 /** Handles test cases where users try to buy multiple NFTs from a pool, but only get partially filled
 >  $ forge test --match-contract RPF.*ETH -vvvvv
 */
 abstract contract RouterPartialFill is
-    DSTest,
+    Test,
     ERC721Holder,
     Configurable,
     RouterCaller
