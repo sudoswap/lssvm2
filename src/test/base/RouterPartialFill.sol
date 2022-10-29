@@ -46,7 +46,8 @@ abstract contract RouterPartialFill is
             ethTemplate,
             erc20Template,
             feeRecipient,
-            protocolFeeMultiplier
+            protocolFeeMultiplier,
+            address(this)
         );
         router = new LSSVMRouter2(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);

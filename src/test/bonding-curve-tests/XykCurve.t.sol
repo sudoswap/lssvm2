@@ -37,7 +37,8 @@ contract XykCurveTest is Test, ERC721Holder {
             ethTemplate,
             erc20Template,
             payable(0),
-            0
+            0,
+            address(this)
         );
 
         curve = new XykCurve();

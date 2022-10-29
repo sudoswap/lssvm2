@@ -52,7 +52,8 @@ abstract contract RouterRobustSwapWithAssetRecipient is
             ethTemplate,
             erc20Template,
             feeRecipient,
-            protocolFeeMultiplier
+            protocolFeeMultiplier,
+            address(this)
         );
         router = new LSSVMRouter(factory);
 

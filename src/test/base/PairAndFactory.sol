@@ -53,7 +53,8 @@ abstract contract PairAndFactory is
             ethTemplate,
             erc20Template,
             feeRecipient,
-            protocolFeeMultiplier
+            protocolFeeMultiplier,
+            address(this)
         );
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);

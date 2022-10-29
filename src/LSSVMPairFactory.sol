@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
+import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
@@ -15,7 +15,7 @@ import {LSSVMPairERC20} from "./LSSVMPairERC20.sol";
 import {LSSVMPairCloner} from "./lib/LSSVMPairCloner.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 
-contract LSSVMPairFactory is Ownable, ILSSVMPairFactoryLike {
+contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     using LSSVMPairCloner for address;
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
@@ -50,8 +50,9 @@ contract LSSVMPairFactory is Ownable, ILSSVMPairFactoryLike {
         LSSVMPairETH _ethTemplate,
         LSSVMPairERC20 _erc20Template,
         address payable _protocolFeeRecipient,
-        uint256 _protocolFeeMultiplier
-    ) {
+        uint256 _protocolFeeMultiplier,
+        address _owner
+    ) Owned(_owner) {
         ethTemplate = _ethTemplate;
         erc20Template = _erc20Template;
         protocolFeeRecipient = _protocolFeeRecipient;

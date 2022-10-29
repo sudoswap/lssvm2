@@ -53,7 +53,8 @@ abstract contract RouterMultiPoolWithRoyalties is
             ethTemplate,
             erc20Template,
             feeRecipient,
-            protocolFeeMultiplier
+            protocolFeeMultiplier,
+            address(this)
         );
         router = new LSSVMRouterWithRoyalties(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);
