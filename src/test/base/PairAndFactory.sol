@@ -23,12 +23,7 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {TestPairManager} from "../../mocks/TestPairManager.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 
-abstract contract PairAndFactory is
-    Test,
-    ERC721Holder,
-    Configurable,
-    ERC1155Holder
-{
+abstract contract PairAndFactory is Test, ERC721Holder, Configurable, ERC1155Holder {
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 1 ether;
     uint256 tokenAmount = 10 ether;
@@ -195,11 +190,7 @@ abstract contract PairAndFactory is
     }
 
     function testFail_callMint721() public {
-        bytes memory data = abi.encodeWithSelector(
-            Test721.mint.selector,
-            address(this),
-            1000
-        );
+        bytes memory data = abi.encodeWithSelector(Test721.mint.selector, address(this), 1000);
         pair.call(payable(address(test721)), data);
     }
 
@@ -209,11 +200,7 @@ abstract contract PairAndFactory is
         // add to whitelist
         factory.setCallAllowed(payable(address(test721)), true);
 
-        bytes memory data = abi.encodeWithSelector(
-            Test721.mint.selector,
-            address(this),
-            1000
-        );
+        bytes memory data = abi.encodeWithSelector(Test721.mint.selector, address(this), 1000);
         pair.call(payable(address(test721)), data);
 
         // verify NFT ownership
@@ -232,7 +219,7 @@ abstract contract PairAndFactory is
     }
 
     /**
-        Test failure conditions
+     * Test failure conditions
      */
 
     function testFail_rescueTokensNotOwner() public {
@@ -269,24 +256,14 @@ abstract contract PairAndFactory is
     }
 
     function testFail_swapForNFTNotInPool() public {
-        (, uint128 newSpotPrice, , uint256 inputAmount, ) = bondingCurve
-            .getBuyInfo(
-                spotPrice,
-                delta,
-                numItems + 1,
-                0,
-                protocolFeeMultiplier
-            );
+        (, uint128 newSpotPrice,, uint256 inputAmount,) =
+            bondingCurve.getBuyInfo(spotPrice, delta, numItems + 1, 0, protocolFeeMultiplier);
 
         // buy specific NFT not in pool
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = 69;
         pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
-            nftIds,
-            inputAmount,
-            address(this),
-            false,
-            address(0)
+            nftIds, inputAmount, address(this), false, address(0)
         );
         spotPrice = uint56(newSpotPrice);
     }
@@ -309,25 +286,14 @@ abstract contract PairAndFactory is
 
         // buy all NFTs
         {
-            (
-                ,
-                uint128 newSpotPrice,
-                ,
-                uint256 inputAmount,
-                uint256 protocolFee
-            ) = bondingCurve.getBuyInfo(
-                    spotPrice,
-                    delta,
-                    numItems,
-                    0,
-                    protocolFeeMultiplier
-                );
+            (, uint128 newSpotPrice,, uint256 inputAmount, uint256 protocolFee) =
+                bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
             totalProtocolFee += protocolFee;
 
             // buy NFTs
-            pair.swapTokenForSpecificNFTs{
-                value: modifyInputAmount(inputAmount)
-            }(idList, inputAmount, address(this), false, address(0));
+            pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+                idList, inputAmount, address(this), false, address(0)
+            );
             spotPrice = uint56(newSpotPrice);
         }
 

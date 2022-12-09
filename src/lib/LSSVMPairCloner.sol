@@ -64,10 +64,7 @@ library LSSVMPairCloner {
             // 01          | ADD                   | cds+extra 0 0 0 0       | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 3d          | RETURNDATASIZE        | 0 cds 0 0 0 0           | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 73 addr     | PUSH20 0x123…         | addr 0 cds 0 0 0 0      | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            mstore(
-                ptr,
-                hex"60_72_3d_81_60_09_3d_39_f3_3d_3d_3d_3d_36_3d_3d_37_60_3d_60_35_36_39_36_60_3d_01_3d_73_00_00_00"
-            )
+            mstore(ptr, hex"60723d8160093d39f33d3d3d3d363d3d37603d6035363936603d013d73000000")
             mstore(add(ptr, 0x1d), shl(0x60, implementation))
 
             // 5a          | GAS                   | gas addr 0 cds 0 0 0 0  | [0, cds) = calldata, [cds, cds+0x35) = extraData
@@ -82,10 +79,7 @@ library LSSVMPairCloner {
             // fd          | REVERT                | –                       | [0, rds) = return data
             // 5b          | JUMPDEST              | 0 rds                   | [0, rds) = return data
             // f3          | RETURN                | –                       | [0, rds) = return data
-            mstore(
-                add(ptr, 0x31),
-                hex"5a_f4_3d_3d_93_80_3e_60_33_57_fd_5b_f3_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00"
-            )
+            mstore(add(ptr, 0x31), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
 
             // -------------------------------------------------------------------------------------------------------------
             // EXTRA DATA (61 bytes)
@@ -155,10 +149,7 @@ library LSSVMPairCloner {
             // 01          | ADD                   | cds+extra 0 0 0 0       | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 3d          | RETURNDATASIZE        | 0 cds 0 0 0 0           | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 73 addr     | PUSH20 0x123…         | addr 0 cds 0 0 0 0      | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            mstore(
-                ptr,
-                hex"60_86_3d_81_60_09_3d_39_f3_3d_3d_3d_3d_36_3d_3d_37_60_51_60_35_36_39_36_60_51_01_3d_73_00_00_00"
-            )
+            mstore(ptr, hex"60863d8160093d39f33d3d3d3d363d3d37605160353639366051013d73000000")
             mstore(add(ptr, 0x1d), shl(0x60, implementation))
 
             // 5a          | GAS                   | gas addr 0 cds 0 0 0 0  | [0, cds) = calldata, [cds, cds+0x35) = extraData
@@ -173,10 +164,7 @@ library LSSVMPairCloner {
             // fd          | REVERT                | –                       | [0, rds) = return data
             // 5b          | JUMPDEST              | 0 rds                   | [0, rds) = return data
             // f3          | RETURN                | –                       | [0, rds) = return data
-            mstore(
-                add(ptr, 0x31),
-                hex"5a_f4_3d_3d_93_80_3e_60_33_57_fd_5b_f3_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00"
-            )
+            mstore(add(ptr, 0x31), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
 
             // -------------------------------------------------------------------------------------------------------------
             // EXTRA DATA (81 bytes)
@@ -200,35 +188,30 @@ library LSSVMPairCloner {
      * @param query the contract to check
      * @return result True if the contract is a clone, false otherwise
      */
-    function isETHPairClone(
-        address factory,
-        address implementation,
-        address query
-    ) internal view returns (bool result) {
+    function isETHPairClone(address factory, address implementation, address query)
+        internal
+        view
+        returns (bool result)
+    {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             let ptr := mload(0x40)
-            mstore(
-                ptr,
-                hex"3d_3d_3d_3d_36_3d_3d_37_60_3d_60_35_36_39_36_60_3d_01_3d_73_00_00_00_00_00_00_00_00_00_00_00_00"
-            )
+            mstore(ptr, hex"3d3d3d3d363d3d37603d6035363936603d013d73000000000000000000000000")
             mstore(add(ptr, 0x14), shl(0x60, implementation))
-            mstore(
-                add(ptr, 0x28),
-                hex"5a_f4_3d_3d_93_80_3e_60_33_57_fd_5b_f3_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00"
-            )
+            mstore(add(ptr, 0x28), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
             mstore(add(ptr, 0x35), shl(0x60, factory))
 
             // compare expected bytecode with that of the queried contract
             let other := add(ptr, 0x49)
             extcodecopy(query, other, 0, 0x49)
-            result := and(
-                eq(mload(ptr), mload(other)),
+            result :=
                 and(
-                    eq(mload(add(ptr, 0x20)), mload(add(other, 0x20))),
-                    eq(mload(add(ptr, 0x29)), mload(add(other, 0x29)))
+                    eq(mload(ptr), mload(other)),
+                    and(
+                        eq(mload(add(ptr, 0x20)), mload(add(other, 0x20))),
+                        eq(mload(add(ptr, 0x29)), mload(add(other, 0x29)))
+                    )
                 )
-            )
         }
     }
 
@@ -239,35 +222,30 @@ library LSSVMPairCloner {
      * @param query the contract to check
      * @return result True if the contract is a clone, false otherwise
      */
-    function isERC20PairClone(
-        address factory,
-        address implementation,
-        address query
-    ) internal view returns (bool result) {
+    function isERC20PairClone(address factory, address implementation, address query)
+        internal
+        view
+        returns (bool result)
+    {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             let ptr := mload(0x40)
-            mstore(
-                ptr,
-                hex"3d_3d_3d_3d_36_3d_3d_37_60_51_60_35_36_39_36_60_51_01_3d_73_00_00_00_00_00_00_00_00_00_00_00_00"
-            )
+            mstore(ptr, hex"3d3d3d3d363d3d37605160353639366051013d73000000000000000000000000")
             mstore(add(ptr, 0x14), shl(0x60, implementation))
-            mstore(
-                add(ptr, 0x28),
-                hex"5a_f4_3d_3d_93_80_3e_60_33_57_fd_5b_f3_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00"
-            )
+            mstore(add(ptr, 0x28), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
             mstore(add(ptr, 0x35), shl(0x60, factory))
 
             // compare expected bytecode with that of the queried contract
             let other := add(ptr, 0x49)
             extcodecopy(query, other, 0, 0x49)
-            result := and(
-                eq(mload(ptr), mload(other)),
+            result :=
                 and(
-                    eq(mload(add(ptr, 0x20)), mload(add(other, 0x20))),
-                    eq(mload(add(ptr, 0x29)), mload(add(other, 0x29)))
+                    eq(mload(ptr), mload(other)),
+                    and(
+                        eq(mload(add(ptr, 0x20)), mload(add(other, 0x20))),
+                        eq(mload(add(ptr, 0x29)), mload(add(other, 0x29)))
+                    )
                 )
-            )
         }
     }
 }

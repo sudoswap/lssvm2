@@ -16,33 +16,28 @@ import {ILSSVMPairFactoryLike} from "../LSSVMPairFactory.sol";
     @author 0xacedia
     @notice Bonding curve logic for an x*y=k curve using virtual reserves.
     @dev    The virtual token reserve is stored in `spotPrice` and the virtual nft reserve is stored in `delta`.
-            An LP can modify the virtual reserves by changing the `spotPrice` (tokens) or `delta` (nfts).
-*/
+            An LP can modify the virtual reserves by changing the `spotPrice` (tokens) or `delta` (nfts).*/
 contract XykCurve is ICurve, CurveErrorCodes {
     using FixedPointMathLib for uint256;
 
     /**
-        @dev See {ICurve-validateDelta}
+     * @dev See {ICurve-validateDelta}
      */
-    function validateDelta(
-        uint128 /*delta*/
-    ) external pure override returns (bool) {
+    function validateDelta(uint128 /*delta*/ ) external pure override returns (bool) {
         // all values are valid
         return true;
     }
 
     /**
-        @dev See {ICurve-validateSpotPrice}
+     * @dev See {ICurve-validateSpotPrice}
      */
-    function validateSpotPrice(
-        uint128 /*newSpotPrice*/
-    ) external pure override returns (bool) {
+    function validateSpotPrice(uint128 /*newSpotPrice*/ ) external pure override returns (bool) {
         // all values are valid
         return true;
     }
 
     /**
-        @dev See {ICurve-getBuyInfo}
+     * @dev See {ICurve-getBuyInfo}
      */
     function getBuyInfo(
         uint128 spotPrice,
@@ -54,13 +49,7 @@ contract XykCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (
-            Error error,
-            uint128 newSpotPrice,
-            uint128 newDelta,
-            uint256 inputValue,
-            uint256 protocolFee
-        )
+        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 inputValue, uint256 protocolFee)
     {
         if (numItems == 0) {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0);
@@ -76,8 +65,7 @@ contract XykCurve is ICurve, CurveErrorCodes {
         }
 
         // calculate the amount to send in
-        uint256 inputValueWithoutFee = (numItems * tokenBalance) /
-            (nftBalance - numItems);
+        uint256 inputValueWithoutFee = (numItems * tokenBalance) / (nftBalance - numItems);
 
         // add the fees to the amount to send in
         protocolFee = inputValueWithoutFee.mulWadDown(protocolFeeMultiplier);
@@ -93,7 +81,7 @@ contract XykCurve is ICurve, CurveErrorCodes {
     }
 
     /**
-        @dev See {ICurve-getSellInfo}
+     * @dev See {ICurve-getSellInfo}
      */
     function getSellInfo(
         uint128 spotPrice,
@@ -105,13 +93,7 @@ contract XykCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (
-            Error error,
-            uint128 newSpotPrice,
-            uint128 newDelta,
-            uint256 outputValue,
-            uint256 protocolFee
-        )
+        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 outputValue, uint256 protocolFee)
     {
         if (numItems == 0) {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0);
@@ -122,8 +104,7 @@ contract XykCurve is ICurve, CurveErrorCodes {
         uint256 nftBalance = delta;
 
         // calculate the amount to send out
-        uint256 outputValueWithoutFee = (numItems * tokenBalance) /
-            (nftBalance + numItems);
+        uint256 outputValueWithoutFee = (numItems * tokenBalance) / (nftBalance + numItems);
 
         // subtract fees from amount to send out
         protocolFee = outputValueWithoutFee.mulWadDown(protocolFeeMultiplier);

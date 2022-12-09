@@ -6,7 +6,6 @@ import "forge-std/Test.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
-
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
@@ -18,15 +17,11 @@ import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 
-/** Handles test cases where users try to buy multiple NFTs from a pool, but only get partially filled
->  $ forge test --match-contract RPF.*ETH -vvvvv
-*/
-abstract contract RouterPartialFill is
-    Test,
-    ERC721Holder,
-    Configurable,
-    RouterCaller
-{
+/**
+ * Handles test cases where users try to buy multiple NFTs from a pool, but only get partially filled
+ * >  $ forge test --match-contract RPF.*ETH -vvvvv
+ */
+abstract contract RouterPartialFill is Test, ERC721Holder, Configurable, RouterCaller {
     IERC721Mintable test721;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
@@ -86,38 +81,33 @@ abstract contract RouterPartialFill is
         }
     }
 
-    function compareStrings(string memory a, string memory b)
-        public
-        pure
-        returns (bool)
-    {
-        return (keccak256(abi.encodePacked((a))) ==
-            keccak256(abi.encodePacked((b))));
+    function compareStrings(string memory a, string memory b) public pure returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 
     /**
-    Test Properties:
-    - Is Buy vs Sell
-
-    If Buy:
-    - All items are present vs all items not present
-    - All items are within price target vs all items not in price target
-    Cases:
-    - All items present, all items within price target (normall fill)
-    - All items present, not all items within price target (normal partiall fill)
-    - Not all items present, all items within price target (restricted partial fill)
-    - Not all items present, not all items within price target (restricted-restricted partial fill)
-    - (Degenerate case): Whether or not all all items present, no items within price target (should skip)
-
-    If Sell:
-    - Enough ETH to cover all items vs not enough ETH to cover all items
-    - All items are within price target vs not all items in price target
-    Cases:
-    - Enough ETH, all items within price target (normall fill)
-    - Enough ETH, not all items within price target (normal partial fill)
-    - Not enough ETH, all items within price target (restricted partial fill)
-    - Not enough ETH, not all items within price target (restricted-restricted partial fill)
-    - (Degenerate cases): Not enough ETH to cover even selling one, or no items within price target (should skip)
+     * Test Properties:
+     * - Is Buy vs Sell
+     *
+     * If Buy:
+     * - All items are present vs all items not present
+     * - All items are within price target vs all items not in price target
+     * Cases:
+     * - All items present, all items within price target (normall fill)
+     * - All items present, not all items within price target (normal partiall fill)
+     * - Not all items present, all items within price target (restricted partial fill)
+     * - Not all items present, not all items within price target (restricted-restricted partial fill)
+     * - (Degenerate case): Whether or not all all items present, no items within price target (should skip)
+     *
+     * If Sell:
+     * - Enough ETH to cover all items vs not enough ETH to cover all items
+     * - All items are within price target vs not all items in price target
+     * Cases:
+     * - Enough ETH, all items within price target (normall fill)
+     * - Enough ETH, not all items within price target (normal partial fill)
+     * - Not enough ETH, all items within price target (restricted partial fill)
+     * - Not enough ETH, not all items within price target (restricted-restricted partial fill)
+     * - (Degenerate cases): Not enough ETH to cover even selling one, or no items within price target (should skip)
      */
 
     // The "base" case where no partial fill is needed, i.e. we buy all of the NFTs
@@ -129,8 +119,7 @@ abstract contract RouterPartialFill is
             uint256 startNFTBalance = test721.balanceOf(address(this));
 
             // Only 1 pool we're buying from
-            LSSVMRouter2.PairSwapSpecificPartialFill[]
-                memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
+            LSSVMRouter2.PairSwapSpecificPartialFill[] memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
                     1
                 );
             uint256[] memory ids = new uint256[](NUM_NFTS);
@@ -141,44 +130,30 @@ abstract contract RouterPartialFill is
             }
 
             // Get partial fill prices
-            uint256[] memory partialFillPrices = router
-                .getNFTQuoteForPartialFillBuy(pair, NUM_NFTS);
+            uint256[] memory partialFillPrices = router.getNFTQuoteForPartialFillBuy(pair, NUM_NFTS);
 
             // Create the partial fill args
             buyList[0] = LSSVMRouter2.PairSwapSpecificPartialFill({
-                swapInfo: LSSVMRouter2.PairSwapSpecific({
-                    pair: pair,
-                    nftIds: ids
-                }),
+                swapInfo: LSSVMRouter2.PairSwapSpecific({pair: pair, nftIds: ids}),
                 expectedSpotPrice: SPOT_PRICE,
                 maxCostPerNumNFTs: partialFillPrices
             });
 
             // Create empty sell list
-            LSSVMRouter2.PairSwapSpecificPartialFillForToken[]
-                memory emptySellList = new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
+            LSSVMRouter2.PairSwapSpecificPartialFillForToken[] memory emptySellList =
+            new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
                     0
                 );
             string memory UNIMPLEMENTED = "Unimplemented";
 
             // See if last value of maxCost is the same as getBuyNFTQuote(NUM_NFTS) (they should be equal)
-            (, , , uint256 correctQuote, ) = pair.getBuyNFTQuote(NUM_NFTS);
-            require(
-                correctQuote == partialFillPrices[NUM_NFTS - 1],
-                "Incorrect quote"
-            );
+            (,,, uint256 correctQuote,) = pair.getBuyNFTQuote(NUM_NFTS);
+            require(correctQuote == partialFillPrices[NUM_NFTS - 1], "Incorrect quote");
 
             // Do the actual partial fill
-            try
-                this.buyAndSellWithPartialFill{
-                    value: partialFillPrices[NUM_NFTS - 1]
-                }(router, buyList, emptySellList)
-            {
+            try this.buyAndSellWithPartialFill{value: partialFillPrices[NUM_NFTS - 1]}(router, buyList, emptySellList) {
                 uint256 endNFTBalance = test721.balanceOf(address(this));
-                require(
-                    (endNFTBalance - startNFTBalance) == NUM_NFTS,
-                    "Too few NFTs acquired"
-                );
+                require((endNFTBalance - startNFTBalance) == NUM_NFTS, "Too few NFTs acquired");
             } catch Error(string memory reason) {
                 if (this.compareStrings(reason, UNIMPLEMENTED)) {
                     return;
@@ -196,22 +171,15 @@ abstract contract RouterPartialFill is
         pair.changeDelta(this.modifyDelta(delta));
 
         // First buy 1-9 items (asc), then attempt to partial fill 9-1 items (desc)
-        for (
-            uint256 numNFTsToBuyFirst = 1;
-            numNFTsToBuyFirst <= 9;
-            numNFTsToBuyFirst++
-        ) {
+        for (uint256 numNFTsToBuyFirst = 1; numNFTsToBuyFirst <= 9; numNFTsToBuyFirst++) {
             this.setUp();
 
             // Set pseudorandom delta (fuzzing is broken for exp curve for some reason...)
-            uint128 newDelta = uint128(
-                pair.delta() * numNFTsToBuyFirst * uint256(block.timestamp)
-            );
+            uint128 newDelta = uint128(pair.delta() * numNFTsToBuyFirst * uint256(block.timestamp));
             pair.changeDelta(newDelta);
 
             // Construct partial fill args first (below we fill some items before doing partial fill)
-            LSSVMRouter2.PairSwapSpecificPartialFill[]
-                memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
+            LSSVMRouter2.PairSwapSpecificPartialFill[] memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
                     1
                 );
             uint256[] memory ids = new uint256[](10);
@@ -220,20 +188,16 @@ abstract contract RouterPartialFill is
                 ids[i - 1] = 10 + i;
             }
             // Get partial fill prices
-            uint256[] memory partialFillPrices = router
-                .getNFTQuoteForPartialFillBuy(pair, 10);
+            uint256[] memory partialFillPrices = router.getNFTQuoteForPartialFillBuy(pair, 10);
             // Create the partial fill args
             buyList[0] = LSSVMRouter2.PairSwapSpecificPartialFill({
-                swapInfo: LSSVMRouter2.PairSwapSpecific({
-                    pair: pair,
-                    nftIds: ids
-                }),
+                swapInfo: LSSVMRouter2.PairSwapSpecific({pair: pair, nftIds: ids}),
                 expectedSpotPrice: SPOT_PRICE,
                 maxCostPerNumNFTs: partialFillPrices
             });
             // Create empty sell list
-            LSSVMRouter2.PairSwapSpecificPartialFillForToken[]
-                memory emptySellList = new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
+            LSSVMRouter2.PairSwapSpecificPartialFillForToken[] memory emptySellList =
+            new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
                     0
                 );
             string memory UNIMPLEMENTED = "Unimplemented";
@@ -246,42 +210,25 @@ abstract contract RouterPartialFill is
             for (uint256 i = 1; i <= numNFTsToBuyFirst; i++) {
                 nftIdsToBuyFirst[i - 1] = 10 + i;
             }
-            (, , , uint256 initialQuote, ) = pair.getBuyNFTQuote(
-                numNFTsToBuyFirst
-            );
-            LSSVMRouter2.RobustPairSwapSpecific[]
-                memory initialBuyList = new LSSVMRouter2.RobustPairSwapSpecific[](
+            (,,, uint256 initialQuote,) = pair.getBuyNFTQuote(numNFTsToBuyFirst);
+            LSSVMRouter2.RobustPairSwapSpecific[] memory initialBuyList = new LSSVMRouter2.RobustPairSwapSpecific[](
                     1
                 );
             initialBuyList[0] = LSSVMRouter2.RobustPairSwapSpecific({
-                swapInfo: LSSVMRouter2.PairSwapSpecific({
-                    pair: pair,
-                    nftIds: nftIdsToBuyFirst
-                }),
+                swapInfo: LSSVMRouter2.PairSwapSpecific({pair: pair, nftIds: nftIdsToBuyFirst}),
                 maxCost: initialQuote
             });
             // Buy these items first (if we can)
-            pair.swapTokenForSpecificNFTs{
-                value: this.modifyInputAmount(initialQuote)
-            }(
-                nftIdsToBuyFirst,
-                initialQuote,
-                address(this),
-                false,
-                address(this)
+            pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(initialQuote)}(
+                nftIdsToBuyFirst, initialQuote, address(this), false, address(this)
             );
 
             // Get NFT balance now (after the partial fill)
             uint256 startNFTBalance = test721.balanceOf(address(this));
 
             // Do the actual partial fill
-            try
-                this.buyAndSellWithPartialFill{value: partialFillPrices[9]}( // We always pass in the maximal amount of ETH possible, we should get a refund
-                    router,
-                    buyList,
-                    emptySellList
-                )
-            returns (uint256 remainingValue) {
+            try this.buyAndSellWithPartialFill{value: partialFillPrices[9]}( // We always pass in the maximal amount of ETH possible, we should get a refund
+            router, buyList, emptySellList) returns (uint256 remainingValue) {
                 uint256 endNFTBalance = test721.balanceOf(address(this));
                 uint256 numNFTsAcquired = endNFTBalance - startNFTBalance;
                 if (numNFTsAcquired > 0) {
@@ -294,10 +241,7 @@ abstract contract RouterPartialFill is
                     }
                     require(amountPaid <= maxBudget, "Overpaid");
                 } else {
-                    require(
-                        remainingValue == partialFillPrices[9],
-                        "Price leakage"
-                    );
+                    require(remainingValue == partialFillPrices[9], "Price leakage");
                 }
             } catch Error(string memory reason) {
                 if (this.compareStrings(reason, UNIMPLEMENTED)) {
@@ -313,16 +257,11 @@ abstract contract RouterPartialFill is
         pair.changeDelta(this.modifyDelta(delta));
 
         // First buy 1-9 items (asc), then attempt to partial fill 9-1 items (desc)
-        for (
-            uint256 numNFTsToBuyFirst = 1;
-            numNFTsToBuyFirst <= 9;
-            numNFTsToBuyFirst++
-        ) {
+        for (uint256 numNFTsToBuyFirst = 1; numNFTsToBuyFirst <= 9; numNFTsToBuyFirst++) {
             this.setUp();
 
             // Construct partial fill args first (below we fill some items before doing partial fill)
-            LSSVMRouter2.PairSwapSpecificPartialFill[]
-                memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
+            LSSVMRouter2.PairSwapSpecificPartialFill[] memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
                     1
                 );
             uint256[] memory ids = new uint256[](10);
@@ -331,42 +270,33 @@ abstract contract RouterPartialFill is
                 ids[i - 1] = 10 + i;
             }
             // Get partial fill prices
-            uint256[] memory partialFillPrices = router
-                .getNFTQuoteForPartialFillBuy(pair, 10);
+            uint256[] memory partialFillPrices = router.getNFTQuoteForPartialFillBuy(pair, 10);
             // Create the partial fill args
             buyList[0] = LSSVMRouter2.PairSwapSpecificPartialFill({
-                swapInfo: LSSVMRouter2.PairSwapSpecific({
-                    pair: pair,
-                    nftIds: ids
-                }),
+                swapInfo: LSSVMRouter2.PairSwapSpecific({pair: pair, nftIds: ids}),
                 expectedSpotPrice: SPOT_PRICE,
                 maxCostPerNumNFTs: partialFillPrices
             });
             // Create empty sell list
-            LSSVMRouter2.PairSwapSpecificPartialFillForToken[]
-                memory emptySellList = new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
+            LSSVMRouter2.PairSwapSpecificPartialFillForToken[] memory emptySellList =
+            new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
                     0
                 );
             string memory UNIMPLEMENTED = "Unimplemented";
 
             // ** Set spor price to be updated as if numNFTSToBuyFirst got bought **
-            (, uint256 newSpotPrice, , , ) = pair.getBuyNFTQuote(
-                numNFTsToBuyFirst
-            );
+            (, uint256 newSpotPrice,,,) = pair.getBuyNFTQuote(numNFTsToBuyFirst);
             pair.changeSpotPrice(uint128(newSpotPrice));
 
             // Get NFT balance now (after the partial fill)
             uint256 startNFTBalance = test721.balanceOf(address(this));
 
             // Do the actual partial fill
-            try
+            try this
                 // We always pass in the maximal amount of ETH possible, we should get a refund
-                this.buyAndSellWithPartialFill{value: partialFillPrices[9]}(
-                    router,
-                    buyList,
-                    emptySellList
-                )
-            returns (uint256 remainingValue) {
+                .buyAndSellWithPartialFill{value: partialFillPrices[9]}(router, buyList, emptySellList) returns (
+                uint256 remainingValue
+            ) {
                 uint256 endNFTBalance = test721.balanceOf(address(this));
                 uint256 numNFTsAcquired = endNFTBalance - startNFTBalance;
                 if (numNFTsAcquired > 0) {
@@ -379,10 +309,7 @@ abstract contract RouterPartialFill is
                     }
                     require(amountPaid <= maxBudget, "Overpaid");
                 } else {
-                    require(
-                        remainingValue == partialFillPrices[9],
-                        "Price leakage"
-                    );
+                    require(remainingValue == partialFillPrices[9], "Price leakage");
                 }
             } catch Error(string memory reason) {
                 if (this.compareStrings(reason, UNIMPLEMENTED)) {
@@ -398,16 +325,11 @@ abstract contract RouterPartialFill is
         pair.changeDelta(this.modifyDelta(delta));
 
         // First buy 1-9 items (asc), then attempt to partial fill 9-1 items (desc)
-        for (
-            uint256 numNFTsToBuyFirst = 1;
-            numNFTsToBuyFirst <= 9;
-            numNFTsToBuyFirst++
-        ) {
+        for (uint256 numNFTsToBuyFirst = 1; numNFTsToBuyFirst <= 9; numNFTsToBuyFirst++) {
             this.setUp();
 
             // Construct partial fill args first (below we fill some items before doing partial fill)
-            LSSVMRouter2.PairSwapSpecificPartialFill[]
-                memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
+            LSSVMRouter2.PairSwapSpecificPartialFill[] memory buyList = new LSSVMRouter2.PairSwapSpecificPartialFill[](
                     1
                 );
             uint256[] memory ids = new uint256[](10);
@@ -417,20 +339,16 @@ abstract contract RouterPartialFill is
                 ids[i - 1] = 10 + i - numNFTsToBuyFirst;
             }
             // Get partial fill prices
-            uint256[] memory partialFillPrices = router
-                .getNFTQuoteForPartialFillBuy(pair, 10);
+            uint256[] memory partialFillPrices = router.getNFTQuoteForPartialFillBuy(pair, 10);
             // Create the partial fill args
             buyList[0] = LSSVMRouter2.PairSwapSpecificPartialFill({
-                swapInfo: LSSVMRouter2.PairSwapSpecific({
-                    pair: pair,
-                    nftIds: ids
-                }),
-                expectedSpotPrice: SPOT_PRICE-1,
+                swapInfo: LSSVMRouter2.PairSwapSpecific({pair: pair, nftIds: ids}),
+                expectedSpotPrice: SPOT_PRICE - 1,
                 maxCostPerNumNFTs: partialFillPrices
             });
             // Create empty sell list
-            LSSVMRouter2.PairSwapSpecificPartialFillForToken[]
-                memory emptySellList = new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
+            LSSVMRouter2.PairSwapSpecificPartialFillForToken[] memory emptySellList =
+            new LSSVMRouter2.PairSwapSpecificPartialFillForToken[](
                     0
                 );
             string memory UNIMPLEMENTED = "Unimplemented";
@@ -439,14 +357,11 @@ abstract contract RouterPartialFill is
             uint256 startNFTBalance = test721.balanceOf(address(this));
 
             // Do the actual partial fill
-            try
+            try this
                 // We always pass in the maximal amount of ETH possible, we should get a refund
-                this.buyAndSellWithPartialFill{value: partialFillPrices[9]}(
-                    router,
-                    buyList,
-                    emptySellList
-                )
-            returns (uint256 remainingValue) {
+                .buyAndSellWithPartialFill{value: partialFillPrices[9]}(router, buyList, emptySellList) returns (
+                uint256 remainingValue
+            ) {
                 uint256 endNFTBalance = test721.balanceOf(address(this));
                 uint256 numNFTsAcquired = endNFTBalance - startNFTBalance;
                 if (numNFTsAcquired > 0) {
@@ -459,10 +374,7 @@ abstract contract RouterPartialFill is
                     }
                     require(amountPaid <= maxBudget, "Overpaid");
                 } else {
-                    require(
-                        remainingValue == partialFillPrices[9],
-                        "Price leakage"
-                    );
+                    require(remainingValue == partialFillPrices[9], "Price leakage");
                 }
             } catch Error(string memory reason) {
                 if (this.compareStrings(reason, UNIMPLEMENTED)) {

@@ -44,8 +44,9 @@ abstract contract RouterCaller {
         LSSVMRouter2.PairSwapSpecificPartialFillForToken[] calldata sellList
     ) public payable virtual returns (uint256);
 
-    function swapETHForSpecificNFTs(
-        LSSVMRouter2 router,
-        LSSVMRouter2.RobustPairSwapSpecific[] calldata buyList
-    ) public payable virtual returns (uint256);
+    function swapETHForSpecificNFTs(LSSVMRouter2 router, LSSVMRouter2.RobustPairSwapSpecific[] calldata buyList)
+        public
+        payable
+        virtual
+        returns (uint256);
 }

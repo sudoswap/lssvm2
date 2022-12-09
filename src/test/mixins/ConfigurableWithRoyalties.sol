@@ -20,40 +20,24 @@ abstract contract ConfigurableWithRoyalties is Configurable, Test {
     }
 
     // royalty registry address is set as constant in the contract
-    address constant ROYALTY_REGISTRY =
-        0xaD2184FB5DBcfC05d8f056542fB25b04fa32A95D;
+    address constant ROYALTY_REGISTRY = 0xaD2184FB5DBcfC05d8f056542fB25b04fa32A95D;
 
-    function setupRoyaltyRegistry()
-        public
-        returns (RoyaltyRegistry royaltyRegistry)
-    {
+    function setupRoyaltyRegistry() public returns (RoyaltyRegistry royaltyRegistry) {
         royaltyRegistry = RoyaltyRegistry(new TestRoyaltyRegistry());
         vm.etch(ROYALTY_REGISTRY, address(royaltyRegistry).code);
         royaltyRegistry = RoyaltyRegistry(ROYALTY_REGISTRY);
         royaltyRegistry.initialize();
     }
 
-    function addRoyalty(uint256 inputAmount)
-        public
-        pure
-        returns (uint256 outputAmount)
-    {
+    function addRoyalty(uint256 inputAmount) public pure returns (uint256 outputAmount) {
         return inputAmount + calcRoyalty(inputAmount);
     }
 
-    function subRoyalty(uint256 inputAmount)
-        public
-        pure
-        returns (uint256 outputAmount)
-    {
+    function subRoyalty(uint256 inputAmount) public pure returns (uint256 outputAmount) {
         return inputAmount - calcRoyalty(inputAmount);
     }
 
-    function calcRoyalty(uint256 inputAmount)
-        public
-        pure
-        returns (uint256 royaltyAmount)
-    {
+    function calcRoyalty(uint256 inputAmount) public pure returns (uint256 royaltyAmount) {
         royaltyAmount = (inputAmount * BPS) / BASE;
     }
 }

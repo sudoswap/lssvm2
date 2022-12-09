@@ -13,12 +13,7 @@ import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 
 abstract contract UsingETH is Configurable, RouterCaller {
-    function modifyInputAmount(uint256 inputAmount)
-        public
-        pure
-        override
-        returns (uint256)
-    {
+    function modifyInputAmount(uint256 inputAmount) public pure override returns (uint256) {
         return inputAmount;
     }
 
@@ -44,14 +39,7 @@ abstract contract UsingETH is Configurable, RouterCaller {
         address
     ) public payable override returns (LSSVMPair) {
         LSSVMPairETH pair = factory.createPairETH{value: msg.value}(
-            nft,
-            bondingCurve,
-            assetRecipient,
-            poolType,
-            delta,
-            fee,
-            spotPrice,
-            _idList
+            nft, bondingCurve, assetRecipient, poolType, delta, fee, spotPrice, _idList
         );
         return pair;
     }
@@ -72,13 +60,7 @@ abstract contract UsingETH is Configurable, RouterCaller {
         uint256 deadline,
         uint256
     ) public payable override returns (uint256) {
-        return
-            router.swapETHForSpecificNFTs{value: msg.value}(
-                swapList,
-                ethRecipient,
-                nftRecipient,
-                deadline
-            );
+        return router.swapETHForSpecificNFTs{value: msg.value}(swapList, ethRecipient, nftRecipient, deadline);
     }
 
     function swapNFTsForSpecificNFTsThroughToken(
@@ -90,14 +72,9 @@ abstract contract UsingETH is Configurable, RouterCaller {
         uint256 deadline,
         uint256
     ) public payable override returns (uint256) {
-        return
-            router.swapNFTsForSpecificNFTsThroughETH{value: msg.value}(
-                trade,
-                minOutput,
-                ethRecipient,
-                nftRecipient,
-                deadline
-            );
+        return router.swapNFTsForSpecificNFTsThroughETH{value: msg.value}(
+            trade, minOutput, ethRecipient, nftRecipient, deadline
+        );
     }
 
     function robustSwapTokenForSpecificNFTs(
@@ -108,23 +85,14 @@ abstract contract UsingETH is Configurable, RouterCaller {
         uint256 deadline,
         uint256
     ) public payable override returns (uint256) {
-        return
-            router.robustSwapETHForSpecificNFTs{value: msg.value}(
-                swapList,
-                ethRecipient,
-                nftRecipient,
-                deadline
-            );
+        return router.robustSwapETHForSpecificNFTs{value: msg.value}(swapList, ethRecipient, nftRecipient, deadline);
     }
 
     function robustSwapTokenForSpecificNFTsAndNFTsForTokens(
         LSSVMRouter router,
         LSSVMRouter.RobustPairNFTsFoTokenAndTokenforNFTsTrade calldata params
     ) public payable override returns (uint256, uint256) {
-        return
-            router.robustSwapETHForSpecificNFTsAndNFTsToToken{value: msg.value}(
-                params
-            );
+        return router.robustSwapETHForSpecificNFTsAndNFTsToToken{value: msg.value}(params);
     }
 
     function buyAndSellWithPartialFill(
@@ -132,17 +100,15 @@ abstract contract UsingETH is Configurable, RouterCaller {
         LSSVMRouter2.PairSwapSpecificPartialFill[] calldata buyList,
         LSSVMRouter2.PairSwapSpecificPartialFillForToken[] calldata sellList
     ) public payable override returns (uint256) {
-        return
-            router.robustBuySellWithETHAndPartialFill{value: msg.value}(
-                buyList,
-                sellList
-            );
+        return router.robustBuySellWithETHAndPartialFill{value: msg.value}(buyList, sellList);
     }
 
-    function swapETHForSpecificNFTs(
-        LSSVMRouter2 router,
-        LSSVMRouter2.RobustPairSwapSpecific[] calldata buyList
-    ) public payable override returns (uint256) {
+    function swapETHForSpecificNFTs(LSSVMRouter2 router, LSSVMRouter2.RobustPairSwapSpecific[] calldata buyList)
+        public
+        payable
+        override
+        returns (uint256)
+    {
         return router.swapETHForSpecificNFTs{value: msg.value}(buyList);
     }
 }

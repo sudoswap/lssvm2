@@ -18,12 +18,7 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LinearCurve} from "../../bonding-curves/LinearCurve.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 
-abstract contract RouterRobustSwapWithAssetRecipient is
-    Test,
-    ERC721Holder,
-    Configurable,
-    RouterCaller
-{
+abstract contract RouterRobustSwapWithAssetRecipient is Test, ERC721Holder, Configurable, RouterCaller {
     IERC721Mintable test721;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
@@ -136,36 +131,22 @@ abstract contract RouterRobustSwapWithAssetRecipient is
     // Swapping tokens to a specific NFT with sellPair2 works, but fails silently on sellPair1 if slippage is too tight
     function test_robustSwapTokenForSpecificNFTs() public {
         uint256 sellPair1Price;
-        (, , , sellPair1Price, ) = sellPair2.getBuyNFTQuote(1);
-        LSSVMRouter.RobustPairSwapSpecific[]
-            memory swapList = new LSSVMRouter.RobustPairSwapSpecific[](2);
+        (,,, sellPair1Price,) = sellPair2.getBuyNFTQuote(1);
+        LSSVMRouter.RobustPairSwapSpecific[] memory swapList = new LSSVMRouter.RobustPairSwapSpecific[](2);
         uint256[] memory nftIds1 = new uint256[](1);
         nftIds1[0] = 1;
         uint256[] memory nftIds2 = new uint256[](1);
         nftIds2[0] = 2;
         swapList[0] = LSSVMRouter.RobustPairSwapSpecific({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: sellPair1,
-                nftIds: nftIds1
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: sellPair1, nftIds: nftIds1}),
             maxCost: 0 ether
         });
         swapList[1] = LSSVMRouter.RobustPairSwapSpecific({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: sellPair2,
-                nftIds: nftIds2
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: sellPair2, nftIds: nftIds2}),
             maxCost: sellPair1Price
         });
-        uint256 remainingValue = this.robustSwapTokenForSpecificNFTs{
-            value: modifyInputAmount(2 ether)
-        }(
-            router,
-            swapList,
-            payable(address(this)),
-            address(this),
-            block.timestamp,
-            2 ether
+        uint256 remainingValue = this.robustSwapTokenForSpecificNFTs{value: modifyInputAmount(2 ether)}(
+            router, swapList, payable(address(this)), address(this), block.timestamp, 2 ether
         );
         assertEq(remainingValue + sellPair1Price, 2 ether);
         assertEq(getBalance(sellPairRecipient), sellPair1Price);
@@ -174,34 +155,23 @@ abstract contract RouterRobustSwapWithAssetRecipient is
     // Swapping NFTs to tokens with buyPair1 works, but buyPair2 silently fails due to slippage
     function test_robustSwapNFTsForToken() public {
         uint256 buyPair1Price;
-        (, , , buyPair1Price, ) = buyPair1.getSellNFTQuote(1);
+        (,,, buyPair1Price,) = buyPair1.getSellNFTQuote(1);
         uint256[] memory nftIds1 = new uint256[](1);
         nftIds1[0] = 5;
         uint256[] memory nftIds2 = new uint256[](1);
         nftIds2[0] = 6;
-        LSSVMRouter.RobustPairSwapSpecificForToken[]
-            memory swapList = new LSSVMRouter.RobustPairSwapSpecificForToken[](
+        LSSVMRouter.RobustPairSwapSpecificForToken[] memory swapList = new LSSVMRouter.RobustPairSwapSpecificForToken[](
                 2
             );
         swapList[0] = LSSVMRouter.RobustPairSwapSpecificForToken({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: buyPair1,
-                nftIds: nftIds1
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: buyPair1, nftIds: nftIds1}),
             minOutput: buyPair1Price
         });
         swapList[1] = LSSVMRouter.RobustPairSwapSpecificForToken({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: buyPair2,
-                nftIds: nftIds2
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: buyPair2, nftIds: nftIds2}),
             minOutput: 2 ether
         });
-        router.robustSwapNFTsForToken(
-            swapList,
-            payable(address(this)),
-            block.timestamp
-        );
+        router.robustSwapNFTsForToken(swapList, payable(address(this)), block.timestamp);
         assertEq(test721.balanceOf(buyPairRecipient), 1);
     }
 }

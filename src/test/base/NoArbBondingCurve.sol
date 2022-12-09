@@ -41,13 +41,9 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, Configurable {
     }
 
     /**
-    @dev Ensures selling NFTs & buying them back results in no profit.
+     * @dev Ensures selling NFTs & buying them back results in no profit.
      */
-    function test_bondingCurveSellBuyNoProfit(
-        uint56 spotPrice,
-        uint64 delta,
-        uint8 numItems
-    ) public payable {
+    function test_bondingCurveSellBuyNoProfit(uint56 spotPrice, uint64 delta, uint8 numItems) public payable {
         // modify spotPrice to be appropriate for the bonding curve
         spotPrice = modifySpotPrice(spotPrice);
 
@@ -91,19 +87,8 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, Configurable {
 
         // sell all NFTs minted to the pair
         {
-            (
-                ,
-                uint256 newSpotPrice,
-                ,
-                uint256 outputAmount,
-                uint256 protocolFee
-            ) = bondingCurve.getSellInfo(
-                    spotPrice,
-                    delta,
-                    numItems,
-                    0,
-                    protocolFeeMultiplier
-                );
+            (, uint256 newSpotPrice,, uint256 outputAmount, uint256 protocolFee) =
+                bondingCurve.getSellInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
 
             // give the pair contract enough tokens to pay for the NFTs
             sendTokens(pair, outputAmount + protocolFee);
@@ -111,31 +96,15 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, Configurable {
             // sell NFTs
             test721.setApprovalForAll(address(pair), true);
             startBalance = getBalance(address(this));
-            pair.swapNFTsForToken(
-                idList,
-                0,
-                payable(address(this)),
-                false,
-                address(0)
-            );
+            pair.swapNFTsForToken(idList, 0, payable(address(this)), false, address(0));
             spotPrice = uint56(newSpotPrice);
         }
 
         // buy back the NFTs just sold to the pair
         {
-            (, , , uint256 inputAmount, ) = bondingCurve.getBuyInfo(
-                spotPrice,
-                delta,
-                numItems,
-                0,
-                protocolFeeMultiplier
-            );
+            (,,, uint256 inputAmount,) = bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
             pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
-                idList,
-                inputAmount,
-                address(this),
-                false,
-                address(0)
+                idList, inputAmount, address(this), false, address(0)
             );
             endBalance = getBalance(address(this));
         }
@@ -148,13 +117,9 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, Configurable {
     }
 
     /**
-    @dev Ensures buying NFTs & selling them back results in no profit.
+     * @dev Ensures buying NFTs & selling them back results in no profit.
      */
-    function test_bondingCurveBuySellNoProfit(
-        uint56 spotPrice,
-        uint64 delta,
-        uint8 numItems
-    ) public payable {
+    function test_bondingCurveBuySellNoProfit(uint56 spotPrice, uint64 delta, uint8 numItems) public payable {
         // modify spotPrice to be appropriate for the bonding curve
         spotPrice = modifySpotPrice(spotPrice);
 
@@ -196,43 +161,21 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, Configurable {
 
         // buy all NFTs
         {
-            (, uint256 newSpotPrice, , uint256 inputAmount, ) = bondingCurve
-                .getBuyInfo(
-                    spotPrice,
-                    delta,
-                    numItems,
-                    0,
-                    protocolFeeMultiplier
-                );
+            (, uint256 newSpotPrice,, uint256 inputAmount,) =
+                bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
 
             // buy NFTs
             startBalance = getBalance(address(this));
             pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
-                idList,
-                inputAmount,
-                address(this),
-                false,
-                address(0)
+                idList, inputAmount, address(this), false, address(0)
             );
             spotPrice = uint56(newSpotPrice);
         }
 
         // sell back the NFTs
         {
-            bondingCurve.getSellInfo(
-                spotPrice,
-                delta,
-                numItems,
-                0,
-                protocolFeeMultiplier
-            );
-            pair.swapNFTsForToken(
-                idList,
-                0,
-                payable(address(this)),
-                false,
-                address(0)
-            );
+            bondingCurve.getSellInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
+            pair.swapNFTsForToken(idList, 0, payable(address(this)), false, address(0));
             endBalance = getBalance(address(this));
         }
 

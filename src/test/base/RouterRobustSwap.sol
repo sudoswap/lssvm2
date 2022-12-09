@@ -18,12 +18,7 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LinearCurve} from "../../bonding-curves/LinearCurve.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 
-abstract contract RouterRobustSwap is
-    Test,
-    ERC721Holder,
-    Configurable,
-    RouterCaller
-{
+abstract contract RouterRobustSwap is Test, ERC721Holder, Configurable, RouterCaller {
     IERC721Mintable test721;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
@@ -145,30 +140,20 @@ abstract contract RouterRobustSwap is
         nftIds3[0] = 20;
         nftIds3[1] = 21;
 
-        (, , , uint256 pair1InputAmount, ) = pair1.getBuyNFTQuote(2);
-        (, , , uint256 pair2InputAmount, ) = pair2.getBuyNFTQuote(2);
+        (,,, uint256 pair1InputAmount,) = pair1.getBuyNFTQuote(2);
+        (,,, uint256 pair2InputAmount,) = pair2.getBuyNFTQuote(2);
 
-        LSSVMRouter.RobustPairSwapSpecific[]
-            memory swapList = new LSSVMRouter.RobustPairSwapSpecific[](3);
+        LSSVMRouter.RobustPairSwapSpecific[] memory swapList = new LSSVMRouter.RobustPairSwapSpecific[](3);
         swapList[0] = LSSVMRouter.RobustPairSwapSpecific({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair1,
-                nftIds: nftIds1
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair1, nftIds: nftIds1}),
             maxCost: pair2InputAmount
         });
         swapList[1] = LSSVMRouter.RobustPairSwapSpecific({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair2,
-                nftIds: nftIds2
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair2, nftIds: nftIds2}),
             maxCost: pair2InputAmount
         });
         swapList[2] = LSSVMRouter.RobustPairSwapSpecific({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair3,
-                nftIds: nftIds3
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair3, nftIds: nftIds3}),
             maxCost: pair2InputAmount
         });
 
@@ -176,26 +161,15 @@ abstract contract RouterRobustSwap is
 
         // Expect to have the first two swapPairs succeed, and the last one silently fail
         // with 10% protocol fee:
-        uint256 remainingValue = this.robustSwapTokenForSpecificNFTs{
-            value: modifyInputAmount(pair2InputAmount * 3)
-        }(
-            router,
-            swapList,
-            payable(address(this)),
-            address(this),
-            block.timestamp,
-            pair2InputAmount * 3
+        uint256 remainingValue = this.robustSwapTokenForSpecificNFTs{value: modifyInputAmount(pair2InputAmount * 3)}(
+            router, swapList, payable(address(this)), address(this), block.timestamp, pair2InputAmount * 3
         );
 
         uint256 afterNFTBalance = test721.balanceOf(address(this));
 
         // If the first two swap pairs succeed we gain 4 NFTs
         assertEq((afterNFTBalance - beforeNFTBalance), 4, "Incorrect NFT swap");
-        assertEq(
-            remainingValue,
-            pair2InputAmount * 3 - (pair1InputAmount + pair2InputAmount),
-            "Incorrect ETH refund"
-        );
+        assertEq(remainingValue, pair2InputAmount * 3 - (pair1InputAmount + pair2InputAmount), "Incorrect ETH refund");
     }
 
     // Test where selling to pair 2 and pair 3 succeeds, but selling to pair 1 fails
@@ -212,32 +186,22 @@ abstract contract RouterRobustSwap is
         nftIds3[0] = 34;
         nftIds3[1] = 35;
 
-        (, , , uint256 pair2OutputAmount, ) = pair2.getSellNFTQuote(2);
-        (, , , uint256 pair3OutputAmount, ) = pair3.getSellNFTQuote(2);
+        (,,, uint256 pair2OutputAmount,) = pair2.getSellNFTQuote(2);
+        (,,, uint256 pair3OutputAmount,) = pair3.getSellNFTQuote(2);
 
-        LSSVMRouter.RobustPairSwapSpecificForToken[]
-            memory swapList = new LSSVMRouter.RobustPairSwapSpecificForToken[](
+        LSSVMRouter.RobustPairSwapSpecificForToken[] memory swapList = new LSSVMRouter.RobustPairSwapSpecificForToken[](
                 3
             );
         swapList[0] = LSSVMRouter.RobustPairSwapSpecificForToken({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair1,
-                nftIds: nftIds1
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair1, nftIds: nftIds1}),
             minOutput: pair2OutputAmount
         });
         swapList[1] = LSSVMRouter.RobustPairSwapSpecificForToken({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair2,
-                nftIds: nftIds2
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair2, nftIds: nftIds2}),
             minOutput: pair2OutputAmount
         });
         swapList[2] = LSSVMRouter.RobustPairSwapSpecificForToken({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair3,
-                nftIds: nftIds3
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair3, nftIds: nftIds3}),
             minOutput: pair2OutputAmount
         });
 
@@ -245,20 +209,12 @@ abstract contract RouterRobustSwap is
 
         // Expect to have the last two swapPairs succeed, and the first one silently fail
         // with 10% protocol fee:
-        uint256 remainingValue = router.robustSwapNFTsForToken(
-            swapList,
-            payable(address(this)),
-            block.timestamp
-        );
+        uint256 remainingValue = router.robustSwapNFTsForToken(swapList, payable(address(this)), block.timestamp);
 
         uint256 afterNFTBalance = test721.balanceOf(address(this));
 
         assertEq((beforeNFTBalance - afterNFTBalance), 4, "Incorrect NFT swap");
-        assertEq(
-            remainingValue,
-            pair3OutputAmount + pair2OutputAmount,
-            "Incorrect ETH received"
-        );
+        assertEq(remainingValue, pair3OutputAmount + pair2OutputAmount, "Incorrect ETH received");
     }
 
     // Test where selling to pair 2 succeeds,
@@ -275,31 +231,21 @@ abstract contract RouterRobustSwap is
 
         uint256[] memory nftIds3 = new uint256[](0);
 
-        (, , , uint256 pair2OutputAmount, ) = pair2.getSellNFTQuote(2);
+        (,,, uint256 pair2OutputAmount,) = pair2.getSellNFTQuote(2);
 
-        LSSVMRouter.RobustPairSwapSpecificForToken[]
-            memory swapList = new LSSVMRouter.RobustPairSwapSpecificForToken[](
+        LSSVMRouter.RobustPairSwapSpecificForToken[] memory swapList = new LSSVMRouter.RobustPairSwapSpecificForToken[](
                 3
             );
         swapList[0] = LSSVMRouter.RobustPairSwapSpecificForToken({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair1,
-                nftIds: nftIds1
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair1, nftIds: nftIds1}),
             minOutput: pair2OutputAmount
         });
         swapList[1] = LSSVMRouter.RobustPairSwapSpecificForToken({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair2,
-                nftIds: nftIds2
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair2, nftIds: nftIds2}),
             minOutput: pair2OutputAmount
         });
         swapList[2] = LSSVMRouter.RobustPairSwapSpecificForToken({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair3,
-                nftIds: nftIds3
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair3, nftIds: nftIds3}),
             minOutput: pair2OutputAmount
         });
 
@@ -307,11 +253,7 @@ abstract contract RouterRobustSwap is
 
         // Expect to have the last two swapPairs succeed, and the first one silently fail
         // with 10% protocol fee:
-        uint256 remainingValue = router.robustSwapNFTsForToken(
-            swapList,
-            payable(address(this)),
-            block.timestamp
-        );
+        uint256 remainingValue = router.robustSwapNFTsForToken(swapList, payable(address(this)), block.timestamp);
 
         uint256 afterNFTBalance = test721.balanceOf(address(this));
 
@@ -327,21 +269,17 @@ abstract contract RouterRobustSwap is
         assertEq(test721.ownerOf(32), address(this));
         assertEq(test721.ownerOf(33), address(this));
 
-        (, , , uint256 pair1InputAmount, ) = pair1.getBuyNFTQuote(2);
-        (, , , uint256 pair2OutputAmount, ) = pair2.getSellNFTQuote(2);
+        (,,, uint256 pair1InputAmount,) = pair1.getBuyNFTQuote(2);
+        (,,, uint256 pair2OutputAmount,) = pair2.getSellNFTQuote(2);
 
         uint256[] memory nftIds1 = new uint256[](2);
         nftIds1[0] = 0;
         nftIds1[1] = 1;
-        LSSVMRouter.RobustPairSwapSpecific[]
-            memory tokenToNFTSwapList = new LSSVMRouter.RobustPairSwapSpecific[](
+        LSSVMRouter.RobustPairSwapSpecific[] memory tokenToNFTSwapList = new LSSVMRouter.RobustPairSwapSpecific[](
                 1
             );
         tokenToNFTSwapList[0] = LSSVMRouter.RobustPairSwapSpecific({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair1,
-                nftIds: nftIds1
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair1, nftIds: nftIds1}),
             maxCost: pair1InputAmount
         });
 
@@ -349,23 +287,18 @@ abstract contract RouterRobustSwap is
         uint256[] memory nftIds2 = new uint256[](2);
         nftIds2[0] = 32;
         nftIds2[1] = 33;
-        LSSVMRouter.RobustPairSwapSpecificForToken[]
-            memory nftToTokenSwapList = new LSSVMRouter.RobustPairSwapSpecificForToken[](
+        LSSVMRouter.RobustPairSwapSpecificForToken[] memory nftToTokenSwapList =
+        new LSSVMRouter.RobustPairSwapSpecificForToken[](
                 1
             );
         nftToTokenSwapList[0] = LSSVMRouter.RobustPairSwapSpecificForToken({
-            swapInfo: LSSVMRouter.PairSwapSpecific({
-                pair: pair2,
-                nftIds: nftIds2
-            }),
+            swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair2, nftIds: nftIds2}),
             minOutput: pair2OutputAmount
         });
 
         // Do the swap
         uint256 inputAmount = pair1InputAmount;
-        this.robustSwapTokenForSpecificNFTsAndNFTsForTokens{
-            value: modifyInputAmount(inputAmount)
-        }(
+        this.robustSwapTokenForSpecificNFTsAndNFTsForTokens{value: modifyInputAmount(inputAmount)}(
             router,
             LSSVMRouter.RobustPairNFTsFoTokenAndTokenforNFTsTrade({
                 nftToTokenTrades: nftToTokenSwapList,

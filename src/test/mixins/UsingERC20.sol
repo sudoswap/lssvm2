@@ -21,6 +21,7 @@ import {NoArbBondingCurve} from "../base/NoArbBondingCurve.sol";
 
 abstract contract UsingERC20 is Configurable, RouterCaller {
     using SafeTransferLib for ERC20;
+
     ERC20 test20;
 
     function modifyInputAmount(uint256) public pure override returns (uint256) {
@@ -63,16 +64,7 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         // initialize the pair
         LSSVMPair pair = factory.createPairERC20(
             LSSVMPairFactory.CreateERC20PairParams(
-                test20,
-                nft,
-                bondingCurve,
-                assetRecipient,
-                poolType,
-                delta,
-                fee,
-                spotPrice,
-                _idList,
-                initialTokenBalance
+                test20, nft, bondingCurve, assetRecipient, poolType, delta, fee, spotPrice, _idList, initialTokenBalance
             )
         );
 
@@ -88,10 +80,7 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
     }
 
     function withdrawProtocolFees(LSSVMPairFactory factory) public override {
-        factory.withdrawERC20ProtocolFees(
-            test20,
-            test20.balanceOf(address(factory))
-        );
+        factory.withdrawERC20ProtocolFees(test20, test20.balanceOf(address(factory)));
     }
 
     function swapTokenForSpecificNFTs(
@@ -102,13 +91,7 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         uint256 deadline,
         uint256 inputAmount
     ) public payable override returns (uint256) {
-        return
-            router.swapERC20ForSpecificNFTs(
-                swapList,
-                inputAmount,
-                nftRecipient,
-                deadline
-            );
+        return router.swapERC20ForSpecificNFTs(swapList, inputAmount, nftRecipient, deadline);
     }
 
     function swapNFTsForSpecificNFTsThroughToken(
@@ -120,14 +103,7 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         uint256 deadline,
         uint256 inputAmount
     ) public payable override returns (uint256) {
-        return
-            router.swapNFTsForSpecificNFTsThroughERC20(
-                trade,
-                inputAmount,
-                minOutput,
-                nftRecipient,
-                deadline
-            );
+        return router.swapNFTsForSpecificNFTsThroughERC20(trade, inputAmount, minOutput, nftRecipient, deadline);
     }
 
     function robustSwapTokenForSpecificNFTs(
@@ -138,13 +114,7 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         uint256 deadline,
         uint256 inputAmount
     ) public payable override returns (uint256) {
-        return
-            router.robustSwapERC20ForSpecificNFTs(
-                swapList,
-                inputAmount,
-                nftRecipient,
-                deadline
-            );
+        return router.robustSwapERC20ForSpecificNFTs(swapList, inputAmount, nftRecipient, deadline);
     }
 
     function robustSwapTokenForSpecificNFTsAndNFTsForTokens(

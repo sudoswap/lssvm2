@@ -10,24 +10,15 @@ abstract contract UsingXykCurve is Configurable {
         return new XykCurve();
     }
 
-    function modifyDelta(
-        uint64 /*delta*/
-    ) public pure override returns (uint64) {
+    function modifyDelta(uint64 /*delta*/ ) public pure override returns (uint64) {
         return 11;
     }
 
-    function modifySpotPrice(
-        uint56 /*spotPrice*/
-    ) public pure override returns (uint56) {
+    function modifySpotPrice(uint56 /*spotPrice*/ ) public pure override returns (uint56) {
         return 0.01 ether;
     }
 
-    function getParamsForPartialFillTest()
-        public
-        pure
-        override
-        returns (uint128 spotPrice, uint128 delta)
-    {
+    function getParamsForPartialFillTest() public pure override returns (uint128 spotPrice, uint128 delta) {
         return (0.01 ether, 11);
     }
 }

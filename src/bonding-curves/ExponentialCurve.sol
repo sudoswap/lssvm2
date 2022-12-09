@@ -7,8 +7,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 /*
     @author 0xmons and boredGenius
-    @notice Bonding curve logic for an exponential curve, where each buy/sell changes spot price by multiplying/dividing delta
-*/
+    @notice Bonding curve logic for an exponential curve, where each buy/sell changes spot price by multiplying/dividing delta*/
 contract ExponentialCurve is ICurve, CurveErrorCodes {
     using FixedPointMathLib for uint256;
 
@@ -16,31 +15,21 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
     uint256 public constant MIN_PRICE = 1 gwei;
 
     /**
-        @dev See {ICurve-validateDelta}
+     * @dev See {ICurve-validateDelta}
      */
-    function validateDelta(uint128 delta)
-        external
-        pure
-        override
-        returns (bool)
-    {
+    function validateDelta(uint128 delta) external pure override returns (bool) {
         return delta > FixedPointMathLib.WAD;
     }
 
     /**
-        @dev See {ICurve-validateSpotPrice}
+     * @dev See {ICurve-validateSpotPrice}
      */
-    function validateSpotPrice(uint128 newSpotPrice)
-        external
-        pure
-        override
-        returns (bool)
-    {
+    function validateSpotPrice(uint128 newSpotPrice) external pure override returns (bool) {
         return newSpotPrice >= MIN_PRICE;
     }
 
     /**
-        @dev See {ICurve-getBuyInfo}
+     * @dev See {ICurve-getBuyInfo}
      */
     function getBuyInfo(
         uint128 spotPrice,
@@ -52,13 +41,7 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (
-            Error error,
-            uint128 newSpotPrice,
-            uint128 newDelta,
-            uint256 inputValue,
-            uint256 protocolFee
-        )
+        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 inputValue, uint256 protocolFee)
     {
         // NOTE: we assume delta is > 1, as checked by validateDelta()
         // We only calculate changes for buying 1 or more NFTs
@@ -66,10 +49,7 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0);
         }
 
-        uint256 deltaPowN = uint256(delta).rpow(
-            numItems,
-            FixedPointMathLib.WAD
-        );
+        uint256 deltaPowN = uint256(delta).rpow(numItems, FixedPointMathLib.WAD);
 
         // For an exponential curve, the spot price is multiplied by delta for each item bought
         uint256 newSpotPrice_ = uint256(spotPrice).mulWadDown(deltaPowN);
@@ -89,11 +69,8 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         // If the user buys n items, then the total cost is equal to:
         // buySpotPrice + (delta * buySpotPrice) + (delta^2 * buySpotPrice) + ... (delta^(numItems - 1) * buySpotPrice)
         // This is equal to buySpotPrice * (delta^n - 1) / (delta - 1)
-        inputValue = buySpotPrice.mulWadDown(
-            (deltaPowN - FixedPointMathLib.WAD).divWadDown(
-                delta - FixedPointMathLib.WAD
-            )
-        );
+        inputValue =
+            buySpotPrice.mulWadDown((deltaPowN - FixedPointMathLib.WAD).divWadDown(delta - FixedPointMathLib.WAD));
 
         // Account for the protocol fee, a flat percentage of the buy amount
         protocolFee = inputValue.mulWadDown(protocolFeeMultiplier);
@@ -112,10 +89,10 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
     }
 
     /**
-        @dev See {ICurve-getSellInfo}
-        If newSpotPrice is less than MIN_PRICE, newSpotPrice is set to MIN_PRICE instead.
-        This is to prevent the spot price from ever becoming 0, which would decouple the price
-        from the bonding curve (since 0 * delta is still 0)
+     * @dev See {ICurve-getSellInfo}
+     *     If newSpotPrice is less than MIN_PRICE, newSpotPrice is set to MIN_PRICE instead.
+     *     This is to prevent the spot price from ever becoming 0, which would decouple the price
+     *     from the bonding curve (since 0 * delta is still 0)
      */
     function getSellInfo(
         uint128 spotPrice,
@@ -127,13 +104,7 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (
-            Error error,
-            uint128 newSpotPrice,
-            uint128 newDelta,
-            uint256 outputValue,
-            uint256 protocolFee
-        )
+        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 outputValue, uint256 protocolFee)
     {
         // NOTE: we assume delta is > 1, as checked by validateDelta()
 
@@ -157,9 +128,7 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         // spotPrice + ((1 / delta) * spotPrice) + ((1 / delta)^2 * spotPrice) + ... ((1 / delta)^(numItems - 1) * spotPrice)
         // This is equal to spotPrice * (1 - (1 / delta^n)) / (1 - (1 / delta))
         outputValue = uint256(spotPrice).mulWadDown(
-            (FixedPointMathLib.WAD - invDeltaPowN).divWadDown(
-                FixedPointMathLib.WAD - invDelta
-            )
+            (FixedPointMathLib.WAD - invDeltaPowN).divWadDown(FixedPointMathLib.WAD - invDelta)
         );
 
         // Account for the protocol fee, a flat percentage of the sell amount

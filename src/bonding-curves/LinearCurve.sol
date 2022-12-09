@@ -7,33 +7,28 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 /*
     @author 0xmons and boredGenius
-    @notice Bonding curve logic for a linear curve, where each buy/sell changes spot price by adding/substracting delta
-*/
+    @notice Bonding curve logic for a linear curve, where each buy/sell changes spot price by adding/substracting delta*/
 contract LinearCurve is ICurve, CurveErrorCodes {
     using FixedPointMathLib for uint256;
 
     /**
-        @dev See {ICurve-validateDelta}
+     * @dev See {ICurve-validateDelta}
      */
-    function validateDelta(
-        uint128 /*delta*/
-    ) external pure override returns (bool valid) {
+    function validateDelta(uint128 /*delta*/ ) external pure override returns (bool valid) {
         // For a linear curve, all values of delta are valid
         return true;
     }
 
     /**
-        @dev See {ICurve-validateSpotPrice}
+     * @dev See {ICurve-validateSpotPrice}
      */
-    function validateSpotPrice(
-        uint128 /* newSpotPrice */
-    ) external pure override returns (bool) {
+    function validateSpotPrice(uint128 /* newSpotPrice */ ) external pure override returns (bool) {
         // For a linear curve, all values of spot price are valid
         return true;
     }
 
     /**
-        @dev See {ICurve-getBuyInfo}
+     * @dev See {ICurve-getBuyInfo}
      */
     function getBuyInfo(
         uint128 spotPrice,
@@ -45,13 +40,7 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (
-            Error error,
-            uint128 newSpotPrice,
-            uint128 newDelta,
-            uint256 inputValue,
-            uint256 protocolFee
-        )
+        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 inputValue, uint256 protocolFee)
     {
         // We only calculate changes for buying 1 or more NFTs
         if (numItems == 0) {
@@ -77,11 +66,7 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         // (buy spot price) + (buy spot price + 1*delta) + (buy spot price + 2*delta) + ... + (buy spot price + (n-1)*delta)
         // This is equal to n*(buy spot price) + (delta)*(n*(n-1))/2
         // because we have n instances of buy spot price, and then we sum up from delta to (n-1)*delta
-        inputValue =
-            numItems *
-            buySpotPrice +
-            (numItems * (numItems - 1) * delta) /
-            2;
+        inputValue = numItems * buySpotPrice + (numItems * (numItems - 1) * delta) / 2;
 
         // Account for the protocol fee, a flat percentage of the buy amount
         protocolFee = inputValue.mulWadDown(protocolFeeMultiplier);
@@ -100,7 +85,7 @@ contract LinearCurve is ICurve, CurveErrorCodes {
     }
 
     /**
-        @dev See {ICurve-getSellInfo}
+     * @dev See {ICurve-getSellInfo}
      */
     function getSellInfo(
         uint128 spotPrice,
@@ -112,13 +97,7 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (
-            Error error,
-            uint128 newSpotPrice,
-            uint128 newDelta,
-            uint256 outputValue,
-            uint256 protocolFee
-        )
+        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 outputValue, uint256 protocolFee)
     {
         // We only calculate changes for selling 1 or more NFTs
         if (numItems == 0) {
@@ -147,11 +126,7 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         // If we sell n items, then the total sale amount is:
         // (spot price) + (spot price - 1*delta) + (spot price - 2*delta) + ... + (spot price - (n-1)*delta)
         // This is equal to n*(spot price) - (delta)*(n*(n-1))/2
-        outputValue =
-            numItems *
-            spotPrice -
-            (numItems * (numItems - 1) * delta) /
-            2;
+        outputValue = numItems * spotPrice - (numItems * (numItems - 1) * delta) / 2;
 
         // Account for the protocol fee, a flat percentage of the sell amount
         protocolFee = outputValue.mulWadDown(protocolFeeMultiplier);

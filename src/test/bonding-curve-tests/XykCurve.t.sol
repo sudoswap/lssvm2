@@ -55,14 +55,7 @@ contract XykCurveTest is Test, ERC721Holder {
         }
 
         ethPair = factory.createPairETH{value: value}(
-            nft,
-            curve,
-            payable(0),
-            LSSVMPair.PoolType.TRADE,
-            uint128(numNfts),
-            0,
-            uint128(value),
-            idList
+            nft, curve, payable(0), LSSVMPair.PoolType.TRADE, uint128(numNfts), 0, uint128(value), idList
         );
     }
 
@@ -71,13 +64,7 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 numItems = 0;
 
         // act
-        (CurveErrorCodes.Error error, , , , ) = curve.getBuyInfo(
-            0,
-            0,
-            numItems,
-            0,
-            0
-        );
+        (CurveErrorCodes.Error error,,,,) = curve.getBuyInfo(0, 0, numItems, 0, 0);
 
         // assert
         assertEq(
@@ -92,13 +79,7 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 numItems = 0;
 
         // act
-        (CurveErrorCodes.Error error, , , , ) = curve.getSellInfo(
-            0,
-            0,
-            numItems,
-            0,
-            0
-        );
+        (CurveErrorCodes.Error error,,,,) = curve.getSellInfo(0, 0, numItems, 0, 0);
 
         // assert
         assertEq(
@@ -116,30 +97,13 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 numItemsToBuy = 2;
 
         // act
-        (
-            CurveErrorCodes.Error error,
-            uint256 newSpotPrice,
-            uint256 newDelta,
-            uint256 inputValue,
-
-        ) = ethPair.getBuyNFTQuote(numItemsToBuy);
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue,) =
+            ethPair.getBuyNFTQuote(numItemsToBuy);
 
         // assert
-        assertEq(
-            uint256(error),
-            uint256(CurveErrorCodes.Error.OK),
-            "Should not have errored"
-        );
-        assertEq(
-            newDelta,
-            numNfts - numItemsToBuy,
-            "Should have updated virtual nft reserve"
-        );
-        assertEq(
-            newSpotPrice,
-            inputValue + value,
-            "Should have updated virtual eth reserve"
-        );
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
+        assertEq(newDelta, numNfts - numItemsToBuy, "Should have updated virtual nft reserve");
+        assertEq(newSpotPrice, inputValue + value, "Should have updated virtual eth reserve");
     }
 
     function test_getSellInfoReturnsNewReserves() public {
@@ -150,30 +114,13 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 numItemsToSell = 2;
 
         // act
-        (
-            CurveErrorCodes.Error error,
-            uint256 newSpotPrice,
-            uint256 newDelta,
-            uint256 inputValue,
-
-        ) = ethPair.getSellNFTQuote(numItemsToSell);
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue,) =
+            ethPair.getSellNFTQuote(numItemsToSell);
 
         // assert
-        assertEq(
-            uint256(error),
-            uint256(CurveErrorCodes.Error.OK),
-            "Should not have errored"
-        );
-        assertEq(
-            newDelta,
-            numNfts + numItemsToSell,
-            "Should have updated virtual nft reserve"
-        );
-        assertEq(
-            newSpotPrice,
-            value - inputValue,
-            "Should have updated virtual eth reserve"
-        );
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
+        assertEq(newDelta, numNfts + numItemsToSell, "Should have updated virtual nft reserve");
+        assertEq(newSpotPrice, value - inputValue, "Should have updated virtual eth reserve");
     }
 
     function test_getBuyInfoReturnsInputValue() public {
@@ -182,24 +129,14 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 value = 0.8 ether;
         setUpEthPair(numNfts, value);
         uint256 numItemsToBuy = 3;
-        uint256 expectedInputValue = (numItemsToBuy * value) /
-            (numNfts - numItemsToBuy);
+        uint256 expectedInputValue = (numItemsToBuy * value) / (numNfts - numItemsToBuy);
 
         // act
-        (CurveErrorCodes.Error error, , , uint256 inputValue, ) = ethPair
-            .getBuyNFTQuote(numItemsToBuy);
+        (CurveErrorCodes.Error error,,, uint256 inputValue,) = ethPair.getBuyNFTQuote(numItemsToBuy);
 
         // assert
-        assertEq(
-            uint256(error),
-            uint256(CurveErrorCodes.Error.OK),
-            "Should not have errored"
-        );
-        assertEq(
-            inputValue,
-            expectedInputValue,
-            "Should have calculated input value"
-        );
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
+        assertEq(inputValue, expectedInputValue, "Should have calculated input value");
     }
 
     function test_getSellInfoReturnsOutputValue() public {
@@ -208,24 +145,14 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 value = 0.8 ether;
         setUpEthPair(numNfts, value);
         uint256 numItemsToSell = 3;
-        uint256 expectedOutputValue = (numItemsToSell * value) /
-            (numNfts + numItemsToSell);
+        uint256 expectedOutputValue = (numItemsToSell * value) / (numNfts + numItemsToSell);
 
         // act
-        (CurveErrorCodes.Error error, , , uint256 outputValue, ) = ethPair
-            .getSellNFTQuote(numItemsToSell);
+        (CurveErrorCodes.Error error,,, uint256 outputValue,) = ethPair.getSellNFTQuote(numItemsToSell);
 
         // assert
-        assertEq(
-            uint256(error),
-            uint256(CurveErrorCodes.Error.OK),
-            "Should not have errored"
-        );
-        assertEq(
-            outputValue,
-            expectedOutputValue,
-            "Should have calculated output value"
-        );
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
+        assertEq(outputValue, expectedOutputValue, "Should have calculated output value");
     }
 
     function test_getBuyInfoCalculatesProtocolFee() public {
@@ -235,24 +162,14 @@ contract XykCurveTest is Test, ERC721Holder {
         setUpEthPair(numNfts, value);
         factory.changeProtocolFeeMultiplier((2 * 1e18) / 100); // 2%
         uint256 numItemsToBuy = 3;
-        uint256 expectedProtocolFee = (2 *
-            ((numItemsToBuy * value) / (numNfts - numItemsToBuy))) / 100;
+        uint256 expectedProtocolFee = (2 * ((numItemsToBuy * value) / (numNfts - numItemsToBuy))) / 100;
 
         // act
-        (CurveErrorCodes.Error error, , , , uint256 protocolFee) = ethPair
-            .getBuyNFTQuote(numItemsToBuy);
+        (CurveErrorCodes.Error error,,,, uint256 protocolFee) = ethPair.getBuyNFTQuote(numItemsToBuy);
 
         // assert
-        assertEq(
-            uint256(error),
-            uint256(CurveErrorCodes.Error.OK),
-            "Should not have errored"
-        );
-        assertEq(
-            protocolFee,
-            expectedProtocolFee,
-            "Should have calculated protocol fee"
-        );
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
+        assertEq(protocolFee, expectedProtocolFee, "Should have calculated protocol fee");
     }
 
     function test_getSellInfoCalculatesProtocolFee() public {
@@ -262,24 +179,14 @@ contract XykCurveTest is Test, ERC721Holder {
         setUpEthPair(numNfts, value);
         factory.changeProtocolFeeMultiplier((2 * 1e18) / 100); // 2%
         uint256 numItemsToSell = 3;
-        uint256 expectedProtocolFee = (2 *
-            ((numItemsToSell * value) / (numNfts + numItemsToSell))) / 100;
+        uint256 expectedProtocolFee = (2 * ((numItemsToSell * value) / (numNfts + numItemsToSell))) / 100;
 
         // act
-        (CurveErrorCodes.Error error, , , , uint256 protocolFee) = ethPair
-            .getSellNFTQuote(numItemsToSell);
+        (CurveErrorCodes.Error error,,,, uint256 protocolFee) = ethPair.getSellNFTQuote(numItemsToSell);
 
         // assert
-        assertEq(
-            uint256(error),
-            uint256(CurveErrorCodes.Error.OK),
-            "Should not have errored"
-        );
-        assertEq(
-            protocolFee,
-            expectedProtocolFee,
-            "Should have calculated protocol fee"
-        );
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
+        assertEq(protocolFee, expectedProtocolFee, "Should have calculated protocol fee");
     }
 
     function test_swapTokenForSpecificNFTs() public {
@@ -294,48 +201,28 @@ contract XykCurveTest is Test, ERC721Holder {
         factory.changeProtocolFeeMultiplier((2 * 1e18) / 100); // 2%
         ethPair.changeFee((1 * 1e18) / 100); // 1%
 
-        (CurveErrorCodes.Error error, , , uint256 inputValue, ) = ethPair
-            .getBuyNFTQuote(numItemsToBuy);
+        (CurveErrorCodes.Error error,,, uint256 inputValue,) = ethPair.getBuyNFTQuote(numItemsToBuy);
 
         // act
         uint256[] memory idList = new uint256[](numItemsToBuy);
         for (uint256 i = 1; i <= numItemsToBuy; i++) {
             idList[i - 1] = i;
         }
-        uint256 inputAmount = ethPair.swapTokenForSpecificNFTs{
-            value: inputValue
-        }(idList, inputValue, address(this), false, address(0));
+        uint256 inputAmount =
+            ethPair.swapTokenForSpecificNFTs{value: inputValue}(idList, inputValue, address(this), false, address(0));
 
         // assert
-        assertEq(
-            uint256(error),
-            uint256(CurveErrorCodes.Error.OK),
-            "Should not have errored"
-        );
-        assertEq(
-            ethBalanceBefore - address(this).balance,
-            inputValue,
-            "Should have transferred ETH"
-        );
-        assertEq(
-            nft.balanceOf(address(this)) - nftBalanceBefore,
-            numItemsToBuy,
-            "Should have received NFTs"
-        );
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
+        assertEq(ethBalanceBefore - address(this).balance, inputValue, "Should have transferred ETH");
+        assertEq(nft.balanceOf(address(this)) - nftBalanceBefore, numItemsToBuy, "Should have received NFTs");
 
         uint256 withoutFeeInputAmount = (inputAmount * 1e18) / 103e16;
         assertEq(
             ethPair.spotPrice(),
-            uint128(address(ethPair).balance) -
-                (withoutFeeInputAmount * 1e16) /
-                1e18,
+            uint128(address(ethPair).balance) - (withoutFeeInputAmount * 1e16) / 1e18,
             "Spot price should match eth balance - fee after swap"
         );
-        assertEq(
-            ethPair.delta(),
-            nft.balanceOf(address(ethPair)),
-            "Delta should match nft balance after swap"
-        );
+        assertEq(ethPair.delta(), nft.balanceOf(address(ethPair)), "Delta should match nft balance after swap");
     }
 
     function test_swapNFTsForToken() public {
@@ -348,8 +235,7 @@ contract XykCurveTest is Test, ERC721Holder {
         ethPair.changeFee((1 * 1e18) / 100); // 1%
 
         uint256 numItemsToSell = 2;
-        (CurveErrorCodes.Error error, , , uint256 outputValue, ) = ethPair
-            .getSellNFTQuote(numItemsToSell);
+        (CurveErrorCodes.Error error,,, uint256 outputValue,) = ethPair.getSellNFTQuote(numItemsToSell);
 
         uint256[] memory idList = new uint256[](numItemsToSell);
         for (uint256 i = 1; i <= numItemsToSell; i++) {
@@ -362,42 +248,19 @@ contract XykCurveTest is Test, ERC721Holder {
         nft.setApprovalForAll(address(ethPair), true);
 
         // act
-        uint256 outputAmount = ethPair.swapNFTsForToken(
-            idList,
-            outputValue,
-            payable(address(this)),
-            false,
-            address(0)
-        );
+        uint256 outputAmount = ethPair.swapNFTsForToken(idList, outputValue, payable(address(this)), false, address(0));
 
         // assert
-        assertEq(
-            uint256(error),
-            uint256(CurveErrorCodes.Error.OK),
-            "Should not have errored"
-        );
-        assertEq(
-            address(this).balance - ethBalanceBefore,
-            outputValue,
-            "Should have received ETH"
-        );
-        assertEq(
-            nftBalanceBefore - nft.balanceOf(address(this)),
-            numItemsToSell,
-            "Should have sent NFTs"
-        );
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
+        assertEq(address(this).balance - ethBalanceBefore, outputValue, "Should have received ETH");
+        assertEq(nftBalanceBefore - nft.balanceOf(address(this)), numItemsToSell, "Should have sent NFTs");
 
         uint256 withoutFeeOutputAmount = (outputAmount * 1e18) / 0.97e18;
         assertEq(
             ethPair.spotPrice(),
-            uint128(address(ethPair).balance) -
-                ((withoutFeeOutputAmount * 1e16) / 1e18),
+            uint128(address(ethPair).balance) - ((withoutFeeOutputAmount * 1e16) / 1e18),
             "Spot price + fee should match eth balance after swap"
         );
-        assertEq(
-            ethPair.delta(),
-            nft.balanceOf(address(ethPair)),
-            "Delta should match nft balance after swap"
-        );
+        assertEq(ethPair.delta(), nft.balanceOf(address(ethPair)), "Delta should match nft balance after swap");
     }
 }

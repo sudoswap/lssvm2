@@ -11,8 +11,8 @@ import {ICurve} from "./bonding-curves/ICurve.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 
 /**
-    @title An NFT/Token pair where the token is ETH
-    @author boredGenius and 0xmons
+ * @title An NFT/Token pair where the token is ETH
+ *     @author boredGenius and 0xmons
  */
 contract LSSVMPairETH is LSSVMPair {
     using SafeTransferLib for address payable;
@@ -21,14 +21,9 @@ contract LSSVMPairETH is LSSVMPair {
     uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 61;
 
     /**
-       @inheritdoc LSSVMPair
+     * @inheritdoc LSSVMPair
      */
-    function pairVariant()
-        public
-        pure
-        override
-        returns (ILSSVMPairFactoryLike.PairVariant)
-    {
+    function pairVariant() public pure override returns (ILSSVMPairFactoryLike.PairVariant) {
         return ILSSVMPairFactoryLike.PairVariant.ETH;
     }
 
@@ -70,10 +65,7 @@ contract LSSVMPairETH is LSSVMPair {
     }
 
     /// @inheritdoc LSSVMPair
-    function _payProtocolFeeFromPair(
-        ILSSVMPairFactoryLike _factory,
-        uint256 protocolFee
-    ) internal override {
+    function _payProtocolFeeFromPair(ILSSVMPairFactoryLike _factory, uint256 protocolFee) internal override {
         // Take protocol fee
         if (protocolFee > 0) {
             // Round down to the actual ETH balance if there are numerical stability issues with the bonding curve calculations
@@ -88,10 +80,7 @@ contract LSSVMPairETH is LSSVMPair {
     }
 
     /// @inheritdoc LSSVMPair
-    function _sendTokenOutput(
-        address payable tokenRecipient,
-        uint256 outputAmount
-    ) internal override {
+    function _sendTokenOutput(address payable tokenRecipient, uint256 outputAmount) internal override {
         // Send ETH to caller
         if (outputAmount > 0) {
             tokenRecipient.safeTransferETH(outputAmount);
@@ -105,18 +94,18 @@ contract LSSVMPairETH is LSSVMPair {
     }
 
     /**
-        @notice Withdraws all token owned by the pair to the owner address.
-        @dev Only callable by the owner.
+     * @notice Withdraws all token owned by the pair to the owner address.
+     *     @dev Only callable by the owner.
      */
     function withdrawAllETH() external onlyOwner {
         withdrawETH(address(this).balance);
     }
 
     /**
-        @notice Withdraws a specified amount of token owned by the pair to the owner address.
-        @dev Only callable by the owner.
-        @param amount The amount of token to send to the owner. If the pair's balance is less than
-        this value, the transaction will be reverted.
+     * @notice Withdraws a specified amount of token owned by the pair to the owner address.
+     *     @dev Only callable by the owner.
+     *     @param amount The amount of token to send to the owner. If the pair's balance is less than
+     *     this value, the transaction will be reverted.
      */
     function withdrawETH(uint256 amount) public onlyOwner {
         payable(owner()).safeTransferETH(amount);
@@ -126,25 +115,21 @@ contract LSSVMPairETH is LSSVMPair {
     }
 
     /// @inheritdoc LSSVMPair
-    function withdrawERC20(ERC20 a, uint256 amount)
-        external
-        override
-        onlyOwner
-    {
+    function withdrawERC20(ERC20 a, uint256 amount) external override onlyOwner {
         a.safeTransfer(msg.sender, amount);
     }
 
     /**
-        @dev All ETH transfers into the pair are accepted. This is the main method
-        for the owner to top up the pair's token reserves.
+     * @dev All ETH transfers into the pair are accepted. This is the main method
+     *     for the owner to top up the pair's token reserves.
      */
     receive() external payable {
         emit TokenDeposit(msg.value);
     }
 
     /**
-        @dev All ETH transfers into the pair are accepted. This is the main method
-        for the owner to top up the pair's token reserves.
+     * @dev All ETH transfers into the pair are accepted. This is the main method
+     *     for the owner to top up the pair's token reserves.
      */
     fallback() external payable {
         // Only allow calls without function selector

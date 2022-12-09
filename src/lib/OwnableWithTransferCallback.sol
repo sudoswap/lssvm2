@@ -11,8 +11,7 @@ abstract contract OwnableWithTransferCallback {
     using ERC165Checker for address;
     using Address for address;
 
-    bytes4 constant TRANSFER_CALLBACK =
-        type(IOwnershipTransferCallback).interfaceId;
+    bytes4 constant TRANSFER_CALLBACK = type(IOwnershipTransferCallback).interfaceId;
 
     error Ownable_NotOwner();
     error Ownable_NewOwnerZeroAddress();
@@ -48,9 +47,7 @@ abstract contract OwnableWithTransferCallback {
         // Call the on ownership transfer callback if it exists
         // @dev try/catch is around 5k gas cheaper than doing ERC165 checking
         if (newOwner.isContract()) {
-            try
-                IOwnershipTransferCallback(newOwner).onOwnershipTransfer(msg.sender)
-            {} catch (bytes memory) {}
+            try IOwnershipTransferCallback(newOwner).onOwnershipTransfer(msg.sender) {} catch (bytes memory) {}
         }
     }
 
