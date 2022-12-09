@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
+import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -18,12 +20,12 @@ import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
-import {Configurable} from "../mixins/Configurable.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {TestPairManager} from "../../mocks/TestPairManager.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
-abstract contract PairAndFactory is Test, ERC721Holder, Configurable, ERC1155Holder {
+abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyalties, ERC1155Holder {
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 1 ether;
     uint256 tokenAmount = 10 ether;
@@ -39,11 +41,14 @@ abstract contract PairAndFactory is Test, ERC721Holder, Configurable, ERC1155Hol
     LSSVMPair pair;
     TestPairManager pairManager;
 
+    RoyaltyRegistry royaltyRegistry;
+
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairETH ethTemplate = new LSSVMPairETH();
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
+        royaltyRegistry = setupRoyaltyRegistry();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
         factory = new LSSVMPairFactory(
             ethTemplate,
             erc20Template,

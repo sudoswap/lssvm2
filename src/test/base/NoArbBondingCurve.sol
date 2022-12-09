@@ -3,19 +3,21 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
+import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {Test721} from "../../mocks/Test721.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
-import {Configurable} from "../mixins/Configurable.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
+import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
-abstract contract NoArbBondingCurve is Test, ERC721Holder, Configurable {
+abstract contract NoArbBondingCurve is Test, ERC721Holder, ConfigurableWithRoyalties {
     uint256[] idList;
     uint256 startingId;
     IERC721Mintable test721;
@@ -24,11 +26,14 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, Configurable {
     address payable constant feeRecipient = payable(address(69));
     uint256 constant protocolFeeMultiplier = 3e15;
 
+    RoyaltyRegistry royaltyRegistry;
+
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairETH ethTemplate = new LSSVMPairETH();
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
+        royaltyRegistry = setupRoyaltyRegistry();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
         factory = new LSSVMPairFactory(
             ethTemplate,
             erc20Template,

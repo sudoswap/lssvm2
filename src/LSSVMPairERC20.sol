@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
+import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
+
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
@@ -20,6 +22,8 @@ contract LSSVMPairERC20 is LSSVMPair {
     using SafeTransferLib for ERC20;
 
     uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 81;
+
+    constructor(IRoyaltyRegistry royaltyRegistry) LSSVMPair(royaltyRegistry) {}
 
     /**
      * @inheritdoc LSSVMPair
@@ -52,6 +56,17 @@ contract LSSVMPairERC20 is LSSVMPair {
         ERC20 _token = token();
         address _assetRecipient = getAssetRecipient();
 
+        // Compute royalties
+        uint256 saleAmount = inputAmount - protocolFee;
+        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(saleAmount);
+
+        // Deduct royalties from sale amount
+        unchecked {
+            // Safe because we already require saleAmount >= royaltyAmount in _calculateRoyalties()
+            saleAmount -= royaltyAmount;
+        }
+
+        // Transfer tokens
         if (isRouter) {
             // Verify if router is allowed
             LSSVMRouter router = LSSVMRouter(payable(msg.sender));
@@ -64,29 +79,38 @@ contract LSSVMPairERC20 is LSSVMPair {
 
             // Cache state and then call router to transfer tokens from user
             uint256 beforeBalance = _token.balanceOf(_assetRecipient);
-            router.pairTransferERC20From(
-                _token, routerCaller, _assetRecipient, inputAmount - protocolFee, pairVariant()
-            );
+            router.pairTransferERC20From(_token, routerCaller, _assetRecipient, saleAmount, pairVariant());
 
             // Verify token transfer (protect pair against malicious router)
-            require(
-                _token.balanceOf(_assetRecipient) - beforeBalance == inputAmount - protocolFee,
-                "ERC20 not transferred in"
-            );
+            require(_token.balanceOf(_assetRecipient) - beforeBalance == saleAmount, "ERC20 not transferred in");
 
-            router.pairTransferERC20From(_token, routerCaller, address(_factory), protocolFee, pairVariant());
-
-            // Note: no check for factory balance's because router is assumed to be set by factory owner
-            // so there is no incentive to *not* pay protocol fee
-        } else {
-            // Transfer tokens directly
-            _token.safeTransferFrom(msg.sender, _assetRecipient, inputAmount - protocolFee);
+            // Transfer royalties (if it exists)
+            if (royaltyAmount != 0) {
+                router.pairTransferERC20From(_token, routerCaller, royaltyRecipient, royaltyAmount, pairVariant());
+            }
 
             // Take protocol fee (if it exists)
-            if (protocolFee > 0) {
+            if (protocolFee != 0) {
+                // Note: no check for factory balance's because router is assumed to be set by factory owner
+                // so there is no incentive to *not* pay protocol fee
+                router.pairTransferERC20From(_token, routerCaller, address(_factory), protocolFee, pairVariant());
+            }
+        } else {
+            // Transfer tokens directly
+            _token.safeTransferFrom(msg.sender, _assetRecipient, saleAmount);
+
+            // Transfer royalties (if it exists)
+            if (royaltyAmount != 0) {
+                _token.safeTransferFrom(msg.sender, royaltyRecipient, royaltyAmount);
+            }
+
+            // Take protocol fee (if it exists)
+            if (protocolFee != 0) {
                 _token.safeTransferFrom(msg.sender, address(_factory), protocolFee);
             }
         }
+
+        emit RoyaltyIssued(msg.sender, royaltyRecipient, saleAmount + royaltyAmount, royaltyAmount);
     }
 
     /// @inheritdoc LSSVMPair
@@ -97,7 +121,7 @@ contract LSSVMPairERC20 is LSSVMPair {
     /// @inheritdoc LSSVMPair
     function _payProtocolFeeFromPair(ILSSVMPairFactoryLike _factory, uint256 protocolFee) internal override {
         // Take protocol fee (if it exists)
-        if (protocolFee > 0) {
+        if (protocolFee != 0) {
             ERC20 _token = token();
 
             // Round down to the actual token balance if there are numerical stability issues with the bonding curve calculations
@@ -114,13 +138,13 @@ contract LSSVMPairERC20 is LSSVMPair {
     /// @inheritdoc LSSVMPair
     function _sendTokenOutput(address payable tokenRecipient, uint256 outputAmount) internal override {
         // Send tokens to caller
-        if (outputAmount > 0) {
+        if (outputAmount != 0) {
             token().safeTransfer(tokenRecipient, outputAmount);
         }
     }
 
     /// @inheritdoc LSSVMPair
-    // @dev see LSSVMPairCloner for params length calculation
+    /// @dev see LSSVMPairCloner for params length calculation
     function _immutableParamsLength() internal pure override returns (uint256) {
         return IMMUTABLE_PARAMS_LENGTH;
     }

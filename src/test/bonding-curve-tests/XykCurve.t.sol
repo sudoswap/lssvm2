@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
+import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
@@ -16,6 +18,7 @@ import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {XykCurve} from "../../bonding-curves/XykCurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LSSVMPairCloner} from "../../lib/LSSVMPairCloner.sol";
+import {TestRoyaltyRegistry} from "../../mocks/TestRoyaltyRegistry.sol";
 import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
 
 contract XykCurveTest is Test, ERC721Holder {
@@ -28,11 +31,16 @@ contract XykCurveTest is Test, ERC721Holder {
     LSSVMPair ethPair;
     Test721 nft;
 
+    RoyaltyRegistry royaltyRegistry;
+
     receive() external payable {}
 
     function setUp() public {
-        LSSVMPairETH ethTemplate = new LSSVMPairETH();
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
+        royaltyRegistry = new TestRoyaltyRegistry();
+        royaltyRegistry.initialize();
+
+        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
         factory = new LSSVMPairFactory(
             ethTemplate,
             erc20Template,

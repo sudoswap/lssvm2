@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
+import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
@@ -11,12 +13,12 @@ import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
-import {Configurable} from "../mixins/Configurable.sol";
 import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
-abstract contract RouterSinglePool is Test, ERC721Holder, Configurable, RouterCaller {
+abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalties, RouterCaller {
     IERC721Mintable test721;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
@@ -26,11 +28,14 @@ abstract contract RouterSinglePool is Test, ERC721Holder, Configurable, RouterCa
     uint256 constant protocolFeeMultiplier = 3e15;
     uint256 constant numInitialNFTs = 10;
 
+    RoyaltyRegistry royaltyRegistry;
+
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairETH ethTemplate = new LSSVMPairETH();
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
+        royaltyRegistry = setupRoyaltyRegistry();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
         factory = new LSSVMPairFactory(
             ethTemplate,
             erc20Template,

@@ -11,7 +11,6 @@ import {XykCurve} from "../src/bonding-curves/XykCurve.sol";
 import {LSSVMPairFactory} from "../src/LSSVMPairFactory.sol";
 import {LinearCurve} from "../src/bonding-curves/LinearCurve.sol";
 import {ExponentialCurve} from "../src/bonding-curves/ExponentialCurve.sol";
-import {LSSVMRouterWithRoyalties} from "../src/LSSVMRouterWithRoyalties.sol";
 
 contract DeployScript is CREATE3Script {
     constructor() CREATE3Script(vm.envString("VERSION")) {}
@@ -22,7 +21,6 @@ contract DeployScript is CREATE3Script {
             LSSVMPairFactory factory,
             LSSVMRouter router,
             LSSVMRouter2 router2,
-            LSSVMRouterWithRoyalties routerWithRoyalties,
             LinearCurve linearCurve,
             ExponentialCurve exponentialCurve,
             XykCurve xykCurve
@@ -32,16 +30,25 @@ contract DeployScript is CREATE3Script {
 
         uint256 protocolFee = vm.envUint("PROTOCOL_FEE");
         address protocolFeeRecipient = vm.envAddress("PROTOCOL_FEE_RECIPIENT");
+        address royaltyRegistry = vm.envAddress("ROYALTY_REGISTRY");
 
         vm.startBroadcast(deployerPrivateKey);
 
         // deploy factory
         {
             LSSVMPairETH ethTemplate = LSSVMPairETH(
-                payable(create3.deploy(getCreate3ContractSalt("LSSVMPairETH"), type(LSSVMPairETH).creationCode))
+                payable(
+                    create3.deploy(
+                        getCreate3ContractSalt("LSSVMPairETH"),
+                        bytes.concat(type(LSSVMPairETH).creationCode, abi.encode(royaltyRegistry))
+                    )
+                )
             );
             LSSVMPairERC20 erc20Template = LSSVMPairERC20(
-                create3.deploy(getCreate3ContractSalt("LSSVMPairERC20"), type(LSSVMPairERC20).creationCode)
+                create3.deploy(
+                    getCreate3ContractSalt("LSSVMPairERC20"),
+                    bytes.concat(type(LSSVMPairERC20).creationCode, abi.encode(royaltyRegistry))
+                )
             );
             address deployer = vm.addr(deployerPrivateKey);
             factory = LSSVMPairFactory(
@@ -86,19 +93,10 @@ contract DeployScript is CREATE3Script {
                 )
             )
         );
-        routerWithRoyalties = LSSVMRouterWithRoyalties(
-            payable(
-                create3.deploy(
-                    getCreate3ContractSalt("LSSVMRouterWithRoyalties"),
-                    bytes.concat(type(LSSVMRouterWithRoyalties).creationCode, abi.encode(factory))
-                )
-            )
-        );
 
         // whitelist routers
         factory.setRouterAllowed(router, true);
         factory.setRouterAllowed(LSSVMRouter(payable(address(router2))), true);
-        factory.setRouterAllowed(routerWithRoyalties, true);
 
         // transfer factory ownership
         {

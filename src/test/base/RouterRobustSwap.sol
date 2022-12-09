@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
+import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -12,13 +14,13 @@ import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
-import {Configurable} from "../mixins/Configurable.sol";
 import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LinearCurve} from "../../bonding-curves/LinearCurve.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
-abstract contract RouterRobustSwap is Test, ERC721Holder, Configurable, RouterCaller {
+abstract contract RouterRobustSwap is Test, ERC721Holder, ConfigurableWithRoyalties, RouterCaller {
     IERC721Mintable test721;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
@@ -34,12 +36,15 @@ abstract contract RouterRobustSwap is Test, ERC721Holder, Configurable, RouterCa
     // Set protocol fee to be 10%
     uint256 constant protocolFeeMultiplier = 1e17;
 
+    RoyaltyRegistry royaltyRegistry;
+
     function setUp() public {
         // Create contracts
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairETH ethTemplate = new LSSVMPairETH();
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
+        royaltyRegistry = setupRoyaltyRegistry();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
         factory = new LSSVMPairFactory(
             ethTemplate,
             erc20Template,

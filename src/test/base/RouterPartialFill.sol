@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
+import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
@@ -12,16 +14,16 @@ import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {LSSVMRouter2} from "../../LSSVMRouter2.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
-import {Configurable} from "../mixins/Configurable.sol";
 import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
 /**
  * Handles test cases where users try to buy multiple NFTs from a pool, but only get partially filled
  * >  $ forge test --match-contract RPF.*ETH -vvvvv
  */
-abstract contract RouterPartialFill is Test, ERC721Holder, Configurable, RouterCaller {
+abstract contract RouterPartialFill is Test, ERC721Holder, ConfigurableWithRoyalties, RouterCaller {
     IERC721Mintable test721;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
@@ -32,11 +34,14 @@ abstract contract RouterPartialFill is Test, ERC721Holder, Configurable, RouterC
     uint256 numInitialNFTs = 10;
     uint128 SPOT_PRICE;
 
+    RoyaltyRegistry royaltyRegistry;
+
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        LSSVMPairETH ethTemplate = new LSSVMPairETH();
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
+        royaltyRegistry = setupRoyaltyRegistry();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
         factory = new LSSVMPairFactory(
             ethTemplate,
             erc20Template,

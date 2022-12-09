@@ -10,6 +10,7 @@ import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
+import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
@@ -17,7 +18,6 @@ import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
-import {LSSVMRouterWithRoyalties, LSSVMRouter} from "../../LSSVMRouterWithRoyalties.sol";
 
 /// @dev Gives more realistic scenarios where swaps have to go through multiple pools, for more accurate gas profiling
 abstract contract RouterMultiPoolWithRoyalties is Test, ERC721Holder, ConfigurableWithRoyalties, RouterCaller {
@@ -39,8 +39,8 @@ abstract contract RouterMultiPoolWithRoyalties is Test, ERC721Holder, Configurab
         royaltyRegistry = setupRoyaltyRegistry();
         royaltyRegistry.setRoyaltyLookupAddress(address(test721), address(test2981));
 
-        LSSVMPairETH ethTemplate = new LSSVMPairETH();
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
         factory = new LSSVMPairFactory(
             ethTemplate,
             erc20Template,
@@ -48,7 +48,7 @@ abstract contract RouterMultiPoolWithRoyalties is Test, ERC721Holder, Configurab
             protocolFeeMultiplier,
             address(this)
         );
-        router = new LSSVMRouterWithRoyalties(factory);
+        router = new LSSVMRouter(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);
         factory.setRouterAllowed(router, true);
 
@@ -92,12 +92,10 @@ abstract contract RouterMultiPoolWithRoyalties is Test, ERC721Holder, Configurab
         uint256 totalInputAmount = 0;
         uint256 totalRoyaltyAmount = 0;
         for (uint256 i = 0; i < 5; i++) {
-            uint256 inputAmount;
-            (,,, inputAmount,) = pairs[i + 1].getBuyNFTQuote(1);
+            (,,, uint256 inputAmount, uint256 protocolFee) = pairs[i + 1].getBuyNFTQuote(1);
 
             // calculate royalty and add it to the input amount
-            uint256 royaltyAmount = calcRoyalty(inputAmount);
-            inputAmount += royaltyAmount;
+            uint256 royaltyAmount = calcRoyalty(inputAmount - protocolFee);
             totalRoyaltyAmount += royaltyAmount;
 
             totalInputAmount += inputAmount;

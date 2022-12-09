@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
+import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
+
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
+import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -27,6 +30,9 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
     // 90%, must <= 1 - MAX_PROTOCOL_FEE (set in LSSVMPairFactory)
     uint256 internal constant MAX_FEE = 0.9e18;
+
+    // Royalty support
+    IRoyaltyRegistry public immutable ROYALTY_REGISTRY;
 
     // The current price of the NFT
     // @dev This is generally used to mean the immediate sell price for the next marginal NFT.
@@ -57,9 +63,14 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     event DeltaUpdate(uint128 newDelta);
     event FeeUpdate(uint96 newFee);
     event AssetRecipientChange(address a);
+    event RoyaltyIssued(address indexed issuer, address indexed recipient, uint256 saleAmount, uint256 royaltyAmount);
 
     // Parameterized Errors
     error BondingCurveError(CurveErrorCodes.Error error);
+
+    constructor(IRoyaltyRegistry royaltyRegistry) {
+        ROYALTY_REGISTRY = royaltyRegistry;
+    }
 
     /**
      * @notice Called during pair creation to set initial parameters
@@ -188,7 +199,18 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         (protocolFee, outputAmount) =
             _calculateSellInfoAndUpdatePoolParams(nftIds.length, minExpectedTokenOutput, _bondingCurve, _factory);
 
+        // Compute royalties
+        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(outputAmount);
+
+        // Deduct royalties from outputAmount
+        unchecked {
+            // Safe because we already require outputAmount >= royaltyAmount in _calculateRoyalties()
+            outputAmount -= royaltyAmount;
+        }
+
         _sendTokenOutput(tokenRecipient, outputAmount);
+
+        _sendTokenOutput(payable(royaltyRecipient), royaltyAmount);
 
         _payProtocolFeeFromPair(_factory, protocolFee);
 
@@ -521,6 +543,29 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      * @dev Used internally to grab pair parameters from calldata, see LSSVMPairCloner for technical details
      */
     function _immutableParamsLength() internal pure virtual returns (uint256);
+
+    /**
+     * Royalty support internal functions
+     */
+
+    function _calculateRoyalties(uint256 saleAmount)
+        internal
+        view
+        returns (address royaltyRecipient, uint256 royaltyAmount)
+    {
+        // get royalty lookup address from the shared royalty registry
+        address lookupAddress = ROYALTY_REGISTRY.getRoyaltyLookupAddress(address(nft()));
+
+        // calculates royalty payments for ERC2981 compatible lookup addresses
+        if (IERC2981(lookupAddress).supportsInterface(type(IERC2981).interfaceId)) {
+            // queries the default royalty (or specific for this pool)
+            (royaltyRecipient, royaltyAmount) =
+                IERC2981(lookupAddress).royaltyInfo(uint256(keccak256(abi.encode(address(this)))), saleAmount);
+
+            // validate royalty amount
+            require(saleAmount >= royaltyAmount, "royalty exceeds sale price");
+        }
+    }
 
     /**
      * Owner functions

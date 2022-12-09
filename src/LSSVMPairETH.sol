@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
+import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
+
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
@@ -20,6 +22,8 @@ contract LSSVMPairETH is LSSVMPair {
 
     uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 61;
 
+    constructor(IRoyaltyRegistry royaltyRegistry) LSSVMPair(royaltyRegistry) {}
+
     /**
      * @inheritdoc LSSVMPair
      */
@@ -37,23 +41,33 @@ contract LSSVMPairETH is LSSVMPair {
     ) internal override {
         require(msg.value >= inputAmount, "Sent too little ETH");
 
-        // Transfer inputAmount ETH to assetRecipient if it's been set
+        // Compute royalties
+        uint256 saleAmount = inputAmount - protocolFee;
+        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(saleAmount);
+
+        // Deduct royalties from sale amount
+        unchecked {
+            // Safe because we already require saleAmount >= royaltyAmount in _calculateRoyalties()
+            saleAmount -= royaltyAmount;
+        }
+
+        // Transfer saleAmount ETH to assetRecipient if it's been set
         address payable _assetRecipient = getAssetRecipient();
         if (_assetRecipient != address(this)) {
-            _assetRecipient.safeTransferETH(inputAmount - protocolFee);
+            _assetRecipient.safeTransferETH(saleAmount);
+        }
+
+        // Transfer royalties
+        if (royaltyAmount != 0) {
+            payable(royaltyRecipient).safeTransferETH(royaltyAmount);
         }
 
         // Take protocol fee
-        if (protocolFee > 0) {
-            // Round down to the actual ETH balance if there are numerical stability issues with the bonding curve calculations
-            if (protocolFee > address(this).balance) {
-                protocolFee = address(this).balance;
-            }
-
-            if (protocolFee > 0) {
-                payable(address(_factory)).safeTransferETH(protocolFee);
-            }
+        if (protocolFee != 0) {
+            payable(address(_factory)).safeTransferETH(protocolFee);
         }
+
+        emit RoyaltyIssued(msg.sender, royaltyRecipient, saleAmount + royaltyAmount, royaltyAmount);
     }
 
     /// @inheritdoc LSSVMPair
@@ -82,13 +96,13 @@ contract LSSVMPairETH is LSSVMPair {
     /// @inheritdoc LSSVMPair
     function _sendTokenOutput(address payable tokenRecipient, uint256 outputAmount) internal override {
         // Send ETH to caller
-        if (outputAmount > 0) {
+        if (outputAmount != 0) {
             tokenRecipient.safeTransferETH(outputAmount);
         }
     }
 
     /// @inheritdoc LSSVMPair
-    // @dev see LSSVMPairCloner for params length calculation
+    /// @dev see LSSVMPairCloner for params length calculation
     function _immutableParamsLength() internal pure override returns (uint256) {
         return IMMUTABLE_PARAMS_LENGTH;
     }

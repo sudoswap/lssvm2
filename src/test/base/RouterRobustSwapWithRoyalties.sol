@@ -11,6 +11,7 @@ import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
+import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
@@ -19,7 +20,6 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LinearCurve} from "../../bonding-curves/LinearCurve.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
-import {LSSVMRouterWithRoyalties, LSSVMRouter} from "../../LSSVMRouterWithRoyalties.sol";
 
 abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, ConfigurableWithRoyalties, RouterCaller {
     IERC721Mintable test721;
@@ -46,9 +46,8 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         test2981 = setup2981();
         royaltyRegistry = setupRoyaltyRegistry();
         royaltyRegistry.setRoyaltyLookupAddress(address(test721), address(test2981));
-
-        LSSVMPairETH ethTemplate = new LSSVMPairETH();
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20();
+        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
+        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
         factory = new LSSVMPairFactory(
             ethTemplate,
             erc20Template,
@@ -56,7 +55,7 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
             protocolFeeMultiplier,
             address(this)
         );
-        router = new LSSVMRouterWithRoyalties(factory);
+        router = new LSSVMRouter(factory);
 
         // Set approvals
         test721.setApprovalForAll(address(factory), true);
@@ -151,15 +150,13 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         nftIds3[0] = 20;
         nftIds3[1] = 21;
 
-        (,,, uint256 pair1InputAmount,) = pair1.getBuyNFTQuote(2);
-        (,,, uint256 pair2InputAmount,) = pair2.getBuyNFTQuote(2);
+        (,,, uint256 pair1InputAmount, uint256 pair1ProtocolFee) = pair1.getBuyNFTQuote(2);
+        (,,, uint256 pair2InputAmount, uint256 pair2ProtocolFee) = pair2.getBuyNFTQuote(2);
 
         // calculate royalty and add it to the input amount
-        uint256 royaltyAmount = calcRoyalty(pair1InputAmount);
-        pair1InputAmount += royaltyAmount;
+        uint256 royaltyAmount = calcRoyalty(pair1InputAmount - pair1ProtocolFee);
         totalRoyaltyAmount += royaltyAmount;
-        royaltyAmount = calcRoyalty(pair2InputAmount);
-        pair2InputAmount += royaltyAmount;
+        royaltyAmount = calcRoyalty(pair2InputAmount - pair2ProtocolFee);
         totalRoyaltyAmount += royaltyAmount;
 
         LSSVMRouter.RobustPairSwapSpecific[] memory swapList = new LSSVMRouter.RobustPairSwapSpecific[](3);
@@ -312,12 +309,11 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         assertEq(test721.ownerOf(32), address(this));
         assertEq(test721.ownerOf(33), address(this));
 
-        (,,, uint256 pair1InputAmount,) = pair1.getBuyNFTQuote(2);
+        (,,, uint256 pair1InputAmount, uint256 pair1ProtocolFee) = pair1.getBuyNFTQuote(2);
         (,,, uint256 pair2OutputAmount,) = pair2.getSellNFTQuote(2);
 
         // calculate royalty and modify input and output amounts
-        uint256 royaltyAmount = calcRoyalty(pair1InputAmount);
-        pair1InputAmount += royaltyAmount;
+        uint256 royaltyAmount = calcRoyalty(pair1InputAmount - pair1ProtocolFee);
         totalRoyaltyAmount += royaltyAmount;
         royaltyAmount = calcRoyalty(pair2OutputAmount);
         pair2OutputAmount -= royaltyAmount;
