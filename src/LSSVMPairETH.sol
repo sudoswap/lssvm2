@@ -67,7 +67,7 @@ contract LSSVMPairETH is LSSVMPair {
             payable(address(_factory)).safeTransferETH(protocolFee);
         }
 
-        emit RoyaltyIssued(msg.sender, royaltyRecipient, saleAmount + royaltyAmount, royaltyAmount);
+        // emit RoyaltyIssued(msg.sender, royaltyRecipient, saleAmount + royaltyAmount, royaltyAmount);
     }
 
     /// @inheritdoc LSSVMPair
@@ -82,14 +82,7 @@ contract LSSVMPairETH is LSSVMPair {
     function _payProtocolFeeFromPair(ILSSVMPairFactoryLike _factory, uint256 protocolFee) internal override {
         // Take protocol fee
         if (protocolFee > 0) {
-            // Round down to the actual ETH balance if there are numerical stability issues with the bonding curve calculations
-            if (protocolFee > address(this).balance) {
-                protocolFee = address(this).balance;
-            }
-
-            if (protocolFee > 0) {
-                payable(address(_factory)).safeTransferETH(protocolFee);
-            }
+            payable(address(_factory)).safeTransferETH(protocolFee);
         }
     }
 

@@ -54,16 +54,16 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     address payable public assetRecipient;
 
     // Events
-    event SwapNFTInPair();
-    event SwapNFTOutPair();
+    event SwapNFTInPair(uint256 amountIn, uint256[] ids);
+    event SwapNFTOutPair(uint256 amountOut, uint256[] ids);
     event SpotPriceUpdate(uint128 newSpotPrice);
     event TokenDeposit(uint256 amount);
     event TokenWithdrawal(uint256 amount);
-    event NFTWithdrawal();
+    event NFTWithdrawal(uint256[] ids);
     event DeltaUpdate(uint128 newDelta);
     event FeeUpdate(uint96 newFee);
     event AssetRecipientChange(address a);
-    event RoyaltyIssued(address indexed issuer, address indexed recipient, uint256 saleAmount, uint256 royaltyAmount);
+    // event RoyaltyIssued(address indexed issuer, address indexed recipient, uint256 saleAmount, uint256 royaltyAmount);
 
     // Parameterized Errors
     error BondingCurveError(CurveErrorCodes.Error error);
@@ -160,7 +160,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
         _refundTokenToSender(inputAmount);
 
-        emit SwapNFTOutPair();
+        emit SwapNFTOutPair(inputAmount, nftIds);
     }
 
     /**
@@ -216,7 +216,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
         _takeNFTsFromSender(nft(), nftIds, _factory, isRouter, routerCaller);
 
-        emit SwapNFTInPair();
+        emit SwapNFTInPair(outputAmount, nftIds);
     }
 
     /**
@@ -529,7 +529,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             } else {
                 // Pull NFTs directly from sender
                 for (uint256 i; i < numNFTs;) {
-                    _nft.safeTransferFrom(msg.sender, _assetRecipient, nftIds[i]);
+                    _nft.transferFrom(msg.sender, _assetRecipient, nftIds[i]);
 
                     unchecked {
                         ++i;
@@ -589,7 +589,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         }
 
         if (a == _nft) {
-            emit NFTWithdrawal();
+            emit NFTWithdrawal(nftIds);
         }
     }
 

@@ -41,7 +41,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     event NewPair(address poolAddress);
     event TokenDeposit(address poolAddress);
-    event NFTDeposit(address poolAddress);
+    event NFTDeposit(address poolAddress, uint256[] ids);
     event ProtocolFeeRecipientUpdate(address recipientAddress);
     event ProtocolFeeMultiplierUpdate(uint256 newMultiplier);
     event BondingCurveStatusUpdate(ICurve bondingCurve, bool isAllowed);
@@ -280,7 +280,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         // transfer initial NFTs from sender to pair
         uint256 numNFTs = _initialNFTIDs.length;
         for (uint256 i; i < numNFTs;) {
-            _nft.safeTransferFrom(msg.sender, address(_pair), _initialNFTIDs[i]);
+            _nft.transferFrom(msg.sender, address(_pair), _initialNFTIDs[i]);
 
             unchecked {
                 ++i;
@@ -308,7 +308,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         // transfer initial NFTs from sender to pair
         uint256 numNFTs = _initialNFTIDs.length;
         for (uint256 i; i < numNFTs;) {
-            _nft.safeTransferFrom(msg.sender, address(_pair), _initialNFTIDs[i]);
+            _nft.transferFrom(msg.sender, address(_pair), _initialNFTIDs[i]);
 
             unchecked {
                 ++i;
@@ -323,14 +323,14 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         // transfer NFTs from caller to recipient
         uint256 numNFTs = ids.length;
         for (uint256 i; i < numNFTs;) {
-            _nft.safeTransferFrom(msg.sender, recipient, ids[i]);
+            _nft.transferFrom(msg.sender, recipient, ids[i]);
 
             unchecked {
                 ++i;
             }
         }
         if (isPair(recipient, PairVariant.ETH) || isPair(recipient, PairVariant.ERC20)) {
-            emit NFTDeposit(recipient);
+            emit NFTDeposit(recipient, ids);
         }
     }
 

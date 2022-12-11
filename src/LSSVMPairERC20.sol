@@ -110,7 +110,7 @@ contract LSSVMPairERC20 is LSSVMPair {
             }
         }
 
-        emit RoyaltyIssued(msg.sender, royaltyRecipient, saleAmount + royaltyAmount, royaltyAmount);
+        // emit RoyaltyIssued(msg.sender, royaltyRecipient, saleAmount + royaltyAmount, royaltyAmount);
     }
 
     /// @inheritdoc LSSVMPair
@@ -123,15 +123,7 @@ contract LSSVMPairERC20 is LSSVMPair {
         // Take protocol fee (if it exists)
         if (protocolFee != 0) {
             ERC20 _token = token();
-
-            // Round down to the actual token balance if there are numerical stability issues with the bonding curve calculations
-            uint256 pairTokenBalance = _token.balanceOf(address(this));
-            if (protocolFee > pairTokenBalance) {
-                protocolFee = pairTokenBalance;
-            }
-            if (protocolFee > 0) {
-                _token.safeTransfer(address(_factory), protocolFee);
-            }
+            _token.safeTransfer(address(_factory), protocolFee);
         }
     }
 

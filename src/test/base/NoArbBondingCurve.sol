@@ -24,7 +24,8 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ConfigurableWithRoyal
     ICurve bondingCurve;
     LSSVMPairFactory factory;
     address payable constant feeRecipient = payable(address(69));
-    uint256 constant protocolFeeMultiplier = 3e15;
+    uint256 constant protocolFeeMultiplier = 0;
+    uint256 constant MAX_ALLOWABLE_DIFF = 100;
 
     RoyaltyRegistry royaltyRegistry;
 
@@ -115,7 +116,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ConfigurableWithRoyal
         }
 
         // ensure the caller didn't profit from the aggregate trade
-        assertGeDecimal(startBalance, endBalance, 18);
+        assertGeDecimal(startBalance, endBalance - MAX_ALLOWABLE_DIFF, 18);
 
         // withdraw the tokens in the pair back
         withdrawTokens(pair);
@@ -169,6 +170,9 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ConfigurableWithRoyal
             (, uint256 newSpotPrice,, uint256 inputAmount,) =
                 bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
 
+            // Send some token buffer to the pair
+            sendTokens(pair, MAX_ALLOWABLE_DIFF);
+
             // buy NFTs
             startBalance = getBalance(address(this));
             pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
@@ -185,7 +189,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ConfigurableWithRoyal
         }
 
         // ensure the caller didn't profit from the aggregate trade
-        assertGeDecimal(startBalance, endBalance, 18);
+        assertGeDecimal(startBalance, endBalance - MAX_ALLOWABLE_DIFF, 18);
 
         // withdraw the tokens in the pair back
         withdrawTokens(pair);
