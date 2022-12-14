@@ -100,8 +100,72 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
     }
 
     /**
-     * Test LSSVMPair Owner functions
+     * Test LSSVMPair owner functions
      */
+
+    function test_defaultAssetRecipientForPool() public {
+        uint256[] memory empty;
+        LSSVMPair tradePool = this.setupPair{value: modifyInputAmount(tokenAmount)}(
+            factory,
+            test721,
+            bondingCurve,
+            payable(address(0)),
+            LSSVMPair.PoolType.TRADE,
+            delta,
+            0,
+            spotPrice,
+            empty,
+            tokenAmount,
+            address(0)
+        );
+        assertEq(tradePool.getAssetRecipient(), address(tradePool));
+        LSSVMPair nftPool = this.setupPair{value: modifyInputAmount(tokenAmount)}(
+            factory,
+            test721,
+            bondingCurve,
+            payable(address(0)),
+            LSSVMPair.PoolType.NFT,
+            delta,
+            0,
+            spotPrice,
+            empty,
+            tokenAmount,
+            address(0)
+        );
+        assertEq(nftPool.getAssetRecipient(), nftPool.owner());
+        LSSVMPair tokenPool = this.setupPair{value: modifyInputAmount(tokenAmount)}(
+            factory,
+            test721,
+            bondingCurve,
+            payable(address(0)),
+            LSSVMPair.PoolType.TOKEN,
+            delta,
+            0,
+            spotPrice,
+            empty,
+            tokenAmount,
+            address(0)
+        );
+        assertEq(tokenPool.getAssetRecipient(), tokenPool.owner());
+    }
+
+    function test_defaultFeeRecipient() public {
+        uint256[] memory empty;
+        LSSVMPair tradePool = this.setupPair{value: modifyInputAmount(tokenAmount)}(
+            factory,
+            test721,
+            bondingCurve,
+            payable(address(0)),
+            LSSVMPair.PoolType.TRADE,
+            delta,
+            0,
+            spotPrice,
+            empty,
+            tokenAmount,
+            address(0)
+        );
+        assertEq(tradePool.getFeeRecipient(), address(tradePool));
+    }
 
     function test_transferOwnership() public {
         pair.transferOwnership(payable(address(2)));
@@ -125,10 +189,6 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
     function test_rescueTokens() public {
         pair.withdrawERC721(test721, idList);
         pair.withdrawERC20(testERC20, 1 ether);
-    }
-
-    function testFail_tradePoolChangeAssetRecipient() public {
-        pair.changeAssetRecipient(payable(address(1)));
     }
 
     function testFail_tradePoolChangeFeePastMax() public {
@@ -261,7 +321,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
     }
 
     function testFail_swapForNFTNotInPool() public {
-        (, uint128 newSpotPrice,, uint256 inputAmount,) =
+        (, uint128 newSpotPrice,, uint256 inputAmount,,) =
             bondingCurve.getBuyInfo(spotPrice, delta, numItems + 1, 0, protocolFeeMultiplier);
 
         // buy specific NFT not in pool
@@ -291,7 +351,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
 
         // buy all NFTs
         {
-            (, uint128 newSpotPrice,, uint256 inputAmount, uint256 protocolFee) =
+            (, uint128 newSpotPrice,, uint256 inputAmount, /* tradeFee */, uint256 protocolFee) =
                 bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
             totalProtocolFee += protocolFee;
 

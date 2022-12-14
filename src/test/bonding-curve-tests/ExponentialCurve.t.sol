@@ -25,7 +25,7 @@ contract ExponentialCurveTest is Test {
         uint256 numItems = 5;
         uint256 feeMultiplier = (FixedPointMathLib.WAD * 5) / 1000; // 0.5%
         uint256 protocolFeeMultiplier = (FixedPointMathLib.WAD * 3) / 1000; // 0.3%
-        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue, uint256 protocolFee) =
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue, /* tradeFee */, uint256 protocolFee) =
             curve.getBuyInfo(spotPrice, delta, numItems, feeMultiplier, protocolFeeMultiplier);
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
         assertEq(newSpotPrice, 96 ether, "Spot price incorrect");
@@ -39,7 +39,7 @@ contract ExponentialCurveTest is Test {
             return;
         }
 
-        (CurveErrorCodes.Error error, uint256 newSpotPrice,, uint256 inputValue,) =
+        (CurveErrorCodes.Error error, uint256 newSpotPrice,, uint256 inputValue,,) =
             curve.getBuyInfo(spotPrice, delta, numItems, 0, 0);
         uint256 deltaPowN = uint256(delta).rpow(numItems, FixedPointMathLib.WAD);
         uint256 fullWidthNewSpotPrice = uint256(spotPrice).mulWadDown(deltaPowN);
@@ -68,7 +68,7 @@ contract ExponentialCurveTest is Test {
         uint256 numItems = 5;
         uint256 feeMultiplier = (FixedPointMathLib.WAD * 5) / 1000; // 0.5%
         uint256 protocolFeeMultiplier = (FixedPointMathLib.WAD * 3) / 1000; // 0.3%
-        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 outputValue, uint256 protocolFee)
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 outputValue, /* tradeFee */, uint256 protocolFee)
         = curve.getSellInfo(spotPrice, delta, numItems, feeMultiplier, protocolFeeMultiplier);
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
         assertEq(newSpotPrice, 0.09375 ether, "Spot price incorrect");
@@ -82,7 +82,7 @@ contract ExponentialCurveTest is Test {
             return;
         }
 
-        (CurveErrorCodes.Error error, uint256 newSpotPrice,, uint256 outputValue,) =
+        (CurveErrorCodes.Error error, uint256 newSpotPrice,, uint256 outputValue,,) =
             curve.getSellInfo(spotPrice, delta, numItems, 0, 0);
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
 

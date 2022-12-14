@@ -87,7 +87,7 @@ contract LSSVMRouter2 {
         uint256 fee = pair.fee();
         for (uint256 i; i < numNFTs; i++) {
             uint256 price;
-            (, spotPrice, delta, price,) =
+            (, spotPrice, delta, price,,) =
                 pair.bondingCurve().getBuyInfo(spotPrice, delta, 1, fee, pair.factory().protocolFeeMultiplier());
             prices[i] = price;
         }

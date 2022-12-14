@@ -46,6 +46,7 @@ contract LSSVMPairERC20 is LSSVMPair {
     /// @inheritdoc LSSVMPair
     function _pullTokenInputAndPayProtocolFee(
         uint256 inputAmount,
+        uint256 tradeFeeAmount,
         bool isRouter,
         address routerCaller,
         ILSSVMPairFactoryLike _factory,

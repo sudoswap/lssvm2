@@ -10,6 +10,7 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {LSSVMRouter} from "./LSSVMRouter.sol";
 import {ICurve} from "./bonding-curves/ICurve.sol";
@@ -22,6 +23,9 @@ import {OwnableWithTransferCallback} from "./lib/OwnableWithTransferCallback.sol
 /// @author boredGenius and 0xmons
 /// @notice This implements the core swap logic from NFT to TOKEN
 abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC721Holder, ERC1155Holder {
+
+    using Address for address;
+
     enum PoolType {
         TOKEN,
         NFT,
@@ -100,12 +104,16 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
         if ((_poolType == PoolType.TOKEN) || (_poolType == PoolType.NFT)) {
             require(_fee == 0, "Only Trade Pools can have nonzero fee");
-            assetRecipient = _assetRecipient;
         } else if (_poolType == PoolType.TRADE) {
             require(_fee < MAX_FEE, "Trade fee must be less than 90%");
-            require(_assetRecipient == address(0), "Trade pools can't set asset recipient");
             fee = _fee;
         }
+
+        // Set asset recipient if it's not address(0)
+        if ((_assetRecipient != address(0)) && (_assetRecipient != _owner)) {
+            assetRecipient = _assetRecipient;
+        }
+
         require(_bondingCurve.validateDelta(_delta), "Invalid delta for curve");
         require(_bondingCurve.validateSpotPrice(_spotPrice), "Invalid new spot price for curve");
         delta = _delta;
@@ -151,7 +159,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
         // Call bonding curve for pricing information
         uint256 protocolFee;
-        (protocolFee, inputAmount) =
+        uint256 tradeFee;
+        (tradeFee, protocolFee, inputAmount) =
             _calculateBuyInfoAndUpdatePoolParams(nftIds.length, maxExpectedTokenInput, _bondingCurve, _factory);
 
         _pullTokenInputAndPayProtocolFee(inputAmount, isRouter, routerCaller, _factory, protocolFee);
@@ -196,7 +205,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
         // Call bonding curve for pricing information
         uint256 protocolFee;
-        (protocolFee, outputAmount) =
+        uint256 tradeFee;
+        (tradeFee, protocolFee, outputAmount) =
             _calculateSellInfoAndUpdatePoolParams(nftIds.length, minExpectedTokenOutput, _bondingCurve, _factory);
 
         // Compute royalties
@@ -238,7 +248,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             uint256 protocolFee
         )
     {
-        (error, newSpotPrice, newDelta, inputAmount, protocolFee) =
+        (error, newSpotPrice, newDelta, inputAmount, /* tradeFee */, protocolFee) =
             bondingCurve().getBuyInfo(spotPrice, delta, numNFTs, fee, factory().protocolFeeMultiplier());
     }
 
@@ -257,7 +267,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             uint256 protocolFee
         )
     {
-        (error, newSpotPrice, newDelta, outputAmount, protocolFee) =
+        (error, newSpotPrice, newDelta, outputAmount, /* tradeFee */, protocolFee) =
             bondingCurve().getSellInfo(spotPrice, delta, numNFTs, fee, factory().protocolFeeMultiplier());
     }
 
@@ -305,23 +315,36 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
     /**
      * @notice Returns the address that assets that receives assets when a swap is done with this pair
-     *     Can be set to another address by the owner, if set to address(0), defaults to the pair's own address
+     *     Can be set to another address by the owner, but has no effect on TRADE pools
+     *     If set to address(0), defaults to owner() for NFT/TOKEN pools
      */
     function getAssetRecipient() public view returns (address payable _assetRecipient) {
-        // If it's a TRADE pool, we know the recipient is 0 (TRADE pools can't set asset recipients)
-        // so just return address(this)
+
+        // TRADE pools will always receive the asset themselves
         if (poolType() == PoolType.TRADE) {
-            return payable(address(this));
+            _assetRecipient = payable(address(this));
+            return _assetRecipient;
         }
 
         // Otherwise, we return the recipient if it's been set
-        // or replace it with address(this) if it's 0
+        // Or, we replace it with owner() if it's address(0)
         _assetRecipient = assetRecipient;
         if (_assetRecipient == address(0)) {
-            // Tokens will be transferred to address(this)
-            _assetRecipient = payable(address(this));
+            _assetRecipient = payable(owner());
         }
     }
+
+    /**
+     * @notice Returns the address that receives trade fees when a swap is done with this pair
+     *      Only relevant for TRADE pools
+     *      If set to address(0), defaults to owner()
+     */
+     function getFeeRecipient() public view returns (address payable _feeRecipient) {
+        _feeRecipient = assetRecipient;
+        if (_feeRecipient == address(0)) {
+            _feeRecipient = payable(address(this));
+        }
+     }
 
     /**
      * Internal functions
@@ -332,7 +355,9 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param numNFTs The amount of NFTs to purchase from the pair
      *     @param maxExpectedTokenInput The maximum acceptable cost from the sender. If the actual
      *     amount is greater than this value, the transaction will be reverted.
-     *     @param protocolFee The percentage of protocol fee to be taken, as a percentage
+     *     @param _bondingCurve The bonding curve to use for price calculation
+     *     @param _factory The factory to use for protocol fee lookup
+     *     @return tradeFee The amount of tokens to send as trade fee
      *     @return protocolFee The amount of tokens to send as protocol fee
      *     @return inputAmount The amount of tokens total tokens receive
      */
@@ -341,14 +366,14 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         uint256 maxExpectedTokenInput,
         ICurve _bondingCurve,
         ILSSVMPairFactoryLike _factory
-    ) internal returns (uint256 protocolFee, uint256 inputAmount) {
+    ) internal returns (uint256 tradeFee, uint256 protocolFee, uint256 inputAmount) {
         CurveErrorCodes.Error error;
         // Save on 2 SLOADs by caching
         uint128 currentSpotPrice = spotPrice;
-        uint128 newSpotPrice;
         uint128 currentDelta = delta;
         uint128 newDelta;
-        (error, newSpotPrice, newDelta, inputAmount, protocolFee) =
+        uint128 newSpotPrice;
+        (error, newSpotPrice, newDelta, inputAmount, tradeFee, protocolFee) =
             _bondingCurve.getBuyInfo(currentSpotPrice, currentDelta, numNFTs, fee, _factory.protocolFeeMultiplier());
 
         // Revert if bonding curve had an error
@@ -381,7 +406,9 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param numNFTs The amount of NFTs to send to the the pair
      *     @param minExpectedTokenOutput The minimum acceptable token received by the sender. If the actual
      *     amount is less than this value, the transaction will be reverted.
-     *     @param protocolFee The percentage of protocol fee to be taken, as a percentage
+     *     @param _bondingCurve The bonding curve to use for price calculation
+     *     @param _factory The factory to use for protocol fee lookup
+     *     @return tradeFee The amount of tokens to send as trade fee
      *     @return protocolFee The amount of tokens to send as protocol fee
      *     @return outputAmount The amount of tokens total tokens receive
      */
@@ -390,14 +417,14 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         uint256 minExpectedTokenOutput,
         ICurve _bondingCurve,
         ILSSVMPairFactoryLike _factory
-    ) internal returns (uint256 protocolFee, uint256 outputAmount) {
+    ) internal returns (uint256 tradeFee, uint256 protocolFee, uint256 outputAmount) {
         CurveErrorCodes.Error error;
         // Save on 2 SLOADs by caching
         uint128 currentSpotPrice = spotPrice;
         uint128 newSpotPrice;
         uint128 currentDelta = delta;
         uint128 newDelta;
-        (error, newSpotPrice, newDelta, outputAmount, protocolFee) =
+        (error, newSpotPrice, newDelta, outputAmount, tradeFee, protocolFee) =
             _bondingCurve.getSellInfo(currentSpotPrice, currentDelta, numNFTs, fee, _factory.protocolFeeMultiplier());
 
         // Revert if bonding curve had an error
@@ -428,6 +455,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     /**
      * @notice Pulls the token input of a trade from the trader and pays the protocol fee.
      *     @param inputAmount The amount of tokens to be sent
+     *     @param tradeFeeAmount The amount of tokens to be sent as trade fee (if applicable)
      *     @param isRouter Whether or not the caller is LSSVMRouter
      *     @param routerCaller If called from LSSVMRouter, store the original caller
      *     @param _factory The LSSVMPairFactory which stores LSSVMRouter allowlist info
@@ -435,6 +463,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      */
     function _pullTokenInputAndPayProtocolFee(
         uint256 inputAmount,
+        uint256 tradeFeeAmount,
         bool isRouter,
         address routerCaller,
         ILSSVMPairFactoryLike _factory,
@@ -555,15 +584,17 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     {
         // get royalty lookup address from the shared royalty registry
         address lookupAddress = ROYALTY_REGISTRY.getRoyaltyLookupAddress(address(nft()));
-
+        
         // calculates royalty payments for ERC2981 compatible lookup addresses
-        if (IERC2981(lookupAddress).supportsInterface(type(IERC2981).interfaceId)) {
+        if (lookupAddress.isContract()) {
             // queries the default royalty (or specific for this pool)
-            (royaltyRecipient, royaltyAmount) =
-                IERC2981(lookupAddress).royaltyInfo(uint256(keccak256(abi.encode(address(this)))), saleAmount);
-
-            // validate royalty amount
-            require(saleAmount >= royaltyAmount, "royalty exceeds sale price");
+            try IERC2981(lookupAddress).royaltyInfo(uint256(keccak256(abi.encode(address(this)))), saleAmount) returns (address _royaltyRecipient, uint256 _royaltyAmount) {
+                // validate royalty amount
+                require(saleAmount >= _royaltyAmount, "Royalty exceeds sale price");
+                royaltyRecipient = _royaltyRecipient;
+                royaltyAmount = _royaltyAmount;
+            }
+            catch (bytes memory) {}
         }
     }
 

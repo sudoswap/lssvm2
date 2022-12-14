@@ -21,7 +21,7 @@ contract LinearCurveTest is Test {
         uint256 numItems = 5;
         uint256 feeMultiplier = (FixedPointMathLib.WAD * 5) / 1000; // 0.5%
         uint256 protocolFeeMultiplier = (FixedPointMathLib.WAD * 3) / 1000; // 0.3%
-        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue, uint256 protocolFee) =
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue, /* tradeFee */,uint256 protocolFee) =
             curve.getBuyInfo(spotPrice, delta, numItems, feeMultiplier, protocolFeeMultiplier);
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
         assertEq(newSpotPrice, 3.5 ether, "Spot price incorrect");
@@ -35,7 +35,7 @@ contract LinearCurveTest is Test {
             return;
         }
 
-        (CurveErrorCodes.Error error, uint128 newSpotPrice,, uint256 inputValue,) =
+        (CurveErrorCodes.Error error, uint128 newSpotPrice,, uint256 inputValue,,) =
             curve.getBuyInfo(spotPrice, delta, numItems, 0, 0);
         if (uint256(spotPrice) + uint256(delta) * uint256(numItems) > type(uint128).max) {
             assertEq(
@@ -59,7 +59,7 @@ contract LinearCurveTest is Test {
         uint256 numItems = 5;
         uint256 feeMultiplier = (FixedPointMathLib.WAD * 5) / 1000; // 0.5%
         uint256 protocolFeeMultiplier = (FixedPointMathLib.WAD * 3) / 1000; // 0.3%
-        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 outputValue, uint256 protocolFee)
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 outputValue, /* tradeFee */,uint256 protocolFee)
         = curve.getSellInfo(spotPrice, delta, numItems, feeMultiplier, protocolFeeMultiplier);
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
         assertEq(newSpotPrice, 2.5 ether, "Spot price incorrect");
@@ -73,7 +73,7 @@ contract LinearCurveTest is Test {
             return;
         }
 
-        (CurveErrorCodes.Error error, uint128 newSpotPrice,, uint256 outputValue,) =
+        (CurveErrorCodes.Error error, uint128 newSpotPrice,, uint256 outputValue,,) =
             curve.getSellInfo(spotPrice, delta, numItems, 0, 0);
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
 

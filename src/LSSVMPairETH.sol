@@ -34,6 +34,7 @@ contract LSSVMPairETH is LSSVMPair {
     /// @inheritdoc LSSVMPair
     function _pullTokenInputAndPayProtocolFee(
         uint256 inputAmount,
+        uint256 tradeFeeAmount,
         bool, /*isRouter*/
         address, /*routerCaller*/
         ILSSVMPairFactoryLike _factory,
@@ -53,6 +54,16 @@ contract LSSVMPairETH is LSSVMPair {
 
         // Transfer saleAmount ETH to assetRecipient if it's been set
         address payable _assetRecipient = getAssetRecipient();
+
+        // Transfer trade fees only if TRADE pool
+        if (poolType() == PoolType.TRADE) {
+            address payable _feeRecipient = getFeeRecipient();
+            if (_feeRecipient != _assetRecipient) {
+                saleAmount -= tradeFeeAmount;
+                _feeRecipient.safeTransferETH(tradeFeeAmount);
+            }
+        }
+
         if (_assetRecipient != address(this)) {
             _assetRecipient.safeTransferETH(saleAmount);
         }
@@ -66,8 +77,6 @@ contract LSSVMPairETH is LSSVMPair {
         if (protocolFee != 0) {
             payable(address(_factory)).safeTransferETH(protocolFee);
         }
-
-        // emit RoyaltyIssued(msg.sender, royaltyRecipient, saleAmount + royaltyAmount, royaltyAmount);
     }
 
     /// @inheritdoc LSSVMPair

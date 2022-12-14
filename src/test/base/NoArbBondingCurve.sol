@@ -93,7 +93,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ConfigurableWithRoyal
 
         // sell all NFTs minted to the pair
         {
-            (, uint256 newSpotPrice,, uint256 outputAmount, uint256 protocolFee) =
+            (, uint256 newSpotPrice,, uint256 outputAmount, /* tradeFee */, uint256 protocolFee) =
                 bondingCurve.getSellInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
 
             // give the pair contract enough tokens to pay for the NFTs
@@ -108,7 +108,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ConfigurableWithRoyal
 
         // buy back the NFTs just sold to the pair
         {
-            (,,, uint256 inputAmount,) = bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
+            (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
             pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
                 idList, inputAmount, address(this), false, address(0)
             );
@@ -167,7 +167,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ConfigurableWithRoyal
 
         // buy all NFTs
         {
-            (, uint256 newSpotPrice,, uint256 inputAmount,) =
+            (, uint256 newSpotPrice,, uint256 inputAmount,,) =
                 bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
 
             // Send some token buffer to the pair

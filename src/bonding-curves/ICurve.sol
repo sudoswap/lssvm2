@@ -32,6 +32,7 @@ interface ICurve {
      *     @return newSpotPrice The updated selling spot price, in tokens
      *     @return newDelta The updated delta, used to parameterize the bonding curve
      *     @return inputValue The amount that the user should pay, in tokens
+     *     @return tradeFee The amount that is sent to the trade fee recipient
      *     @return protocolFee The amount of fee to send to the protocol, in tokens
      */
     function getBuyInfo(
@@ -48,6 +49,7 @@ interface ICurve {
             uint128 newSpotPrice,
             uint128 newDelta,
             uint256 inputValue,
+            uint256 tradeFee,
             uint256 protocolFee
         );
 
@@ -63,6 +65,7 @@ interface ICurve {
      *     @return newSpotPrice The updated selling spot price, in tokens
      *     @return newDelta The updated delta, used to parameterize the bonding curve
      *     @return outputValue The amount that the user should receive, in tokens
+     *     @return tradeFee The amount that is sent to the trade fee recipient
      *     @return protocolFee The amount of fee to send to the protocol, in tokens
      */
     function getSellInfo(
@@ -79,6 +82,7 @@ interface ICurve {
             uint128 newSpotPrice,
             uint128 newDelta,
             uint256 outputValue,
+            uint256 tradeFee,
             uint256 protocolFee
         );
 }

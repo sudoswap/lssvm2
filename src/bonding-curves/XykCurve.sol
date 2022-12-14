@@ -49,10 +49,10 @@ contract XykCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 inputValue, uint256 protocolFee)
+        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 inputValue, uint256 tradeFee, uint256 protocolFee)
     {
         if (numItems == 0) {
-            return (Error.INVALID_NUMITEMS, 0, 0, 0, 0);
+            return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
         }
 
         // get the pair's virtual nft and eth/erc20 reserves
@@ -61,7 +61,7 @@ contract XykCurve is ICurve, CurveErrorCodes {
 
         // If numItems is too large, we will get divide by zero error
         if (numItems >= nftBalance) {
-            return (Error.INVALID_NUMITEMS, 0, 0, 0, 0);
+            return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
         }
 
         // calculate the amount to send in
@@ -69,8 +69,8 @@ contract XykCurve is ICurve, CurveErrorCodes {
 
         // add the fees to the amount to send in
         protocolFee = inputValueWithoutFee.mulWadDown(protocolFeeMultiplier);
-        uint256 fee = inputValueWithoutFee.mulWadDown(feeMultiplier);
-        inputValue = inputValueWithoutFee + fee + protocolFee;
+        tradeFee = inputValueWithoutFee.mulWadDown(feeMultiplier);
+        inputValue = inputValueWithoutFee + tradeFee + protocolFee;
 
         // set the new virtual reserves
         newSpotPrice = uint128(spotPrice + inputValueWithoutFee); // token reserve
@@ -93,10 +93,10 @@ contract XykCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 outputValue, uint256 protocolFee)
+        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 outputValue, uint256 tradeFee, uint256 protocolFee)
     {
         if (numItems == 0) {
-            return (Error.INVALID_NUMITEMS, 0, 0, 0, 0);
+            return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
         }
 
         // get the pair's virtual nft and eth/erc20 balance
@@ -108,8 +108,8 @@ contract XykCurve is ICurve, CurveErrorCodes {
 
         // subtract fees from amount to send out
         protocolFee = outputValueWithoutFee.mulWadDown(protocolFeeMultiplier);
-        uint256 fee = outputValueWithoutFee.mulWadDown(feeMultiplier);
-        outputValue = outputValueWithoutFee - fee - protocolFee;
+        tradeFee = outputValueWithoutFee.mulWadDown(feeMultiplier);
+        outputValue = outputValueWithoutFee - tradeFee - protocolFee;
 
         // set the new virtual reserves
         newSpotPrice = uint128(spotPrice - outputValueWithoutFee); // token reserve

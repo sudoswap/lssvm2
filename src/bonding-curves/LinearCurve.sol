@@ -40,17 +40,17 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 inputValue, uint256 protocolFee)
+        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 inputValue, uint256 tradeFee, uint256 protocolFee)
     {
         // We only calculate changes for buying 1 or more NFTs
         if (numItems == 0) {
-            return (Error.INVALID_NUMITEMS, 0, 0, 0, 0);
+            return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
         }
 
         // For a linear curve, the spot price increases by delta for each item bought
         uint256 newSpotPrice_ = spotPrice + delta * numItems;
         if (newSpotPrice_ > type(uint128).max) {
-            return (Error.SPOT_PRICE_OVERFLOW, 0, 0, 0, 0);
+            return (Error.SPOT_PRICE_OVERFLOW, 0, 0, 0, 0, 0);
         }
         newSpotPrice = uint128(newSpotPrice_);
 
@@ -72,7 +72,8 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         protocolFee = inputValue.mulWadDown(protocolFeeMultiplier);
 
         // Account for the trade fee, only for Trade pools
-        inputValue += inputValue.mulWadDown(feeMultiplier);
+        tradeFee = inputValue.mulWadDown(feeMultiplier);
+        inputValue += tradeFee;
 
         // Add the protocol fee to the required input amount
         inputValue += protocolFee;
@@ -97,11 +98,11 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 outputValue, uint256 protocolFee)
+        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 outputValue, uint256 tradeFee, uint256 protocolFee)
     {
         // We only calculate changes for selling 1 or more NFTs
         if (numItems == 0) {
-            return (Error.INVALID_NUMITEMS, 0, 0, 0, 0);
+            return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
         }
 
         // We first calculate the change in spot price after selling all of the items
@@ -132,7 +133,8 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         protocolFee = outputValue.mulWadDown(protocolFeeMultiplier);
 
         // Account for the trade fee, only for Trade pools
-        outputValue -= outputValue.mulWadDown(feeMultiplier);
+        tradeFee = outputValue.mulWadDown(feeMultiplier);
+        outputValue -= tradeFee;
 
         // Subtract the protocol fee from the output amount to the seller
         outputValue -= protocolFee;
