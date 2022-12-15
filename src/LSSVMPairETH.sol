@@ -55,9 +55,10 @@ contract LSSVMPairETH is LSSVMPair {
         // Transfer saleAmount ETH to assetRecipient if it's been set
         address payable _assetRecipient = getAssetRecipient();
 
-        // Transfer trade fees only if TRADE pool
-        if (poolType() == PoolType.TRADE) {
+        // Transfer trade fees only if TRADE pool and they exist
+        if (poolType() == PoolType.TRADE && tradeFeeAmount > 0) {
             address payable _feeRecipient = getFeeRecipient();
+            // Only send and deduct inputAmount if the fee recipient is not the asset recipient (i.e. the pool)
             if (_feeRecipient != _assetRecipient) {
                 saleAmount -= tradeFeeAmount;
                 _feeRecipient.safeTransferETH(tradeFeeAmount);

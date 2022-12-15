@@ -228,7 +228,7 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
         );
-        // Assert 90% and 10% split of the buy amount between sellPairRecipient and the factory
+        // Assert split of the buy amount between sellPairRecipient (1.0 ETH) and the factory (0.1 ETH)
         assertEq(getBalance(address(factory)), inputAmount / 11);
         assertEq(getBalance(sellPairRecipient) + getBalance(address(factory)), inputAmount);
     }

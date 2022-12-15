@@ -92,8 +92,6 @@ contract LSSVMPairERC20 is LSSVMPair {
 
             // Take protocol fee (if it exists)
             if (protocolFee != 0) {
-                // Note: no check for factory balance's because router is assumed to be set by factory owner
-                // so there is no incentive to *not* pay protocol fee
                 router.pairTransferERC20From(_token, routerCaller, address(_factory), protocolFee, pairVariant());
             }
         } else {
@@ -110,8 +108,13 @@ contract LSSVMPairERC20 is LSSVMPair {
                 _token.safeTransferFrom(msg.sender, address(_factory), protocolFee);
             }
         }
-
-        // emit RoyaltyIssued(msg.sender, royaltyRecipient, saleAmount + royaltyAmount, royaltyAmount);
+        // Send trade fee if it exists, is TRADE pool, and fee recipient != pool address
+        if (poolType() == PoolType.TRADE && tradeFeeAmount > 0) {
+            address payable _feeRecipient = getFeeRecipient();
+            if (_feeRecipient != _assetRecipient) {
+                _token.safeTransfer(_feeRecipient, tradeFeeAmount);
+            }
+        }
     }
 
     /// @inheritdoc LSSVMPair

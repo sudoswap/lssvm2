@@ -50,7 +50,8 @@ abstract contract RouterRobustSwap is Test, ERC721Holder, ConfigurableWithRoyalt
             erc20Template,
             feeRecipient,
             protocolFeeMultiplier,
-            address(this)
+            address(this),
+            address(royaltyRegistry)
         );
         router = new LSSVMRouter(factory);
 

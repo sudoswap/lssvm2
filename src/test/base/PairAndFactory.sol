@@ -54,7 +54,8 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
             erc20Template,
             feeRecipient,
             protocolFeeMultiplier,
-            address(this)
+            address(this),
+            address(royaltyRegistry)
         );
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);
@@ -291,10 +292,6 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         pair.transferOwnership(address(1000));
         pair.withdrawERC721(test721, idList);
         pair.withdrawERC20(testERC20, 1 ether);
-    }
-
-    function testFail_changeAssetRecipientForTrade() public {
-        pair.changeAssetRecipient(payable(address(1)));
     }
 
     function testFail_changeFeeAboveMax() public {

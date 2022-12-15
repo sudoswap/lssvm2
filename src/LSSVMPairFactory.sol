@@ -27,12 +27,15 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     LSSVMPairETH public immutable ethTemplate;
     LSSVMPairERC20 public immutable erc20Template;
     address payable public override protocolFeeRecipient;
+    IRoyaltyRegistry public immutable royaltyRegistry;
 
     // Units are in base 1e18
     uint256 public override protocolFeeMultiplier;
 
     mapping(ICurve => bool) public bondingCurveAllowed;
     mapping(address => bool) public override callAllowed;
+    mapping(address => address) public authorizedOverriders;
+    mapping(address => bool) public poolOverrideAllowed;
 
     struct RouterStatus {
         bool allowed;
@@ -55,14 +58,15 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         LSSVMPairERC20 _erc20Template,
         address payable _protocolFeeRecipient,
         uint256 _protocolFeeMultiplier,
-        address _owner
+        address _owner,
+        address _royaltyRegistry
     ) Owned(_owner) {
         ethTemplate = _ethTemplate;
         erc20Template = _erc20Template;
         protocolFeeRecipient = _protocolFeeRecipient;
-
         require(_protocolFeeMultiplier <= MAX_PROTOCOL_FEE, "Fee too large");
         protocolFeeMultiplier = _protocolFeeMultiplier;
+        royaltyRegistry = IRoyaltyRegistry(_royaltyRegistry);
     }
 
     /**
@@ -259,6 +263,16 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
         emit RouterStatusUpdate(_router, isAllowed);
     }
+
+    /**
+     * @notice Sets or removes an authorized overrider to set pool overrides on an owner's behalf
+     *      @param overrider The address to add/remove
+     *      @param project The NFT project that the overrider can administer overrides for
+     *      @param isAllowed True to allow, false to revoke
+     */
+     function setOverriderAllowed(address overrider, address project, bool isAllowed) public {
+        
+     }
 
     /**
      * Internal functions

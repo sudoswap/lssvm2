@@ -35,7 +35,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     // 90%, must <= 1 - MAX_PROTOCOL_FEE (set in LSSVMPairFactory)
     uint256 internal constant MAX_FEE = 0.9e18;
 
-    // Royalty support
+    // Manifold royalty registry
     IRoyaltyRegistry public immutable ROYALTY_REGISTRY;
 
     // The current price of the NFT
@@ -53,8 +53,9 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     // Units are in base 1e18
     uint96 public fee;
 
-    // If set to 0, NFTs/tokens sent by traders during trades will be sent to the pair.
-    // Otherwise, assets will be sent to the set address. Not available for TRADE pools.
+    // The address that swapped assets are sent to 
+    // For TRADE pools, assets are always sent to the pool, so this is used to track trade fee
+    // If set to address(0), will default to owner() for NFT and TOKEN pools
     address payable public assetRecipient;
 
     // Events
@@ -110,7 +111,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         }
 
         // Set asset recipient if it's not address(0)
-        if ((_assetRecipient != address(0)) && (_assetRecipient != _owner)) {
+        if (_assetRecipient != address(0)) {
             assetRecipient = _assetRecipient;
         }
 
@@ -163,7 +164,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         (tradeFee, protocolFee, inputAmount) =
             _calculateBuyInfoAndUpdatePoolParams(nftIds.length, maxExpectedTokenInput, _bondingCurve, _factory);
 
-        _pullTokenInputAndPayProtocolFee(inputAmount, isRouter, routerCaller, _factory, protocolFee);
+        _pullTokenInputAndPayProtocolFee(inputAmount, tradeFee, isRouter, routerCaller, _factory, protocolFee);
 
         _sendSpecificNFTsToRecipient(nft(), nftRecipient, nftIds);
 
@@ -689,8 +690,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param newRecipient The new asset recipient
      */
     function changeAssetRecipient(address payable newRecipient) external onlyOwner {
-        PoolType _poolType = poolType();
-        require(_poolType != PoolType.TRADE, "Not for Trade pools");
         if (assetRecipient != newRecipient) {
             assetRecipient = newRecipient;
             emit AssetRecipientChange(newRecipient);

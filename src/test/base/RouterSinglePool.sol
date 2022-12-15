@@ -25,6 +25,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
     LSSVMRouter router;
     LSSVMPair pair;
     address payable constant feeRecipient = payable(address(69));
+    address payable constant tradeFeeRecipient = payable(address(420));
     uint256 constant protocolFeeMultiplier = 3e15;
     uint256 constant numInitialNFTs = 10;
 
@@ -41,7 +42,8 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
             erc20Template,
             feeRecipient,
             protocolFeeMultiplier,
-            address(this)
+            address(this),
+            address(royaltyRegistry)
         );
         router = new LSSVMRouter(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);
@@ -91,6 +93,29 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
         );
+    }
+
+    function test_swapTokenForSingleNFTWithFeeRecipient() public {
+        
+        // Set protocol fee to 0% to make the math easier
+        factory.changeProtocolFeeMultiplier(0);
+
+        // Set 10% fee to go to tradeFeeRecipient
+        pair.changeAssetRecipient(tradeFeeRecipient);
+        pair.changeFee(0.1e18);
+
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = 1;
+        LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        uint256 inputAmount;
+        (,,, inputAmount,) = pair.getBuyNFTQuote(1);
+        this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
+        );
+
+        // Do trade fee check to ensure that the recipient received the tokens
+        assertEq(getBalance(tradeFeeRecipient), inputAmount / 11);
     }
 
     function test_swapSingleNFTForToken() public {

@@ -524,7 +524,7 @@ contract LSSVMRouter {
         require(factory.isPair(msg.sender, variant), "Not pair");
 
         // transfer NFTs to pair
-        nft.safeTransferFrom(from, to, id);
+        nft.transferFrom(from, to, id);
     }
 
     /**
