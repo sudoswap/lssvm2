@@ -40,8 +40,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ConfigurableWithRoyal
             erc20Template,
             feeRecipient,
             protocolFeeMultiplier,
-            address(this),
-            address(royaltyRegistry)
+            address(this)
         );
         test721.setApprovalForAll(address(factory), true);
         factory.setBondingCurveAllowed(bondingCurve, true);

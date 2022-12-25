@@ -54,8 +54,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
             erc20Template,
             feeRecipient,
             protocolFeeMultiplier,
-            address(this),
-            address(royaltyRegistry)
+            address(this)
         );
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);

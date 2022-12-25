@@ -53,8 +53,7 @@ abstract contract RouterRobustSwapWithAssetRecipient is Test, ERC721Holder, Conf
             erc20Template,
             feeRecipient,
             protocolFeeMultiplier,
-            address(this),
-            address(royaltyRegistry)
+            address(this)
         );
         router = new LSSVMRouter(factory);
 

@@ -588,7 +588,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         
         // calculates royalty payments for ERC2981 compatible lookup addresses
         if (lookupAddress.isContract()) {
-            // queries the default royalty (or specific for this pool)
+            // queries the default royalty for the first asset
             try IERC2981(lookupAddress).royaltyInfo(uint256(keccak256(abi.encode(address(this)))), saleAmount) returns (address _royaltyRecipient, uint256 _royaltyAmount) {
                 // validate royalty amount
                 require(saleAmount >= _royaltyAmount, "Royalty exceeds sale price");

@@ -45,8 +45,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
             erc20Template,
             feeRecipient,
             protocolFeeMultiplier,
-            address(this),
-            address(royaltyRegistry)
+            address(this)
         );
         router = new LSSVMRouter(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);

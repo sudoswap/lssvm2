@@ -47,8 +47,7 @@ abstract contract RouterPartialFill is Test, ERC721Holder, ConfigurableWithRoyal
             erc20Template,
             feeRecipient,
             protocolFeeMultiplier,
-            address(this),
-            address(royaltyRegistry)
+            address(this)
         );
         router = new LSSVMRouter2(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);
