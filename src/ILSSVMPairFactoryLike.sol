@@ -4,6 +4,12 @@ pragma solidity ^0.8.0;
 import {LSSVMRouter} from "./LSSVMRouter.sol";
 
 interface ILSSVMPairFactoryLike {
+
+    struct Agreement {
+      uint96 bps;
+      address pairAddress;
+    }
+
     enum PairVariant {
         ETH,
         ERC20
@@ -14,6 +20,8 @@ interface ILSSVMPairFactoryLike {
     function protocolFeeRecipient() external view returns (address payable);
 
     function callAllowed(address target) external view returns (bool);
+
+    function agreementForPair(address pairAddress) external view returns (bool isInAgreement, uint96 bps);
 
     function routerStatus(LSSVMRouter router) external view returns (bool allowed, bool wasEverAllowed);
 

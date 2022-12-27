@@ -22,8 +22,12 @@ import {OwnableWithTransferCallback} from "./lib/OwnableWithTransferCallback.sol
 /// @title The base contract for an NFT/TOKEN AMM pair
 /// @author boredGenius and 0xmons
 /// @notice This implements the core swap logic from NFT to TOKEN
-abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC721Holder, ERC1155Holder {
-
+abstract contract LSSVMPair is
+    OwnableWithTransferCallback,
+    ReentrancyGuard,
+    ERC721Holder,
+    ERC1155Holder
+{
     using Address for address;
 
     enum PoolType {
@@ -38,9 +42,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     // Manifold royalty registry
     IRoyaltyRegistry public immutable ROYALTY_REGISTRY;
 
-    // The current price of the NFT
     // @dev This is generally used to mean the immediate sell price for the next marginal NFT.
-    // However, this should NOT be assumed, as future bonding curves may use spotPrice in different ways.
+    // However, this should NOT be assumed, as bonding curves may use spotPrice in different ways.
     // Use getBuyNFTQuote and getSellNFTQuote for accurate pricing info.
     uint128 public spotPrice;
 
@@ -53,7 +56,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     // Units are in base 1e18
     uint96 public fee;
 
-    // The address that swapped assets are sent to 
+    // The address that swapped assets are sent to
     // For TRADE pools, assets are always sent to the pool, so this is used to track trade fee
     // If set to address(0), will default to owner() for NFT and TOKEN pools
     address payable public assetRecipient;
@@ -68,7 +71,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     event DeltaUpdate(uint128 newDelta);
     event FeeUpdate(uint96 newFee);
     event AssetRecipientChange(address a);
-    // event RoyaltyIssued(address indexed issuer, address indexed recipient, uint256 saleAmount, uint256 royaltyAmount);
 
     // Parameterized Errors
     error BondingCurveError(CurveErrorCodes.Error error);
@@ -116,7 +118,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         }
 
         require(_bondingCurve.validateDelta(_delta), "Invalid delta for curve");
-        require(_bondingCurve.validateSpotPrice(_spotPrice), "Invalid new spot price for curve");
+        require(
+            _bondingCurve.validateSpotPrice(_spotPrice),
+            "Invalid new spot price for curve"
+        );
         delta = _delta;
         spotPrice = _spotPrice;
     }
@@ -154,17 +159,36 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         // Input validation
         {
             PoolType _poolType = poolType();
-            require(_poolType == PoolType.NFT || _poolType == PoolType.TRADE, "Wrong Pool type");
+            require(
+                _poolType == PoolType.NFT || _poolType == PoolType.TRADE,
+                "Wrong Pool type"
+            );
             require((nftIds.length > 0), "Must ask for > 0 NFTs");
         }
 
         // Call bonding curve for pricing information
         uint256 protocolFee;
         uint256 tradeFee;
-        (tradeFee, protocolFee, inputAmount) =
-            _calculateBuyInfoAndUpdatePoolParams(nftIds.length, maxExpectedTokenInput, _bondingCurve, _factory);
+        (
+            tradeFee,
+            protocolFee,
+            inputAmount
+        ) = _calculateBuyInfoAndUpdatePoolParams(
+            nftIds.length,
+            maxExpectedTokenInput,
+            _bondingCurve,
+            _factory
+        );
 
-        _pullTokenInputAndPayProtocolFee(inputAmount, tradeFee, isRouter, routerCaller, _factory, protocolFee);
+        _pullTokenInputAndPayProtocolFee(
+            nftIds[0],
+            inputAmount,
+            tradeFee,
+            isRouter,
+            routerCaller,
+            _factory,
+            protocolFee
+        );
 
         _sendSpecificNFTsToRecipient(nft(), nftRecipient, nftIds);
 
@@ -200,18 +224,32 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         // Input validation
         {
             PoolType _poolType = poolType();
-            require(_poolType == PoolType.TOKEN || _poolType == PoolType.TRADE, "Wrong Pool type");
+            require(
+                _poolType == PoolType.TOKEN || _poolType == PoolType.TRADE,
+                "Wrong Pool type"
+            );
             require(nftIds.length > 0, "Must ask for > 0 NFTs");
         }
 
         // Call bonding curve for pricing information
         uint256 protocolFee;
         uint256 tradeFee;
-        (tradeFee, protocolFee, outputAmount) =
-            _calculateSellInfoAndUpdatePoolParams(nftIds.length, minExpectedTokenOutput, _bondingCurve, _factory);
+        (
+            tradeFee,
+            protocolFee,
+            outputAmount
+        ) = _calculateSellInfoAndUpdatePoolParams(
+            nftIds.length,
+            minExpectedTokenOutput,
+            _bondingCurve,
+            _factory
+        );
 
         // Compute royalties
-        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(outputAmount);
+        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(
+            nftIds[0],
+            outputAmount
+        );
 
         // Deduct royalties from outputAmount
         unchecked {
@@ -249,8 +287,20 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             uint256 protocolFee
         )
     {
-        (error, newSpotPrice, newDelta, inputAmount, /* tradeFee */, protocolFee) =
-            bondingCurve().getBuyInfo(spotPrice, delta, numNFTs, fee, factory().protocolFeeMultiplier());
+        (
+            error,
+            newSpotPrice,
+            newDelta,
+            inputAmount, /* tradeFee */
+            ,
+            protocolFee
+        ) = bondingCurve().getBuyInfo(
+            spotPrice,
+            delta,
+            numNFTs,
+            fee,
+            factory().protocolFeeMultiplier()
+        );
     }
 
     /**
@@ -268,19 +318,38 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             uint256 protocolFee
         )
     {
-        (error, newSpotPrice, newDelta, outputAmount, /* tradeFee */, protocolFee) =
-            bondingCurve().getSellInfo(spotPrice, delta, numNFTs, fee, factory().protocolFeeMultiplier());
+        (
+            error,
+            newSpotPrice,
+            newDelta,
+            outputAmount, /* tradeFee */
+            ,
+            protocolFee
+        ) = bondingCurve().getSellInfo(
+            spotPrice,
+            delta,
+            numNFTs,
+            fee,
+            factory().protocolFeeMultiplier()
+        );
     }
 
     /**
      * @notice Returns the pair's variant (Pair uses ETH or ERC20)
      */
-    function pairVariant() public pure virtual returns (ILSSVMPairFactoryLike.PairVariant);
+    function pairVariant()
+        public
+        pure
+        virtual
+        returns (ILSSVMPairFactoryLike.PairVariant);
 
     function factory() public pure returns (ILSSVMPairFactoryLike _factory) {
         uint256 paramsLength = _immutableParamsLength();
         assembly {
-            _factory := shr(0x60, calldataload(sub(calldatasize(), paramsLength)))
+            _factory := shr(
+                0x60,
+                calldataload(sub(calldatasize(), paramsLength))
+            )
         }
     }
 
@@ -290,7 +359,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     function bondingCurve() public pure returns (ICurve _bondingCurve) {
         uint256 paramsLength = _immutableParamsLength();
         assembly {
-            _bondingCurve := shr(0x60, calldataload(add(sub(calldatasize(), paramsLength), 20)))
+            _bondingCurve := shr(
+                0x60,
+                calldataload(add(sub(calldatasize(), paramsLength), 20))
+            )
         }
     }
 
@@ -300,7 +372,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     function nft() public pure returns (IERC721 _nft) {
         uint256 paramsLength = _immutableParamsLength();
         assembly {
-            _nft := shr(0x60, calldataload(add(sub(calldatasize(), paramsLength), 40)))
+            _nft := shr(
+                0x60,
+                calldataload(add(sub(calldatasize(), paramsLength), 40))
+            )
         }
     }
 
@@ -310,7 +385,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     function poolType() public pure returns (PoolType _poolType) {
         uint256 paramsLength = _immutableParamsLength();
         assembly {
-            _poolType := shr(0xf8, calldataload(add(sub(calldatasize(), paramsLength), 60)))
+            _poolType := shr(
+                0xf8,
+                calldataload(add(sub(calldatasize(), paramsLength), 60))
+            )
         }
     }
 
@@ -319,8 +397,11 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     Can be set to another address by the owner, but has no effect on TRADE pools
      *     If set to address(0), defaults to owner() for NFT/TOKEN pools
      */
-    function getAssetRecipient() public view returns (address payable _assetRecipient) {
-
+    function getAssetRecipient()
+        public
+        view
+        returns (address payable _assetRecipient)
+    {
         // TRADE pools will always receive the asset themselves
         if (poolType() == PoolType.TRADE) {
             _assetRecipient = payable(address(this));
@@ -338,14 +419,18 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     /**
      * @notice Returns the address that receives trade fees when a swap is done with this pair
      *      Only relevant for TRADE pools
-     *      If set to address(0), defaults to owner()
+     *      If set to address(0), defaults to the pair itself
      */
-     function getFeeRecipient() public view returns (address payable _feeRecipient) {
+    function getFeeRecipient()
+        public
+        view
+        returns (address payable _feeRecipient)
+    {
         _feeRecipient = assetRecipient;
         if (_feeRecipient == address(0)) {
             _feeRecipient = payable(address(this));
         }
-     }
+    }
 
     /**
      * Internal functions
@@ -367,15 +452,34 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         uint256 maxExpectedTokenInput,
         ICurve _bondingCurve,
         ILSSVMPairFactoryLike _factory
-    ) internal returns (uint256 tradeFee, uint256 protocolFee, uint256 inputAmount) {
+    )
+        internal
+        returns (
+            uint256 tradeFee,
+            uint256 protocolFee,
+            uint256 inputAmount
+        )
+    {
         CurveErrorCodes.Error error;
         // Save on 2 SLOADs by caching
         uint128 currentSpotPrice = spotPrice;
         uint128 currentDelta = delta;
         uint128 newDelta;
         uint128 newSpotPrice;
-        (error, newSpotPrice, newDelta, inputAmount, tradeFee, protocolFee) =
-            _bondingCurve.getBuyInfo(currentSpotPrice, currentDelta, numNFTs, fee, _factory.protocolFeeMultiplier());
+        (
+            error,
+            newSpotPrice,
+            newDelta,
+            inputAmount,
+            tradeFee,
+            protocolFee
+        ) = _bondingCurve.getBuyInfo(
+            currentSpotPrice,
+            currentDelta,
+            numNFTs,
+            fee,
+            _factory.protocolFeeMultiplier()
+        );
 
         // Revert if bonding curve had an error
         if (error != CurveErrorCodes.Error.OK) {
@@ -418,15 +522,34 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         uint256 minExpectedTokenOutput,
         ICurve _bondingCurve,
         ILSSVMPairFactoryLike _factory
-    ) internal returns (uint256 tradeFee, uint256 protocolFee, uint256 outputAmount) {
+    )
+        internal
+        returns (
+            uint256 tradeFee,
+            uint256 protocolFee,
+            uint256 outputAmount
+        )
+    {
         CurveErrorCodes.Error error;
         // Save on 2 SLOADs by caching
         uint128 currentSpotPrice = spotPrice;
         uint128 newSpotPrice;
         uint128 currentDelta = delta;
         uint128 newDelta;
-        (error, newSpotPrice, newDelta, outputAmount, tradeFee, protocolFee) =
-            _bondingCurve.getSellInfo(currentSpotPrice, currentDelta, numNFTs, fee, _factory.protocolFeeMultiplier());
+        (
+            error,
+            newSpotPrice,
+            newDelta,
+            outputAmount,
+            tradeFee,
+            protocolFee
+        ) = _bondingCurve.getSellInfo(
+            currentSpotPrice,
+            currentDelta,
+            numNFTs,
+            fee,
+            _factory.protocolFeeMultiplier()
+        );
 
         // Revert if bonding curve had an error
         if (error != CurveErrorCodes.Error.OK) {
@@ -434,7 +557,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         }
 
         // Revert if output is too little
-        require(outputAmount >= minExpectedTokenOutput, "Out too little tokens");
+        require(
+            outputAmount >= minExpectedTokenOutput,
+            "Out too little tokens"
+        );
 
         // Consolidate writes to save gas
         if (currentSpotPrice != newSpotPrice || currentDelta != newDelta) {
@@ -455,6 +581,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
     /**
      * @notice Pulls the token input of a trade from the trader and pays the protocol fee.
+     *     @param assetId The first ID of the asset to be swapped for
      *     @param inputAmount The amount of tokens to be sent
      *     @param tradeFeeAmount The amount of tokens to be sent as trade fee (if applicable)
      *     @param isRouter Whether or not the caller is LSSVMRouter
@@ -463,6 +590,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param protocolFee The protocol fee to be paid
      */
     function _pullTokenInputAndPayProtocolFee(
+        uint256 assetId,
         uint256 inputAmount,
         uint256 tradeFeeAmount,
         bool isRouter,
@@ -481,14 +609,20 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     /**
      * @notice Sends protocol fee (if it exists) back to the LSSVMPairFactory from the pair
      */
-    function _payProtocolFeeFromPair(ILSSVMPairFactoryLike _factory, uint256 protocolFee) internal virtual;
+    function _payProtocolFeeFromPair(
+        ILSSVMPairFactoryLike _factory,
+        uint256 protocolFee
+    ) internal virtual;
 
     /**
      * @notice Sends tokens to a recipient
      *     @param tokenRecipient The address receiving the tokens
      *     @param outputAmount The amount of tokens to send
      */
-    function _sendTokenOutput(address payable tokenRecipient, uint256 outputAmount) internal virtual;
+    function _sendTokenOutput(
+        address payable tokenRecipient,
+        uint256 outputAmount
+    ) internal virtual;
 
     /**
      * @notice Sends specific NFTs to a recipient address
@@ -498,13 +632,14 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param nftRecipient The receiving address for the NFTs
      *     @param nftIds The specific IDs of NFTs to send
      */
-    function _sendSpecificNFTsToRecipient(IERC721 _nft, address nftRecipient, uint256[] calldata nftIds)
-        internal
-        virtual
-    {
+    function _sendSpecificNFTsToRecipient(
+        IERC721 _nft,
+        address nftRecipient,
+        uint256[] calldata nftIds
+    ) internal virtual {
         // Send NFTs to recipient
         uint256 numNFTs = nftIds.length;
-        for (uint256 i; i < numNFTs;) {
+        for (uint256 i; i < numNFTs; ) {
             _nft.safeTransferFrom(address(this), nftRecipient, nftIds[i]);
 
             unchecked {
@@ -537,28 +672,47 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             if (isRouter) {
                 // Verify if router is allowed
                 LSSVMRouter router = LSSVMRouter(payable(msg.sender));
-                (bool routerAllowed,) = _factory.routerStatus(router);
+                (bool routerAllowed, ) = _factory.routerStatus(router);
                 require(routerAllowed, "Not router");
 
                 // Call router to pull NFTs
                 // If more than 1 NFT is being transfered, we can do a balance check instead of an ownership check, as pools are indifferent between NFTs from the same collection
                 if (numNFTs > 1) {
                     uint256 beforeBalance = _nft.balanceOf(_assetRecipient);
-                    for (uint256 i = 0; i < numNFTs;) {
-                        router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i], pairVariant());
+                    for (uint256 i = 0; i < numNFTs; ) {
+                        router.pairTransferNFTFrom(
+                            _nft,
+                            routerCaller,
+                            _assetRecipient,
+                            nftIds[i],
+                            pairVariant()
+                        );
 
                         unchecked {
                             ++i;
                         }
                     }
-                    require((_nft.balanceOf(_assetRecipient) - beforeBalance) == numNFTs, "NFTs not transferred");
+                    require(
+                        (_nft.balanceOf(_assetRecipient) - beforeBalance) ==
+                            numNFTs,
+                        "NFTs not transferred"
+                    );
                 } else {
-                    router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[0], pairVariant());
-                    require(_nft.ownerOf(nftIds[0]) == _assetRecipient, "NFT not transferred");
+                    router.pairTransferNFTFrom(
+                        _nft,
+                        routerCaller,
+                        _assetRecipient,
+                        nftIds[0],
+                        pairVariant()
+                    );
+                    require(
+                        _nft.ownerOf(nftIds[0]) == _assetRecipient,
+                        "NFT not transferred"
+                    );
                 }
             } else {
                 // Pull NFTs directly from sender
-                for (uint256 i; i < numNFTs;) {
+                for (uint256 i; i < numNFTs; ) {
                     _nft.transferFrom(msg.sender, _assetRecipient, nftIds[i]);
 
                     unchecked {
@@ -578,24 +732,35 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      * Royalty support internal functions
      */
 
-    function _calculateRoyalties(uint256 saleAmount)
+    function _calculateRoyalties(uint256 assetId, uint256 saleAmount)
         internal
         view
         returns (address royaltyRecipient, uint256 royaltyAmount)
     {
         // get royalty lookup address from the shared royalty registry
-        address lookupAddress = ROYALTY_REGISTRY.getRoyaltyLookupAddress(address(nft()));
-        
+        address lookupAddress = ROYALTY_REGISTRY.getRoyaltyLookupAddress(
+            address(nft())
+        );
+
         // calculates royalty payments for ERC2981 compatible lookup addresses
         if (lookupAddress.isContract()) {
             // queries the default royalty for the first asset
-            try IERC2981(lookupAddress).royaltyInfo(uint256(keccak256(abi.encode(address(this)))), saleAmount) returns (address _royaltyRecipient, uint256 _royaltyAmount) {
-                // validate royalty amount
-                require(saleAmount >= _royaltyAmount, "Royalty exceeds sale price");
+            try
+                IERC2981(lookupAddress).royaltyInfo(assetId, saleAmount)
+            returns (address _royaltyRecipient, uint256 _royaltyAmount) {
                 royaltyRecipient = _royaltyRecipient;
                 royaltyAmount = _royaltyAmount;
+            } catch (bytes memory) {}
+
+            // Look up bps from factory to see if a different value should be provided instead
+            (bool isInAgreement, uint96 bps) = factory().agreementForPair(
+                address(this)
+            );
+            if (isInAgreement) {
+                royaltyAmount = saleAmount * bps / 10000;
             }
-            catch (bytes memory) {}
+            // validate royalty amount
+            require(saleAmount >= royaltyAmount, "Royalty exceeds sale price");
         }
     }
 
@@ -608,11 +773,15 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param a The NFT to transfer
      *     @param nftIds The list of IDs of the NFTs to send to the owner
      */
-    function withdrawERC721(IERC721 a, uint256[] calldata nftIds) external virtual onlyOwner {
+    function withdrawERC721(IERC721 a, uint256[] calldata nftIds)
+        external
+        virtual
+        onlyOwner
+    {
         IERC721 _nft = nft();
         uint256 numNFTs = nftIds.length;
 
-        for (uint256 i; i < numNFTs;) {
+        for (uint256 i; i < numNFTs; ) {
             a.safeTransferFrom(address(this), msg.sender, nftIds[i]);
 
             unchecked {
@@ -638,7 +807,11 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param ids The NFT ids to transfer
      *     @param amounts The amounts of each id to transfer
      */
-    function withdrawERC1155(IERC1155 a, uint256[] calldata ids, uint256[] calldata amounts) external onlyOwner {
+    function withdrawERC1155(
+        IERC1155 a,
+        uint256[] calldata ids,
+        uint256[] calldata amounts
+    ) external onlyOwner {
         a.safeBatchTransferFrom(address(this), msg.sender, ids, amounts, "");
     }
 
@@ -648,7 +821,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      */
     function changeSpotPrice(uint128 newSpotPrice) external onlyOwner {
         ICurve _bondingCurve = bondingCurve();
-        require(_bondingCurve.validateSpotPrice(newSpotPrice), "Invalid new spot price for curve");
+        require(
+            _bondingCurve.validateSpotPrice(newSpotPrice),
+            "Invalid new spot price for curve"
+        );
         if (spotPrice != newSpotPrice) {
             spotPrice = newSpotPrice;
             emit SpotPriceUpdate(newSpotPrice);
@@ -661,7 +837,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      */
     function changeDelta(uint128 newDelta) external onlyOwner {
         ICurve _bondingCurve = bondingCurve();
-        require(_bondingCurve.validateDelta(newDelta), "Invalid delta for curve");
+        require(
+            _bondingCurve.validateDelta(newDelta),
+            "Invalid delta for curve"
+        );
         if (delta != newDelta) {
             delta = newDelta;
             emit DeltaUpdate(newDelta);
@@ -689,7 +868,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     trades. Only callable by the owner.
      *     @param newRecipient The new asset recipient
      */
-    function changeAssetRecipient(address payable newRecipient) external onlyOwner {
+    function changeAssetRecipient(address payable newRecipient)
+        external
+        onlyOwner
+    {
         if (assetRecipient != newRecipient) {
             assetRecipient = newRecipient;
             emit AssetRecipientChange(newRecipient);
@@ -702,10 +884,13 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param target The contract to call
      *     @param data The calldata to pass to the contract
      */
-    function call(address payable target, bytes calldata data) external onlyOwner {
+    function call(address payable target, bytes calldata data)
+        external
+        onlyOwner
+    {
         ILSSVMPairFactoryLike _factory = factory();
         require(_factory.callAllowed(target), "Target must be whitelisted");
-        (bool result,) = target.call{value: 0}(data);
+        (bool result, ) = target.call{value: 0}(data);
         require(result, "Call failed");
     }
 
@@ -715,9 +900,14 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param calls The calldata for each call to make
      *     @param revertOnFail Whether or not to revert the entire tx if any of the calls fail
      */
-    function multicall(bytes[] calldata calls, bool revertOnFail) external onlyOwner {
-        for (uint256 i; i < calls.length;) {
-            (bool success, bytes memory result) = address(this).delegatecall(calls[i]);
+    function multicall(bytes[] calldata calls, bool revertOnFail)
+        external
+        onlyOwner
+    {
+        for (uint256 i; i < calls.length; ) {
+            (bool success, bytes memory result) = address(this).delegatecall(
+                calls[i]
+            );
             if (!success && revertOnFail) {
                 revert(_getRevertMsg(result));
             }
@@ -728,14 +918,21 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         }
 
         // Prevent multicall from malicious frontend sneaking in ownership change
-        require(owner() == msg.sender, "Ownership cannot be changed in multicall");
+        require(
+            owner() == msg.sender,
+            "Ownership cannot be changed in multicall"
+        );
     }
 
     /**
      * @param _returnData The data returned from a multicall result
      *   @dev Used to grab the revert string from the underlying call
      */
-    function _getRevertMsg(bytes memory _returnData) internal pure returns (string memory) {
+    function _getRevertMsg(bytes memory _returnData)
+        internal
+        pure
+        returns (string memory)
+    {
         // If the _res length is less than 68, then the transaction failed silently (without a revert message)
         if (_returnData.length < 68) return "Transaction reverted silently";
 

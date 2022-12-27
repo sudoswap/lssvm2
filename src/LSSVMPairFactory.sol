@@ -16,7 +16,7 @@ import {LSSVMPairCloner} from "./lib/LSSVMPairCloner.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 
 /**
- * Imports for AuthOracle (forked from manifold)
+ * Imports for AuthOracle (forked from manifold.xyz Royalty Registry)
  */
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
@@ -47,7 +47,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     mapping(ICurve => bool) public bondingCurveAllowed;
     mapping(address => bool) public override callAllowed;
     mapping(address => address) public authorizedAgreement;
-    mapping(address => uint256) public bpsForPoolInAgreement;
+    mapping(address => Agreement) public bpsForPairInAgreement;
 
     struct RouterStatus {
         bool allowed;
@@ -315,6 +315,14 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         return false;
     }
 
+    function agreementForPair(address pairAddress) public view returns (bool isInAgreement, uint96 bps) {
+        Agreement memory agreement = bpsForPairInAgreement[pairAddress];
+        if (agreement.pairAddress == pairAddress) {
+          isInAgreement = true;
+          bps = agreement.bps;
+        }
+    }
+
     /**
      * @notice Allows receiving ETH in order to receive protocol fees
      */
@@ -450,18 +458,21 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Sets a separate bps override for a pool, only callable by authorized Agreements
-     *    @param poolAddress The address of the pool to set a different bps for
+     *    @param pairAddress The address of the pool to set a different bps for
      *    @param bps The bps override to set
      */
-    function toggleBpsForPoolInAgreement(address poolAddress, uint256 bps)
+    function toggleBpsForPairInAgreement(address pairAddress, uint96 bps)
         public
     {
         require(
             authorizedAgreement[msg.sender] ==
-                address(LSSVMPair(poolAddress).nft()),
+                address(LSSVMPair(pairAddress).nft()),
             "Unauthorized caller"
         );
-        bpsForPoolInAgreement[poolAddress] = bps;
+        bpsForPairInAgreement[pairAddress] = Agreement({
+            bps: bps,
+            pairAddress: pairAddress
+        });
     }
 
     /**
@@ -508,12 +519,14 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         // initialize pair
         _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
 
-        // transfer initial tokens to pair
-        _token.safeTransferFrom(
-            msg.sender,
-            address(_pair),
-            _initialTokenBalance
-        );
+        // transfer initial tokens to pair (if > 0)
+        if (_initialTokenBalance > 0) {
+            _token.safeTransferFrom(
+                msg.sender,
+                address(_pair),
+                _initialTokenBalance
+            );
+        }
 
         // transfer initial NFTs from sender to pair
         uint256 numNFTs = _initialNFTIDs.length;

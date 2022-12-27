@@ -33,6 +33,7 @@ contract LSSVMPairETH is LSSVMPair {
 
     /// @inheritdoc LSSVMPair
     function _pullTokenInputAndPayProtocolFee(
+        uint256 assetId,
         uint256 inputAmount,
         uint256 tradeFeeAmount,
         bool, /*isRouter*/
@@ -44,7 +45,7 @@ contract LSSVMPairETH is LSSVMPair {
 
         // Compute royalties
         uint256 saleAmount = inputAmount - protocolFee;
-        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(saleAmount);
+        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(assetId, saleAmount);
 
         // Deduct royalties from sale amount
         unchecked {
