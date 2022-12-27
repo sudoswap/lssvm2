@@ -114,7 +114,8 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         );
 
         // Do trade fee check to ensure that the recipient received the tokens
-        assertEq(getBalance(tradeFeeRecipient), inputAmount / 11);
+        // Which should be twice the trade fee amount, i.e. 0.2
+        assertEq(getBalance(tradeFeeRecipient), 2*inputAmount / 11);
     }
 
     function test_swapSingleNFTForToken() public {

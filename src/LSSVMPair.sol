@@ -183,7 +183,7 @@ abstract contract LSSVMPair is
         _pullTokenInputAndPayProtocolFee(
             nftIds[0],
             inputAmount,
-            tradeFee,
+            2*tradeFee, // We pull twice the trade fee on buys but don't take trade fee on sells if assetRecipient is set
             isRouter,
             routerCaller,
             _factory,
