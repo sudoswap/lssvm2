@@ -8,7 +8,7 @@ contract TestPairManager is IOwnershipTransferCallback {
 
     constructor() {}
 
-    function onOwnershipTransfer(address a) public {
+    function onOwnershipTransfer(address a, bytes memory) payable public {
         prevOwner = a;
     }
 }

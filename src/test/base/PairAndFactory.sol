@@ -22,6 +22,7 @@ import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {TestPairManager} from "../../mocks/TestPairManager.sol";
+import {TestPairManager2} from "../../mocks/TestPairManager2.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
@@ -40,6 +41,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
     uint256 constant protocolFeeMultiplier = 3e15;
     LSSVMPair pair;
     TestPairManager pairManager;
+    TestPairManager2 pairManager2;
 
     RoyaltyRegistry royaltyRegistry;
 
@@ -80,6 +82,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         testERC20 = ERC20(address(new Test20()));
         IMintable(address(testERC20)).mint(address(pair), 1 ether);
         pairManager = new TestPairManager();
+        pairManager2 = new TestPairManager2();
     }
 
     function testGas_basicDeploy() public {
@@ -168,22 +171,27 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
     }
 
     function test_transferOwnership() public {
-        pair.transferOwnership(payable(address(2)));
+        pair.transferOwnership(payable(address(2)), "");
         assertEq(pair.owner(), address(2));
     }
 
     function test_transferCallback() public {
-        pair.transferOwnership(address(pairManager));
+        pair.transferOwnership(address(pairManager), "");
         assertEq(pairManager.prevOwner(), address(this));
     }
 
+    function test_transferCallbackWithArgs() public {
+        pair.transferOwnership(address(pairManager2), abi.encode(42));
+        assertEq(pairManager2.value(), 42);
+    }
+
     function testGas_transferNoCallback() public {
-        pair.transferOwnership(address(pair));
+        pair.transferOwnership(address(pair), "");
     }
 
     function testFail_transferOwnership() public {
-        pair.transferOwnership(address(1000));
-        pair.transferOwnership(payable(address(2)));
+        pair.transferOwnership(address(1000), "");
+        pair.transferOwnership(payable(address(2)), "");
     }
 
     function test_rescueTokens() public {
@@ -239,7 +247,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
 
     function testFail_multicallChangeOwnership() public {
         bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(pair.transferOwnership, (address(69)));
+        calls[0] = abi.encodeCall(pair.transferOwnership, (address(69), ""));
         calls[1] = abi.encodeCall(pair.changeDelta, (2 ether));
         pair.multicall(calls, true);
     }
@@ -250,7 +258,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
     }
 
     function testFail_withdraw() public {
-        pair.transferOwnership(address(1000));
+        pair.transferOwnership(address(1000), "");
         withdrawTokens(pair);
     }
 
@@ -288,7 +296,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
      */
 
     function testFail_rescueTokensNotOwner() public {
-        pair.transferOwnership(address(1000));
+        pair.transferOwnership(address(1000), "");
         pair.withdrawERC721(test721, idList);
         pair.withdrawERC20(testERC20, 1 ether);
     }
@@ -298,17 +306,17 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
     }
 
     function testFail_changeSpotNotOwner() public {
-        pair.transferOwnership(address(1000));
+        pair.transferOwnership(address(1000), "");
         pair.changeSpotPrice(2 ether);
     }
 
     function testFail_changeDeltaNotOwner() public {
-        pair.transferOwnership(address(1000));
+        pair.transferOwnership(address(1000), "");
         pair.changeDelta(2.2 ether);
     }
 
     function testFail_changeFeeNotOwner() public {
-        pair.transferOwnership(address(1000));
+        pair.transferOwnership(address(1000), "");
         pair.changeFee(0.2 ether);
     }
 
