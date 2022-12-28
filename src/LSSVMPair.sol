@@ -183,7 +183,7 @@ abstract contract LSSVMPair is
         _pullTokenInputAndPayProtocolFee(
             nftIds[0],
             inputAmount,
-            2*tradeFee, // We pull twice the trade fee on buys but don't take trade fee on sells if assetRecipient is set
+            2 * tradeFee, // We pull twice the trade fee on buys but don't take trade fee on sells if assetRecipient is set
             isRouter,
             routerCaller,
             _factory,
@@ -332,6 +332,49 @@ abstract contract LSSVMPair is
             fee,
             factory().protocolFeeMultiplier()
         );
+    }
+
+    /**
+     * @dev Used as read function to query the bonding curve for sell pricing info including royalties
+     *     @param numNFTs The number of NFTs to sell to the pair
+     */
+    function getSellNFTQuoteWithRoyalties(uint256 assetId, uint256 numNFTs)
+        external
+        view
+        returns (
+            CurveErrorCodes.Error error,
+            uint256 newSpotPrice,
+            uint256 newDelta,
+            uint256 outputAmount,
+            uint256 protocolFee
+        )
+    {
+        (
+            error,
+            newSpotPrice,
+            newDelta,
+            outputAmount, /* tradeFee */
+            ,
+            protocolFee
+        ) = bondingCurve().getSellInfo(
+            spotPrice,
+            delta,
+            numNFTs,
+            fee,
+            factory().protocolFeeMultiplier()
+        );
+
+        // Compute royalties
+        (, uint256 royaltyAmount) = _calculateRoyalties(
+            assetId,
+            outputAmount
+        );
+
+        // Deduct royalties from outputAmount
+        unchecked {
+            // Safe because we already require outputAmount >= royaltyAmount in _calculateRoyalties()
+            outputAmount -= royaltyAmount;
+        }
     }
 
     /**
@@ -757,7 +800,7 @@ abstract contract LSSVMPair is
                 address(this)
             );
             if (isInAgreement) {
-                royaltyAmount = saleAmount * bps / 10000;
+                royaltyAmount = (saleAmount * bps) / 10000;
             }
             // validate royalty amount
             require(saleAmount >= royaltyAmount, "Royalty exceeds sale price");
