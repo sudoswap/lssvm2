@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {IOwnershipTransferCallback} from "../lib/IOwnershipTransferCallback.sol";
+import {IOwnershipTransferReceiver} from "../lib/IOwnershipTransferReceiver.sol";
 
-contract TestPairManager is IOwnershipTransferCallback {
+contract TestPairManager is IOwnershipTransferReceiver {
     address public prevOwner;
 
     constructor() {}
 
-    function onOwnershipTransfer(address a, bytes memory) payable public {
+    function onOwnershipTransferred(address a, bytes memory) payable public {
         prevOwner = a;
     }
 }

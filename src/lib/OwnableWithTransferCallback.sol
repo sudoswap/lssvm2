@@ -5,13 +5,11 @@ pragma solidity ^0.8.4;
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
-import {IOwnershipTransferCallback} from "./IOwnershipTransferCallback.sol";
+import {IOwnershipTransferReceiver} from "./IOwnershipTransferReceiver.sol";
 
 abstract contract OwnableWithTransferCallback {
     using ERC165Checker for address;
     using Address for address;
-
-    bytes4 constant TRANSFER_CALLBACK = type(IOwnershipTransferCallback).interfaceId;
 
     error Ownable_NotOwner();
     error Ownable_NewOwnerZeroAddress();
@@ -47,7 +45,7 @@ abstract contract OwnableWithTransferCallback {
         // Call the on ownership transfer callback if it exists
         // @dev try/catch is around 5k gas cheaper than doing ERC165 checking
         if (newOwner.isContract()) {
-            try IOwnershipTransferCallback(newOwner).onOwnershipTransfer{value: msg.value}(msg.sender, data) {} catch (bytes memory) {}
+            try IOwnershipTransferReceiver(newOwner).onOwnershipTransferred{value: msg.value}(msg.sender, data) {} catch (bytes memory) {}
         }
     }
 
