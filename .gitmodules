@@ -19,3 +19,6 @@
 [submodule "lib/create3-factory"]
 	path = lib/create3-factory
 	url = https://github.com/zeframlou/create3-factory
+[submodule "lib/clones-with-immutable-args"]
+	path = lib/clones-with-immutable-args
+	url = https://github.com/wighawag/clones-with-immutable-args
