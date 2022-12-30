@@ -23,6 +23,8 @@ interface ILSSVMPairFactoryLike {
 
     function agreementForPair(address pairAddress) external view returns (bool isInAgreement, uint96 bps);
 
+    function toggleBpsForPairInAgreement(address pairAddress, uint96 bps, bool isEnteringAgreement) external;
+
     function routerStatus(LSSVMRouter router) external view returns (bool allowed, bool wasEverAllowed);
 
     function isPair(address potentialPair, PairVariant variant) external view returns (bool);

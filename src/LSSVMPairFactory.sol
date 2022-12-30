@@ -315,6 +315,11 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         return false;
     }
 
+    /**
+     * @notice Returns the Agreement for a pair if it is currently in an Agreement
+     * @param pairAddress The address of the pair to look up
+     * Returns whether or not the pair is in an Agreement, and what its bps should be (if valid)
+     */
     function agreementForPair(address pairAddress) public view returns (bool isInAgreement, uint96 bps) {
         Agreement memory agreement = bpsForPairInAgreement[pairAddress];
         if (agreement.pairAddress == pairAddress) {
@@ -461,17 +466,28 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *    @param pairAddress The address of the pool to set a different bps for
      *    @param bps The bps override to set
      */
-    function toggleBpsForPairInAgreement(address pairAddress, uint96 bps)
+    function toggleBpsForPairInAgreement(address pairAddress, uint96 bps, bool isEnteringAgreement)
         public
     {
+        // Only authorized Agreements for the pair's underlying NFT address can toggle the pair
         require(
             authorizedAgreement[msg.sender] ==
                 address(LSSVMPair(pairAddress).nft()),
             "Unauthorized caller"
         );
+
+        // Only pairs are valid targets
+        require(isPair(pairAddress, PairVariant.ERC20) || isPair(pairAddress, PairVariant.ETH), "Not pair");
+
+        // Check if toggling on or off
+        address eitherZeroOrPairAddress = address(0);
+        if (isEnteringAgreement) {
+          eitherZeroOrPairAddress = pairAddress;
+        }
+
         bpsForPairInAgreement[pairAddress] = Agreement({
             bps: bps,
-            pairAddress: pairAddress
+            pairAddress: eitherZeroOrPairAddress
         });
     }
 
