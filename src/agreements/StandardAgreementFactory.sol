@@ -21,9 +21,9 @@ contract StandardAgreementFactory {
       uint64 secDuration,
       uint64 feeSplitBps,
       uint64 royaltyBps
-    ) public {
+    ) public returns (StandardAgreement agreement) {
       bytes memory data = abi.encodePacked(ethCost, secDuration, feeSplitBps, royaltyBps);
-      StandardAgreement agreement = StandardAgreement(address(standardAgreementImplementation).clone(data));
+      agreement = StandardAgreement(address(standardAgreementImplementation).clone(data));
       agreement.initialize(msg.sender, agreementFeeRecipient);
       emit NewAgreement(address(agreement));
     }

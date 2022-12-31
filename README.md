@@ -17,7 +17,7 @@ Pools can set another contract to do on-chain verification of desired properties
 ### Agreements
 For projects that want to work more closely with LPs, sudoAMM v2 introduces the notion of an Agreement. An Agreement is contract that enforces specific liquidity requirements for LPs. For example, an Agreement might ask that the LP is locked for 90 days, as well as a 50/50 split of trading fees. In return for adhering to an Agreement, projects can set a separate royalty amount for these pools. This can potentially lower spreads.
 
-Agreements are an *opt-in* feature. The sudoAMM v2 repo includes several Agreement templates ready to use out of the box, and project owners are free to create their own Agreements.
+Agreements are an *opt-in* feature. The sudoAMM v2 repo includes a configurable Agreement template ready to use out of the box, with choices on direct payment, lock duration, and fee split. Project owners are free to create their own Agreements for more bespoke conditions.
 
 ## Building/Testing
 

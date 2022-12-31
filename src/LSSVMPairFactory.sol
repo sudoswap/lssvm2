@@ -320,11 +320,15 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @param pairAddress The address of the pair to look up
      * Returns whether or not the pair is in an Agreement, and what its bps should be (if valid)
      */
-    function agreementForPair(address pairAddress) public view returns (bool isInAgreement, uint96 bps) {
+    function agreementForPair(address pairAddress)
+        public
+        view
+        returns (bool isInAgreement, uint96 bps)
+    {
         Agreement memory agreement = bpsForPairInAgreement[pairAddress];
         if (agreement.pairAddress == pairAddress) {
-          isInAgreement = true;
-          bps = agreement.bps;
+            isInAgreement = true;
+            bps = agreement.bps;
         }
     }
 
@@ -442,20 +446,20 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     /**
      * @notice Sets or removes an authorized overrider to set pool overrides on an owner's behalf
      *      @param agreement The address to add with Agreement logic
-     *      @param tokenAddress The NFT project that the agreement can administer for
+     *      @param collectionAddress The NFT project that the agreement can administer for
      *      @param isAllowed True to allow, false to revoke
      */
     function toggleAgreementForCollection(
         address agreement,
-        address tokenAddress,
+        address collectionAddress,
         bool isAllowed
     ) public {
         require(
-            authAllowedForToken(tokenAddress, msg.sender),
+            authAllowedForToken(collectionAddress, msg.sender),
             "Unauthorized caller"
         );
         if (isAllowed) {
-            authorizedAgreement[agreement] = tokenAddress;
+            authorizedAgreement[agreement] = collectionAddress;
         } else {
             delete authorizedAgreement[agreement];
         }
@@ -466,9 +470,19 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *    @param pairAddress The address of the pool to set a different bps for
      *    @param bps The bps override to set
      */
-    function toggleBpsForPairInAgreement(address pairAddress, uint96 bps, bool isEnteringAgreement)
-        public
-    {
+    function toggleBpsForPairInAgreement(
+        address pairAddress,
+        uint96 bps,
+        bool isEnteringAgreement
+    ) public {
+      
+        // Only pairs are valid targets
+        require(
+            isPair(pairAddress, PairVariant.ERC20) ||
+                isPair(pairAddress, PairVariant.ETH),
+            "Not pair"
+        );
+
         // Only authorized Agreements for the pair's underlying NFT address can toggle the pair
         require(
             authorizedAgreement[msg.sender] ==
@@ -476,13 +490,10 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             "Unauthorized caller"
         );
 
-        // Only pairs are valid targets
-        require(isPair(pairAddress, PairVariant.ERC20) || isPair(pairAddress, PairVariant.ETH), "Not pair");
-
         // Check if toggling on or off
         address eitherZeroOrPairAddress = address(0);
         if (isEnteringAgreement) {
-          eitherZeroOrPairAddress = pairAddress;
+            eitherZeroOrPairAddress = pairAddress;
         }
 
         bpsForPairInAgreement[pairAddress] = Agreement({

@@ -219,7 +219,7 @@ contract StandardAgreement is
      * @param splitterAddresses List of addresses of Splitters to withdraw from
      * @param isETHPair If the underlying Splitter's pair is an ETH pair or not
      */
-    function bulkWithdraw(address[] calldata splitterAddresses, bool[] calldata isETHPair) external onlyOwner {
+    function bulkWithdrawFees(address[] calldata splitterAddresses, bool[] calldata isETHPair) external onlyOwner {
         for (uint i; i < splitterAddresses.length;) {
           Splitter splitter = Splitter(splitterAddresses[i]);
           if (isETHPair[i]) {

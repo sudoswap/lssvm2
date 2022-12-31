@@ -18,6 +18,7 @@ import {Test721} from "../../mocks/Test721.sol";
 import {Test1155} from "../../mocks/Test1155.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
+
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
@@ -175,7 +176,12 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         assertEq(pair.owner(), address(2));
     }
 
-    function test_transferCallback() public {
+    function test_transferOwnershipToNonCallbackContract() public {
+        pair.transferOwnership(payable(address(pair)), "");
+        assertEq(pair.owner(), address(pair));
+    }
+
+    function test_transferOwnershipCallback() public {
         pair.transferOwnership(address(pairManager), "");
         assertEq(pairManager.prevOwner(), address(this));
     }

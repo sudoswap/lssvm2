@@ -108,7 +108,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
 
         // calculate royalty and rm it from the output amount
         uint256 royaltyAmount = calcRoyalty(outputAmount);
-        outputAmount -= outputAmount;
+        outputAmount -= royaltyAmount;
 
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = numInitialNFTs + 1;

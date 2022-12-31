@@ -40,4 +40,8 @@ abstract contract ConfigurableWithRoyalties is Configurable, Test {
     function calcRoyalty(uint256 inputAmount) public pure returns (uint256 royaltyAmount) {
         royaltyAmount = (inputAmount * BPS) / BASE;
     }
+
+    function calcRoyalty(uint256 inputAmount, uint256 newBps) public pure returns (uint256 royaltyAmount) {
+        royaltyAmount = (inputAmount * newBps) / BASE;
+    }
 }
