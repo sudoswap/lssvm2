@@ -23,6 +23,8 @@ contract StandardAgreement is
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for address payable;
 
+    uint256 MAX_FEE = 0.2e18; // Max fee of 20%
+
     mapping(address => PairInAgreement) public pairInfo;
     address payable public agreementFeeRecipient;
 
@@ -191,7 +193,8 @@ contract StandardAgreement is
                 ILSSVMPairFactoryLike.PairVariant.ERC20
             )
         ) {
-            Splitter(payable(pair.getAssetRecipient())).withdrawAllBaseQuoteTokens();
+            Splitter(payable(pair.getAssetRecipient()))
+                .withdrawAllBaseQuoteTokens();
         }
 
         // Change the fee recipient back
@@ -215,22 +218,140 @@ contract StandardAgreement is
     }
 
     /**
+     * @notice Allows a pair owner to adjust fee % even while a pair is in an Agreement
+     * @param pairAddress The address of the pair to change fee
+     * @param newFee The new fee to set the pair to, subject to MAX_FEE or less
+     */
+    function changeFee(address pairAddress, uint96 newFee) public {
+        PairInAgreement memory agreementInfo = pairInfo[pairAddress];
+        // Verify that the caller is the previous owner of the pair
+        require(msg.sender == agreementInfo.prevOwner, "Not prev owner");
+        require(newFee <= MAX_FEE, "Fee too high");
+        ILSSVMPair(pairAddress).changeFee(newFee);
+    }
+
+    /**
+     * @notice Allows a pair owner to adjust spot price / delta even while a pair is in an Agreement, subject to liquidity considerations
+     * @param pairAddress The address of the pair to change spot price and delta for
+     * @param newSpotPrice The new spot price
+     * @param newDelta The new delta
+     */
+    function changeSpotPriceAndDelta(
+        address pairAddress,
+        uint128 newSpotPrice,
+        uint128 newDelta
+    ) public {
+        PairInAgreement memory agreementInfo = pairInfo[pairAddress];
+
+        // Verify that the caller is the previous owner of the pair
+        require(msg.sender == agreementInfo.prevOwner, "Not prev owner");
+
+        ILSSVMPair pair = ILSSVMPair(pairAddress);
+
+        // Get current price to buy from pair
+        (, , , uint256 priceToBuyFromPair, ) = pair.getBuyNFTQuote(1);
+
+        // Get new price to buy from pair
+        (
+            ,
+            ,
+            ,
+            /* error */
+            /* new spot price */
+            /* new delta */
+            uint256 newPriceToBuyFromPair, /* trade fee */ /* protocol fee */
+            ,
+
+        ) = pair.bondingCurve().getBuyInfo(
+                newSpotPrice,
+                newDelta,
+                1,
+                pair.fee(),
+                pairFactory.protocolFeeMultiplier()
+            );
+
+        // If the price to buy is now lower (i.e. NFTs are now cheaper), and there is at least 1 NFT in pair, then make the change
+        if (
+            (newPriceToBuyFromPair < priceToBuyFromPair) &&
+            pair.nft().balanceOf(pairAddress) >= 1
+        ) {
+            pair.changeSpotPrice(newSpotPrice);
+            pair.changeDelta(newDelta);
+            return;
+        }
+
+        // Get current price to buy from pair
+        (, , , uint256 priceToSellToPair, ) = pair.getSellNFTQuote(1);
+
+        // Get new price to sell to pair
+        (
+            ,
+            ,
+            ,
+            /* error */
+            /* new spot price */
+            /* new delta */
+            uint256 newPriceToSellToPair, /* trade fee */ /* protocol fee */
+            ,
+
+        ) = pair.bondingCurve().getSellInfo(
+                newSpotPrice,
+                newDelta,
+                1,
+                pair.fee(),
+                pairFactory.protocolFeeMultiplier()
+            );
+
+        // Get token balance of the pair (ETH or ERC20)
+        uint256 pairBalance;
+        if (
+            pairFactory.isPair(
+                pairAddress,
+                ILSSVMPairFactoryLike.PairVariant.ETH
+            )
+        ) {
+            pairBalance = pairAddress.balance;
+        } else if (
+            pairFactory.isPair(
+                pairAddress,
+                ILSSVMPairFactoryLike.PairVariant.ERC20
+            )
+        ) {
+            pairBalance = pair.token().balanceOf(pairAddress);
+        }
+
+        // If the new sell price is higher, and there is enough liquidity to support at least 1 sell, then make the change
+        if (
+            (newPriceToSellToPair > priceToSellToPair) &&
+            pairBalance > newPriceToSellToPair
+        ) {
+            pair.changeSpotPrice(newSpotPrice);
+            pair.changeDelta(newDelta);
+            return;
+        }
+
+        revert("Pricing and liquidity mismatch");
+    }
+
+    /**
      * @notice Allows owner to bulk withdraw trade fees from a series of Splitters
      * @param splitterAddresses List of addresses of Splitters to withdraw from
      * @param isETHPair If the underlying Splitter's pair is an ETH pair or not
      */
-    function bulkWithdrawFees(address[] calldata splitterAddresses, bool[] calldata isETHPair) external onlyOwner {
-        for (uint i; i < splitterAddresses.length;) {
-          Splitter splitter = Splitter(payable(splitterAddresses[i]));
-          if (isETHPair[i]) {
-            splitter.withdrawAllETH();
-          }
-          else {
-            splitter.withdrawAllBaseQuoteTokens();
-          }
-          unchecked {
-            ++i;
-          }
+    function bulkWithdrawFees(
+        address[] calldata splitterAddresses,
+        bool[] calldata isETHPair
+    ) external onlyOwner {
+        for (uint256 i; i < splitterAddresses.length; ) {
+            Splitter splitter = Splitter(payable(splitterAddresses[i]));
+            if (isETHPair[i]) {
+                splitter.withdrawAllETH();
+            } else {
+                splitter.withdrawAllBaseQuoteTokens();
+            }
+            unchecked {
+                ++i;
+            }
         }
     }
 }

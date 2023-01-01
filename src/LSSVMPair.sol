@@ -36,8 +36,8 @@ abstract contract LSSVMPair is
         TRADE
     }
 
-    // 90%, must <= 1 - MAX_PROTOCOL_FEE (set in LSSVMPairFactory)
-    uint256 internal constant MAX_FEE = 0.9e18;
+    // 50%, must <= 1 - MAX_PROTOCOL_FEE (set in LSSVMPairFactory)
+    uint256 internal constant MAX_FEE = 0.5e18;
 
     // Manifold royalty registry
     IRoyaltyRegistry public immutable ROYALTY_REGISTRY;

@@ -3,6 +3,10 @@ pragma solidity ^0.8.0;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
+import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
+import {ICurve} from "./bonding-curves/ICurve.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 interface ILSSVMPair {
     enum PoolType {
         TOKEN,
@@ -19,4 +23,37 @@ interface ILSSVMPair {
     function poolType() external returns (PoolType);
 
     function token() external returns (ERC20 _token);
+
+    function changeFee(uint96 newFee) external;
+
+    function changeSpotPrice(uint128 newSpotPrice) external;
+
+    function changeDelta(uint128 newDelta) external;
+
+    function getBuyNFTQuote(uint256 numItems)
+        external
+        returns (
+            CurveErrorCodes.Error error,
+            uint256 newSpotPrice,
+            uint256 newDelta,
+            uint256 inputAmount,
+            uint256 protocolFee
+        );
+
+    function getSellNFTQuote(uint256 numNFTs)
+        external
+        view
+        returns (
+            CurveErrorCodes.Error error,
+            uint256 newSpotPrice,
+            uint256 newDelta,
+            uint256 outputAmount,
+            uint256 protocolFee
+        );
+
+    function bondingCurve() external returns (ICurve);
+
+    function fee() external returns (uint96);
+
+    function nft() external returns (IERC721);
 }
