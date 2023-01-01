@@ -14,6 +14,8 @@ contract Splitter is Clone {
     using SafeTransferLib for ERC20;
     using SafeTransferLib for address payable;
 
+    uint256 constant BASE = 10_000;
+
     function getParentAgreement() public pure returns (address) {
         return _getArgAddress(0);
     }
@@ -32,7 +34,7 @@ contract Splitter is Clone {
             getParentAgreement()
         );
         uint256 amtToSendToAgreementFeeRecipient = (parentAgreement
-            .getFeeSplitBps() * ethAmount) / 10000;
+            .getFeeSplitBps() * ethAmount) / BASE;
         parentAgreement.agreementFeeRecipient().safeTransferETH(
             amtToSendToAgreementFeeRecipient
         );
@@ -59,7 +61,7 @@ contract Splitter is Clone {
             getParentAgreement()
         );
         uint256 amtToSendToAgreementFeeRecipient = (parentAgreement
-            .getFeeSplitBps() * tokenAmount) / 10000;
+            .getFeeSplitBps() * tokenAmount) / BASE;
         token.safeTransfer(
             parentAgreement.agreementFeeRecipient(),
             amtToSendToAgreementFeeRecipient
@@ -71,4 +73,6 @@ contract Splitter is Clone {
             amtToSendToPairFeeRecipient
         );
     }
+
+    fallback() external payable {}
 }

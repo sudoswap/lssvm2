@@ -12,6 +12,8 @@ interface ILSSVMPair {
 
     function getAssetRecipient() external returns (address);
 
+    function getFeeRecipient() external returns (address);
+
     function changeAssetRecipient(address payable newRecipient) external;
 
     function poolType() external returns (PoolType);

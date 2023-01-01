@@ -21,6 +21,7 @@ import {IOwnable} from "../interfaces/IOwnable.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {ILSSVMPairFactoryLike} from "../../ILSSVMPairFactoryLike.sol";
 
 import {StandardAgreement} from "../../agreements/StandardAgreement.sol";
 import {StandardAgreementFactory} from "../../agreements/StandardAgreementFactory.sol";
@@ -37,8 +38,8 @@ abstract contract AgreementE2E is
     ConfigurableWithRoyalties
 {
     uint128 delta = 1.1 ether;
-    uint128 spotPrice = 1 ether;
-    uint256 tokenAmount = 10 ether;
+    uint128 spotPrice = 20 ether;
+    uint256 tokenAmount = 100 ether;
     uint256 numItems = 2;
     uint256[] idList;
     ERC2981 test2981;
@@ -252,7 +253,7 @@ abstract contract AgreementE2E is
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
-        uint64 newRoyaltyBps = 10000; // 10% in bps
+        uint64 newRoyaltyBps = 1000; // 10% in bps
         StandardAgreement newAgreement = agreementFactory.createAgreement(
             agreementFeeRecipient,
             ethCost,
@@ -265,10 +266,10 @@ abstract contract AgreementE2E is
             address(test721),
             true
         );
-        pair.transferOwnership{value: 0.1 ether}(address(newAgreement), "");
+        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
 
         // Check the upfront fee was received
-        assertEq(agreementFeeRecipient.balance, 0.1 ether);
+        assertEq(agreementFeeRecipient.balance, ethCost);
 
         // Check the Agreement has been applied, with the new bps
         (bool isInAgreement, uint96 pairRoyaltyBps) = factory.agreementForPair(
@@ -278,7 +279,10 @@ abstract contract AgreementE2E is
         assertEq(pairRoyaltyBps, newRoyaltyBps);
 
         // Check that the fee address is no longer the pool (i.e. a fee splitter has been deployed)
-        require(pair.getFeeRecipient() != address(pair), "Splitter not deployed");
+        require(
+            pair.getFeeRecipient() != address(pair),
+            "Splitter not deployed"
+        );
 
         // Perform a buy for item #1
         (, , , uint256 inputAmount, ) = pair.getBuyNFTQuote(1);
@@ -326,7 +330,7 @@ abstract contract AgreementE2E is
             feeSplitBps,
             newRoyaltyBps
         );
-        pair.transferOwnership{value: 0.1 ether}(address(newAgreement), "");
+        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
     }
 
     // A mock pair cannot enter a Standard Agreement
@@ -335,7 +339,7 @@ abstract contract AgreementE2E is
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
-        uint64 newRoyaltyBps = 10000; // 10% in bps
+        uint64 newRoyaltyBps = 1000; // 10% in bps
         StandardAgreement newAgreement = agreementFactory.createAgreement(
             agreementFeeRecipient,
             ethCost,
@@ -348,6 +352,88 @@ abstract contract AgreementE2E is
             address(test721),
             true
         );
-        mockPair.transferOwnership{value: 0.1 ether}(address(newAgreement), "");
+        mockPair.transferOwnership{value: ethCost}(address(newAgreement), "");
+    }
+
+    // Splitter tests
+
+    // A pair can enter a Standard Agreement if authorized
+    function test_splitterHandlesSplits() public {
+        // Set the trade fee recipient address
+        address payable pairFeeRecipient = payable(address(1));
+        pair.changeAssetRecipient(pairFeeRecipient);
+
+        // Set trade fee to be 10%
+        pair.changeFee(0.1 ether);
+
+        address payable agreementFeeRecipient = payable(address(123));
+        uint256 ethCost = 0 ether;
+        uint64 secDuration = 1;
+        uint64 feeSplitBps = 5000; // 50% split
+        uint64 newRoyaltyBps = 0; // 0% in bps
+        StandardAgreement newAgreement = agreementFactory.createAgreement(
+            agreementFeeRecipient,
+            ethCost,
+            secDuration,
+            feeSplitBps,
+            newRoyaltyBps
+        );
+        factory.toggleAgreementForCollection(
+            address(newAgreement),
+            address(test721),
+            true
+        );
+        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+
+        // Check that the fee address is no longer the pool (i.e. a fee splitter has been deployed)
+        require(
+            pair.getFeeRecipient() != address(pair),
+            "Splitter not deployed"
+        );
+
+        // Perform a buy for item #1
+        (
+            ,
+            ,
+            ,
+            /* error*/
+            /* new delta */
+            /* new spot price*/
+            uint256 inputAmount,
+            uint256 tradeFee,
+
+        ) = // protocolFee
+            pair.bondingCurve().getBuyInfo(
+                pair.spotPrice(),
+                pair.delta(),
+                1,
+                pair.fee(),
+                factory.protocolFeeMultiplier()
+            );
+        uint256[] memory specificIdToBuy = new uint256[](1);
+        specificIdToBuy[0] = 1;
+        pair.swapTokenForSpecificNFTs{
+            value: this.modifyInputAmount(inputAmount)
+        }(specificIdToBuy, inputAmount, address(this), false, address(this));
+
+        // Ensure that 2x the trade fee went to the splitter
+        address payable splitterAddress = pair.getFeeRecipient();
+        uint256 splitterBalance = getBalance(splitterAddress);
+        assertEq(splitterBalance, 2 * tradeFee);
+
+        // Withdraw the tokens
+        if (
+            factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ETH)
+        ) {
+            Splitter(splitterAddress).withdrawAllETH();
+        } else {
+            Splitter(splitterAddress).withdrawAllBaseQuoteTokens();
+        }
+
+        // Ensure that the Agreement-set fee recipient received the tokens
+        uint256 agreementFeeRecipientBalance = getBalance(agreementFeeRecipient);
+        assertEq(agreementFeeRecipientBalance, tradeFee);
+        uint256 tradeFeeRecipientBalance = getBalance(pairFeeRecipient);
+        assertEq(tradeFeeRecipientBalance, tradeFee);
     }
 }

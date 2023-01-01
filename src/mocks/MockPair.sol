@@ -12,10 +12,15 @@ contract MockPair is ILSSVMPair,  OwnableWithTransferCallback {
     }
 
     address constant ASSET_RECIPIENT = address(11111);
+    address constant FEE_RECIPIENT = address(22222);
     address constant TOKEN_ADDRESS = address(34264323492);
 
     function getAssetRecipient() external pure returns (address) {
         return ASSET_RECIPIENT;
+    }
+
+    function getFeeRecipient() external pure returns (address) {
+        return FEE_RECIPIENT;
     }
 
     function changeAssetRecipient(address payable newRecipient) public pure {}

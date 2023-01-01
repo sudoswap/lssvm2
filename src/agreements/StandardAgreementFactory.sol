@@ -9,6 +9,8 @@ contract StandardAgreementFactory {
     
     event NewAgreement(address agreementAddress);
 
+    uint256 constant BASE = 10_000;
+
     StandardAgreement immutable standardAgreementImplementation;
 
     constructor(StandardAgreement _standardAgreementImplementation) {
@@ -22,6 +24,8 @@ contract StandardAgreementFactory {
       uint64 feeSplitBps,
       uint64 royaltyBps
     ) public returns (StandardAgreement agreement) {
+      require(royaltyBps <= (BASE/10), "Max 10% for modified royalty bps");
+      require(feeSplitBps <= BASE, "Max 100% for trade fee bps split");
       bytes memory data = abi.encodePacked(ethCost, secDuration, feeSplitBps, royaltyBps);
       agreement = StandardAgreement(address(standardAgreementImplementation).clone(data));
       agreement.initialize(msg.sender, agreementFeeRecipient);

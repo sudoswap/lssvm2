@@ -55,7 +55,7 @@ contract XykCurve is ICurve, CurveErrorCodes {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
         }
 
-        // get the pair's virtual nft and eth/erc20 reserves
+        // get the pair's virtual nft and token reserves
         uint256 tokenBalance = spotPrice;
         uint256 nftBalance = delta;
 

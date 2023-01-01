@@ -147,7 +147,7 @@ contract StandardAgreement is
         pairInfo[msg.sender] = PairInAgreement({
             prevOwner: prevOwner,
             unlockTime: uint96(block.timestamp) + getLockDuration(),
-            prevFeeRecipient: ILSSVMPair(msg.sender).getAssetRecipient()
+            prevFeeRecipient: ILSSVMPair(msg.sender).getFeeRecipient()
         });
 
         // Deploy the fee splitter clone
@@ -184,14 +184,14 @@ contract StandardAgreement is
                 ILSSVMPairFactoryLike.PairVariant.ETH
             )
         ) {
-            Splitter(pair.getAssetRecipient()).withdrawAllETH();
+            Splitter(payable(pair.getAssetRecipient())).withdrawAllETH();
         } else if (
             pairFactory.isPair(
                 pairAddress,
                 ILSSVMPairFactoryLike.PairVariant.ERC20
             )
         ) {
-            Splitter(pair.getAssetRecipient()).withdrawAllBaseQuoteTokens();
+            Splitter(payable(pair.getAssetRecipient())).withdrawAllBaseQuoteTokens();
         }
 
         // Change the fee recipient back
@@ -221,7 +221,7 @@ contract StandardAgreement is
      */
     function bulkWithdrawFees(address[] calldata splitterAddresses, bool[] calldata isETHPair) external onlyOwner {
         for (uint i; i < splitterAddresses.length;) {
-          Splitter splitter = Splitter(splitterAddresses[i]);
+          Splitter splitter = Splitter(payable(splitterAddresses[i]));
           if (isETHPair[i]) {
             splitter.withdrawAllETH();
           }
