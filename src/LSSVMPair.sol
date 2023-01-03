@@ -436,6 +436,19 @@ abstract contract LSSVMPair is
     }
 
     /**
+     * @notice Returns the property checker address
+     */
+    function propertyChecker() public pure returns (address _propertyChecker) {
+        uint256 paramsLength = _immutableParamsLength();
+        assembly {
+            _propertyChecker := shr(
+                0x60,
+                calldataload(add(sub(calldatasize(), paramsLength), 61))
+            )
+        }
+    }
+
+    /**
      * @notice Returns the address that assets that receives assets when a swap is done with this pair
      *     Can be set to another address by the owner, but has no effect on TRADE pools
      *     If set to address(0), defaults to owner() for NFT/TOKEN pools

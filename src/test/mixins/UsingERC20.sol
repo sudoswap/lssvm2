@@ -64,7 +64,7 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         // initialize the pair
         LSSVMPair pair = factory.createPairERC20(
             LSSVMPairFactory.CreateERC20PairParams(
-                test20, nft, bondingCurve, assetRecipient, poolType, delta, fee, spotPrice, _idList, initialTokenBalance
+                test20, nft, bondingCurve, assetRecipient, poolType, delta, fee, spotPrice, address(0), _idList, initialTokenBalance
             )
         );
 

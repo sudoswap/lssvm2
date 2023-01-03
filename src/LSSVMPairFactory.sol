@@ -106,6 +106,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint128 _delta,
         uint96 _fee,
         uint128 _spotPrice,
+        address _propertyChecker,
         uint256[] calldata _initialNFTIDs
     ) external payable returns (LSSVMPairETH pair) {
         require(
@@ -119,7 +120,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
                     this,
                     _bondingCurve,
                     _nft,
-                    uint8(_poolType)
+                    uint8(_poolType),
+                    _propertyChecker
                 )
             )
         );
@@ -161,6 +163,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint128 delta;
         uint96 fee;
         uint128 spotPrice;
+        address propertyChecker;
         uint256[] initialNFTIDs;
         uint256 initialTokenBalance;
     }
@@ -181,6 +184,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
                     params.bondingCurve,
                     params.nft,
                     uint8(params.poolType),
+                    params.propertyChecker,
                     params.token
                 )
             )

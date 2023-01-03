@@ -63,7 +63,7 @@ contract XykCurveTest is Test, ERC721Holder {
         }
 
         ethPair = factory.createPairETH{value: value}(
-            nft, curve, payable(0), LSSVMPair.PoolType.TRADE, uint128(numNfts), 0, uint128(value), idList
+            nft, curve, payable(0), LSSVMPair.PoolType.TRADE, uint128(numNfts), 0, uint128(value), address(0), idList
         );
     }
 
