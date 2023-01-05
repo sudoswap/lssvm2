@@ -45,6 +45,7 @@ contract MockPair is ILSSVMPair, OwnableWithTransferCallback {
 
     function getBuyNFTQuote(uint256 numItems)
         external
+        view
         returns (
             CurveErrorCodes.Error error,
             uint256 newSpotPrice,
@@ -81,4 +82,6 @@ contract MockPair is ILSSVMPair, OwnableWithTransferCallback {
     function withdrawERC20(ERC20 a, uint256 amount) external {}
 
     function withdrawERC721(IERC721 a, uint256[] calldata nftIds) external {}
+
+    function multicall(bytes[] calldata calls, bool revertOnFail) external {}
 }

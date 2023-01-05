@@ -61,4 +61,6 @@ interface ILSSVMPair {
     function withdrawERC20(ERC20 a, uint256 amount) external;
 
     function withdrawERC721(IERC721 a, uint256[] calldata nftIds) external;
+
+    function multicall(bytes[] calldata calls, bool revertOnFail) external;
 }

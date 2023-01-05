@@ -10,10 +10,13 @@ import {IOwnershipTransferReceiver} from "../lib/IOwnershipTransferReceiver.sol"
 import {ILSSVMPair} from "../ILSSVMPair.sol";
 import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "../bonding-curves/CurveErrorCodes.sol";
+import {OwnableWithTransferCallback} from "../lib/OwnableWithTransferCallback.sol";
 
 contract Sudock is IOwnershipTransferReceiver, ContractOffererInterface {
     error OnlySeaport();
     error OnlyERC20Pair();
+    error OnlyPrevPairOwner();
+    error InvalidOwnershipChange();
     error CurveError();
     error NotImplemented();
     error InvalidItemType();
@@ -39,6 +42,25 @@ contract Sudock is IOwnershipTransferReceiver, ContractOffererInterface {
         // Approve Seaport to spend tokens that are held by Sudock
         (ILSSVMPair(msg.sender).nft()).setApprovalForAll(_SEAPORT, true);
         (ILSSVMPair(msg.sender).token()).approve(_SEAPORT, type(uint256).max);
+    }
+
+    function multicall(
+        ILSSVMPair pair,
+        bytes[] calldata calls,
+        bool revertOnFail
+    ) external {
+        if (msg.sender != prevOwner[address(pair)]) {
+            revert OnlyPrevPairOwner();
+        }
+        pair.multicall(calls, revertOnFail);
+        // @dev: Ownership can't change during this call, the multicall guarantees it
+    }
+
+    function undock(ILSSVMPair pair) external {
+        if (msg.sender != prevOwner[address(pair)]) {
+            revert OnlyPrevPairOwner();
+        }
+        OwnableWithTransferCallback(address(pair)).transferOwnership(msg.sender, "");
     }
 
     function generateOrder(
@@ -89,9 +111,9 @@ contract Sudock is IOwnershipTransferReceiver, ContractOffererInterface {
 
         // Withdraw relevant tokens, used by Seaport for spending
         if (withdrawNFTsFromPoolToSudock) {
-          pair.withdrawERC721(pair.nft(), nftIdsToWithdraw);
+            pair.withdrawERC721(pair.nft(), nftIdsToWithdraw);
         } else {
-          pair.withdrawERC20(pair.token(), tokensToWithdraw);
+            pair.withdrawERC20(pair.token(), tokensToWithdraw);
         }
 
         // Update spot price and delta by using underlying bonding curve
@@ -260,14 +282,14 @@ contract Sudock is IOwnershipTransferReceiver, ContractOffererInterface {
 
     function previewOrder(
         address,
-        SpentItem[] calldata ,
-        SpentItem[] calldata ,
+        SpentItem[] calldata,
+        SpentItem[] calldata,
         bytes calldata
     )
         external
         view
         override
-        returns (SpentItem[] memory , ReceivedItem[] memory )
+        returns (SpentItem[] memory, ReceivedItem[] memory)
     {
         revert NotImplemented();
     }
