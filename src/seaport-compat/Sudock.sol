@@ -35,6 +35,10 @@ contract Sudock is IOwnershipTransferReceiver, ContractOffererInterface {
         payable
     {
         prevOwner[msg.sender] = _prevOwner;
+
+        // Approve Seaport to spend tokens that are held by Sudock
+        (ILSSVMPair(msg.sender).nft()).setApprovalForAll(_SEAPORT, true);
+        (ILSSVMPair(msg.sender).token()).approve(_SEAPORT, type(uint256).max);
     }
 
     function generateOrder(
@@ -65,22 +69,34 @@ contract Sudock is IOwnershipTransferReceiver, ContractOffererInterface {
         // if true, this offerer is spending NFTs and receiving ERC20
         uint256 newSpotPrice;
         uint256 newDelta;
-        bool nftOffer;
+        bool withdrawNFTsFromPoolToSudock;
+        uint256 tokensToWithdraw;
+        uint256[] memory nftIdsToWithdraw;
         (
             offer,
             consideration,
             newSpotPrice,
             newDelta,
-            nftOffer
+            withdrawNFTsFromPoolToSudock,
+            tokensToWithdraw,
+            nftIdsToWithdraw
         ) = _generateOfferAndConsideration(
             minimumReceived,
             maximumSpent,
             pairAddress
         );
+        ILSSVMPair pair = ILSSVMPair(pairAddress);
+
+        // Withdraw relevant tokens, used by Seaport for spending
+        if (withdrawNFTsFromPoolToSudock) {
+          pair.withdrawERC721(pair.nft(), nftIdsToWithdraw);
+        } else {
+          pair.withdrawERC20(pair.token(), tokensToWithdraw);
+        }
 
         // Update spot price and delta by using underlying bonding curve
-        ILSSVMPair(pairAddress).changeSpotPrice(uint128(newSpotPrice));
-        ILSSVMPair(pairAddress).changeDelta(uint128(newDelta));
+        pair.changeSpotPrice(uint128(newSpotPrice));
+        pair.changeDelta(uint128(newDelta));
     }
 
     function _generateOfferAndConsideration(
@@ -95,12 +111,14 @@ contract Sudock is IOwnershipTransferReceiver, ContractOffererInterface {
             ReceivedItem[] memory consideration,
             uint256 newSpotPrice,
             uint256 newDelta,
-            bool nftOffer
+            bool withdrawNFTsFromPoolToSudock,
+            uint256 tokensToWithdraw,
+            uint256[] memory nftIdsToWithdraw
         )
     {
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 
-        // validate that all tokenns in each set are "homogenous" (ERC20 or ERC721/_WITH_CRITERIA)
+        // validate that all tokens in each set are "homogenous" (ERC20 or ERC721/_WITH_CRITERIA)
         _validateSpentItems(pair, minimumReceived, true);
         _validateSpentItems(pair, maximumSpent, false);
 
@@ -120,10 +138,11 @@ contract Sudock is IOwnershipTransferReceiver, ContractOffererInterface {
                 token: address(pair.token()),
                 identifier: 0,
                 amount: outputAmount,
-                recipient: payable(address(this))
+                recipient: payable(address(pair))
             });
             offer = minimumReceived;
-            nftOffer = true;
+            withdrawNFTsFromPoolToSudock = true;
+            nftIdsToWithdraw = _getIdsOfItemsToSend(minimumReceived);
         }
         // otherwise, if fulfiller is spending ERC721 tokens, calculate the amount of ERC20 tokens to pay for
         // N items
@@ -143,7 +162,22 @@ contract Sudock is IOwnershipTransferReceiver, ContractOffererInterface {
                 identifier: 0,
                 amount: outputAmount
             });
-            consideration = _convertSpentErc721sToReceivedItems(pair, maximumSpent);
+            consideration = _convertSpentErc721sToReceivedItems(
+                pair,
+                maximumSpent
+            );
+            tokensToWithdraw = outputAmount;
+        }
+    }
+
+    function _getIdsOfItemsToSend(SpentItem[] calldata minimumReceived)
+        internal
+        pure
+        returns (uint256[] memory idsOfItemsToSend)
+    {
+        for (uint256 i = 0; i < minimumReceived.length; i++) {
+            SpentItem calldata item = minimumReceived[i];
+            idsOfItemsToSend[i] = item.identifier;
         }
     }
 
@@ -214,20 +248,26 @@ contract Sudock is IOwnershipTransferReceiver, ContractOffererInterface {
         }
         bool nft = homogenousType == ItemType.ERC721;
         for (uint256 i = 1; i < minimumReceived.length; ++i) {
-            _validateSpentItem(pair, minimumReceived[i], homogenousType, nft, offer);
+            _validateSpentItem(
+                pair,
+                minimumReceived[i],
+                homogenousType,
+                nft,
+                offer
+            );
         }
     }
 
     function previewOrder(
         address,
-        SpentItem[] calldata minimumReceived,
-        SpentItem[] calldata maximumSpent,
+        SpentItem[] calldata ,
+        SpentItem[] calldata ,
         bytes calldata
     )
         external
         view
         override
-        returns (SpentItem[] memory offer, ReceivedItem[] memory consideration)
+        returns (SpentItem[] memory , ReceivedItem[] memory )
     {
         revert NotImplemented();
     }
