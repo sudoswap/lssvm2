@@ -20,9 +20,9 @@ interface ILSSVMPair {
 
     function changeAssetRecipient(address payable newRecipient) external;
 
-    function poolType() external returns (PoolType);
+    function poolType() external view returns (PoolType);
 
-    function token() external returns (ERC20 _token);
+    function token() external view returns (ERC20 _token);
 
     function changeFee(uint96 newFee) external;
 
@@ -32,6 +32,7 @@ interface ILSSVMPair {
 
     function getBuyNFTQuote(uint256 numItems)
         external
+        view
         returns (
             CurveErrorCodes.Error error,
             uint256 newSpotPrice,
@@ -51,9 +52,9 @@ interface ILSSVMPair {
             uint256 protocolFee
         );
 
-    function bondingCurve() external returns (ICurve);
+    function bondingCurve() external view returns (ICurve);
 
-    function fee() external returns (uint96);
+    function fee() external view returns (uint96);
 
-    function nft() external returns (IERC721);
+    function nft() external view returns (IERC721);
 }
