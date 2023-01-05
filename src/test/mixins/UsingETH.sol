@@ -39,7 +39,7 @@ abstract contract UsingETH is Configurable, RouterCaller {
         address
     ) public payable override returns (LSSVMPair) {
         LSSVMPairETH pair = factory.createPairETH{value: msg.value}(
-            nft, bondingCurve, assetRecipient, poolType, delta, fee, spotPrice, _idList
+            nft, bondingCurve, assetRecipient, poolType, delta, fee, spotPrice, address(0), _idList
         );
         return pair;
     }

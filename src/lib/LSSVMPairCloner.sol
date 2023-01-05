@@ -23,92 +23,8 @@ library LSSVMPairCloner {
         ILSSVMPairFactoryLike factory,
         ICurve bondingCurve,
         IERC721 nft,
-        uint8 poolType
-    ) internal returns (address instance) {
-        assembly {
-            let ptr := mload(0x40)
-
-            // -------------------------------------------------------------------------------------------------------------
-            // CREATION (9 bytes)
-            // -------------------------------------------------------------------------------------------------------------
-
-            // creation size = 09
-            // runtime size = 72
-            // 60 runtime  | PUSH1 runtime (r)     | r                       | –
-            // 3d          | RETURNDATASIZE        | 0 r                     | –
-            // 81          | DUP2                  | r 0 r                   | –
-            // 60 creation | PUSH1 creation (c)    | c r 0 r                 | –
-            // 3d          | RETURNDATASIZE        | 0 c r 0 r               | –
-            // 39          | CODECOPY              | 0 r                     | [0-runSize): runtime code
-            // f3          | RETURN                |                         | [0-runSize): runtime code
-
-            // -------------------------------------------------------------------------------------------------------------
-            // RUNTIME (53 bytes of code + 61 bytes of extra data = 114 bytes)
-            // -------------------------------------------------------------------------------------------------------------
-
-            // extra data size = 3d
-            // 3d          | RETURNDATASIZE        | 0                       | –
-            // 3d          | RETURNDATASIZE        | 0 0                     | –
-            // 3d          | RETURNDATASIZE        | 0 0 0                   | –
-            // 3d          | RETURNDATASIZE        | 0 0 0 0                 | –
-            // 36          | CALLDATASIZE          | cds 0 0 0 0             | –
-            // 3d          | RETURNDATASIZE        | 0 cds 0 0 0 0           | –
-            // 3d          | RETURNDATASIZE        | 0 0 cds 0 0 0 0         | –
-            // 37          | CALLDATACOPY          | 0 0 0 0                 | [0, cds) = calldata
-            // 60 extra    | PUSH1 extra           | extra 0 0 0 0           | [0, cds) = calldata
-            // 60 0x35     | PUSH1 0x35            | 0x35 extra 0 0 0 0      | [0, cds) = calldata // 0x35 (53) is runtime size - data
-            // 36          | CALLDATASIZE          | cds 0x35 extra 0 0 0 0  | [0, cds) = calldata
-            // 39          | CODECOPY              | 0 0 0 0                 | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // 36          | CALLDATASIZE          | cds 0 0 0 0             | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // 60 extra    | PUSH1 extra           | extra cds 0 0 0 0       | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // 01          | ADD                   | cds+extra 0 0 0 0       | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // 3d          | RETURNDATASIZE        | 0 cds 0 0 0 0           | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // 73 addr     | PUSH20 0x123…         | addr 0 cds 0 0 0 0      | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            mstore(ptr, hex"60723d8160093d39f33d3d3d3d363d3d37603d6035363936603d013d73000000")
-            mstore(add(ptr, 0x1d), shl(0x60, implementation))
-
-            // 5a          | GAS                   | gas addr 0 cds 0 0 0 0  | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // f4          | DELEGATECALL          | success 0 0             | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // 3d          | RETURNDATASIZE        | rds success 0 0         | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // 3d          | RETURNDATASIZE        | rds rds success 0 0     | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // 93          | SWAP4                 | 0 rds success 0 rds     | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // 80          | DUP1                  | 0 0 rds success 0 rds   | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            // 3e          | RETURNDATACOPY        | success 0 rds           | [0, rds) = return data (there might be some irrelevant leftovers in memory [rds, cds+0x37) when rds < cds+0x37)
-            // 60 0x33     | PUSH1 0x33            | 0x33 sucess 0 rds       | [0, rds) = return data
-            // 57          | JUMPI                 | 0 rds                   | [0, rds) = return data
-            // fd          | REVERT                | –                       | [0, rds) = return data
-            // 5b          | JUMPDEST              | 0 rds                   | [0, rds) = return data
-            // f3          | RETURN                | –                       | [0, rds) = return data
-            mstore(add(ptr, 0x31), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
-
-            // -------------------------------------------------------------------------------------------------------------
-            // EXTRA DATA (61 bytes)
-            // -------------------------------------------------------------------------------------------------------------
-
-            mstore(add(ptr, 0x3e), shl(0x60, factory))
-            mstore(add(ptr, 0x52), shl(0x60, bondingCurve))
-            mstore(add(ptr, 0x66), shl(0x60, nft))
-            mstore8(add(ptr, 0x7a), poolType)
-
-            instance := create(0, ptr, 0x7b)
-        }
-    }
-
-    /**
-     * @dev Deploys and returns the address of a clone that mimics the behaviour of `implementation`.
-     *
-     * This function uses the create opcode, which should never revert.
-     *
-     * During the delegate call, extra data is copied into the calldata which can then be
-     * accessed by the implementation contract.
-     */
-    function cloneERC20Pair(
-        address implementation,
-        ILSSVMPairFactoryLike factory,
-        ICurve bondingCurve,
-        IERC721 nft,
         uint8 poolType,
-        ERC20 token
+        address propertyChecker
     ) internal returns (address instance) {
         assembly {
             let ptr := mload(0x40)
@@ -149,7 +65,98 @@ library LSSVMPairCloner {
             // 01          | ADD                   | cds+extra 0 0 0 0       | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 3d          | RETURNDATASIZE        | 0 cds 0 0 0 0           | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 73 addr     | PUSH20 0x123…         | addr 0 cds 0 0 0 0      | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            mstore(ptr, hex"60863d8160093d39f33d3d3d3d363d3d37605160353639366051013d73000000")
+            mstore(ptr, hex"60_86_3d8160093d39f3_3d3d3d3d363d3d3760_51_603536393660_51_013d73000000")
+            mstore(add(ptr, 0x1d), shl(0x60, implementation))
+
+            // 5a          | GAS                   | gas addr 0 cds 0 0 0 0  | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // f4          | DELEGATECALL          | success 0 0             | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // 3d          | RETURNDATASIZE        | rds success 0 0         | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // 3d          | RETURNDATASIZE        | rds rds success 0 0     | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // 93          | SWAP4                 | 0 rds success 0 rds     | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // 80          | DUP1                  | 0 0 rds success 0 rds   | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // 3e          | RETURNDATACOPY        | success 0 rds           | [0, rds) = return data (there might be some irrelevant leftovers in memory [rds, cds+0x35) when rds < cds+0x35)
+            // 60 0x33     | PUSH1 0x33            | 0x33 sucess 0 rds       | [0, rds) = return data
+            // 57          | JUMPI                 | 0 rds                   | [0, rds) = return data
+            // fd          | REVERT                | –                       | [0, rds) = return data
+            // 5b          | JUMPDEST              | 0 rds                   | [0, rds) = return data
+            // f3          | RETURN                | –                       | [0, rds) = return data
+            mstore(add(ptr, 0x31), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
+
+            // -------------------------------------------------------------------------------------------------------------
+            // EXTRA DATA (81 bytes)
+            // -------------------------------------------------------------------------------------------------------------
+
+            mstore(add(ptr, 0x3e), shl(0x60, factory))
+            mstore(add(ptr, 0x52), shl(0x60, bondingCurve))
+            mstore(add(ptr, 0x66), shl(0x60, nft))
+            mstore8(add(ptr, 0x7a), poolType)
+            mstore(add(ptr, 0x7b), shl(0x60, propertyChecker))
+
+            // -------------------------------------------------------------------------------------------------------------
+            // Total length is 143 (8f) bytes
+            // -------------------------------------------------------------------------------------------------------------
+
+            instance := create(0, ptr, 0x8f)
+        }
+    }
+
+    /**
+     * @dev Deploys and returns the address of a clone that mimics the behaviour of `implementation`.
+     *
+     * This function uses the create opcode, which should never revert.
+     *
+     * During the delegate call, extra data is copied into the calldata which can then be
+     * accessed by the implementation contract.
+     */
+    function cloneERC20Pair(
+        address implementation,
+        ILSSVMPairFactoryLike factory,
+        ICurve bondingCurve,
+        IERC721 nft,
+        uint8 poolType,
+        address propertyChecker,
+        ERC20 token
+    ) internal returns (address instance) {
+        assembly {
+            let ptr := mload(0x40)
+
+            // -------------------------------------------------------------------------------------------------------------
+            // CREATION (9 bytes)
+            // -------------------------------------------------------------------------------------------------------------
+
+            // creation size = 09
+            // runtime size = 9a
+            // 60 runtime  | PUSH1 runtime (r)     | r                       | –
+            // 3d          | RETURNDATASIZE        | 0 r                     | –
+            // 81          | DUP2                  | r 0 r                   | –
+            // 60 creation | PUSH1 creation (c)    | c r 0 r                 | –
+            // 3d          | RETURNDATASIZE        | 0 c r 0 r               | –
+            // 39          | CODECOPY              | 0 r                     | [0-runSize): runtime code
+            // f3          | RETURN                |                         | [0-runSize): runtime code
+
+            // -------------------------------------------------------------------------------------------------------------
+            // RUNTIME (53 bytes of code + 101 bytes of extra data = 154 bytes)
+            // -------------------------------------------------------------------------------------------------------------
+
+            // extra data size = 65
+            // 3d          | RETURNDATASIZE        | 0                       | –
+            // 3d          | RETURNDATASIZE        | 0 0                     | –
+            // 3d          | RETURNDATASIZE        | 0 0 0                   | –
+            // 3d          | RETURNDATASIZE        | 0 0 0 0                 | –
+            // 36          | CALLDATASIZE          | cds 0 0 0 0             | –
+            // 3d          | RETURNDATASIZE        | 0 cds 0 0 0 0           | –
+            // 3d          | RETURNDATASIZE        | 0 0 cds 0 0 0 0         | –
+            // 37          | CALLDATACOPY          | 0 0 0 0                 | [0, cds) = calldata
+            // 60 extra    | PUSH1 extra           | extra 0 0 0 0           | [0, cds) = calldata
+            // 60 0x35     | PUSH1 0x35            | 0x35 extra 0 0 0 0      | [0, cds) = calldata // 0x35 (53) is runtime size - data
+            // 36          | CALLDATASIZE          | cds 0x35 extra 0 0 0 0  | [0, cds) = calldata
+            // 39          | CODECOPY              | 0 0 0 0                 | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // 36          | CALLDATASIZE          | cds 0 0 0 0             | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // 60 extra    | PUSH1 extra           | extra cds 0 0 0 0       | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // 01          | ADD                   | cds+extra 0 0 0 0       | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // 3d          | RETURNDATASIZE        | 0 cds 0 0 0 0           | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            // 73 addr     | PUSH20 0x123…         | addr 0 cds 0 0 0 0      | [0, cds) = calldata, [cds, cds+0x35) = extraData
+            mstore(ptr, hex"60_9a_3d8160093d39f3_3d3d3d3d363d3d3760_65_603536393660_65_013d73000000")
             mstore(add(ptr, 0x1d), shl(0x60, implementation))
 
             // 5a          | GAS                   | gas addr 0 cds 0 0 0 0  | [0, cds) = calldata, [cds, cds+0x35) = extraData
@@ -167,16 +174,21 @@ library LSSVMPairCloner {
             mstore(add(ptr, 0x31), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
 
             // -------------------------------------------------------------------------------------------------------------
-            // EXTRA DATA (81 bytes)
+            // EXTRA DATA (101 bytes)
             // -------------------------------------------------------------------------------------------------------------
 
             mstore(add(ptr, 0x3e), shl(0x60, factory))
             mstore(add(ptr, 0x52), shl(0x60, bondingCurve))
             mstore(add(ptr, 0x66), shl(0x60, nft))
             mstore8(add(ptr, 0x7a), poolType)
-            mstore(add(ptr, 0x7b), shl(0x60, token))
+            mstore(add(ptr, 0x7b), shl(0x60, propertyChecker))
+            mstore(add(ptr, 0x8f), shl(0x60, token))
 
-            instance := create(0, ptr, 0x8f)
+            // -------------------------------------------------------------------------------------------------------------
+            // Total length is 163 (a3) bytes
+            // -------------------------------------------------------------------------------------------------------------
+
+            instance := create(0, ptr, 0xa3)
         }
     }
 
@@ -196,7 +208,7 @@ library LSSVMPairCloner {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             let ptr := mload(0x40)
-            mstore(ptr, hex"3d3d3d3d363d3d37603d6035363936603d013d73000000000000000000000000")
+            mstore(ptr, hex"3d3d3d3d363d3d3760_51_603536393660_51_013d73000000000000000000000000")
             mstore(add(ptr, 0x14), shl(0x60, implementation))
             mstore(add(ptr, 0x28), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
             mstore(add(ptr, 0x35), shl(0x60, factory))
@@ -230,7 +242,7 @@ library LSSVMPairCloner {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             let ptr := mload(0x40)
-            mstore(ptr, hex"3d3d3d3d363d3d37605160353639366051013d73000000000000000000000000")
+            mstore(ptr, hex"3d3d3d3d363d3d3760_65_603536393660_65_013d73000000000000000000000000")
             mstore(add(ptr, 0x14), shl(0x60, implementation))
             mstore(add(ptr, 0x28), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
             mstore(add(ptr, 0x35), shl(0x60, factory))
