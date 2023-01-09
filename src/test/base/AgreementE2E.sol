@@ -40,7 +40,7 @@ abstract contract AgreementE2E is
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 20 ether;
     uint256 tokenAmount = 100 ether;
-    uint256 numItems = 2;
+    uint256 numItems = 3;
     uint256[] idList;
     ERC2981 test2981;
     IERC721 test721;
@@ -391,6 +391,10 @@ abstract contract AgreementE2E is
             "Splitter not deployed"
         );
 
+        // Verify the Splitter has the correct variables
+        assertEq(Splitter(pair.getFeeRecipient()).getParentAgreement(), address(newAgreement), "Incorrect parent");
+        assertEq(Splitter(pair.getFeeRecipient()).getPairAddressForSplitter(), address(pair), "Incorrect pair");
+
         // Perform a buy for item #1
         (
             ,
@@ -435,5 +439,37 @@ abstract contract AgreementE2E is
         assertEq(agreementFeeRecipientBalance, tradeFee);
         uint256 tradeFeeRecipientBalance = getBalance(pairFeeRecipient);
         assertEq(tradeFeeRecipientBalance, tradeFee);
+
+        // Do two swaps in succession
+        // Perform a buy for item #2 and #3
+        (
+            ,
+            ,
+            ,
+            /* error*/
+            /* new delta */
+            /* new spot price*/
+            inputAmount,
+            tradeFee,
+
+        ) = // protocolFee
+            pair.bondingCurve().getBuyInfo(
+                pair.spotPrice(),
+                pair.delta(),
+                2,
+                pair.fee(),
+                factory.protocolFeeMultiplier()
+            );
+        specificIdToBuy = new uint256[](2);
+        specificIdToBuy[0] = 2;
+        specificIdToBuy[1] = 3;
+        pair.swapTokenForSpecificNFTs{
+            value: this.modifyInputAmount(inputAmount)
+        }(specificIdToBuy, inputAmount, address(this), false, address(this));
+
+        // Ensure that 2x the trade fee went to the splitter
+        splitterAddress = pair.getFeeRecipient();
+        splitterBalance = getBalance(splitterAddress);
+        assertEq(splitterBalance, 2 * tradeFee);
     }
 }
