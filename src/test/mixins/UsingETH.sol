@@ -44,6 +44,13 @@ abstract contract UsingETH is Configurable, RouterCaller {
         return pair;
     }
 
+    function setupPairWithPropertyChecker(PairCreationParamsWithPropertyChecker memory params) public payable override returns (LSSVMPair) {
+        LSSVMPairETH pair = params.factory.createPairETH{value: msg.value}(
+            params.nft, params.bondingCurve, params.assetRecipient, params.poolType, params.delta, params.fee, params.spotPrice, params.propertyChecker, params._idList
+        );
+        return pair;
+    }
+
     function withdrawTokens(LSSVMPair pair) public override {
         LSSVMPairETH(payable(address(pair))).withdrawAllETH();
     }

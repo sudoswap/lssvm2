@@ -217,6 +217,11 @@ abstract contract LSSVMPair is
         bool isRouter,
         address routerCaller
     ) external virtual nonReentrant returns (uint256 outputAmount) {
+
+        {
+            require(propertyChecker() == address(0), "Verify property");
+        }
+
         // Store locally to remove extra calls
         ILSSVMPairFactoryLike _factory = factory();
         ICurve _bondingCurve = bondingCurve();

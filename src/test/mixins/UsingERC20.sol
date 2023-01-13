@@ -74,6 +74,32 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         return pair;
     }
 
+    function setupPairWithPropertyChecker(PairCreationParamsWithPropertyChecker memory params) public payable override returns (LSSVMPair) {
+        // create ERC20 token if not already deployed
+        if (address(test20) == address(0)) {
+            test20 = new Test20();
+        }
+
+        // set approvals for factory and router
+        test20.approve(address(params.factory), type(uint256).max);
+        test20.approve(params.routerAddress, type(uint256).max);
+
+        // mint enough tokens to caller
+        IMintable(address(test20)).mint(address(this), 1000 ether);
+
+        // initialize the pair
+        LSSVMPair pair = params.factory.createPairERC20(
+            LSSVMPairFactory.CreateERC20PairParams(
+                test20, params.nft, params.bondingCurve, params.assetRecipient, params.poolType, params.delta, params.fee, params.spotPrice, params.propertyChecker, params._idList, params.initialTokenBalance
+            )
+        );
+
+        // Set approvals for pair
+        test20.approve(address(pair), type(uint256).max);
+
+        return pair;
+    }
+
     function withdrawTokens(LSSVMPair pair) public override {
         uint256 total = test20.balanceOf(address(pair));
         LSSVMPairERC20(address(pair)).withdrawERC20(test20, total);

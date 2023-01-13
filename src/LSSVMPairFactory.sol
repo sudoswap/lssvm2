@@ -95,6 +95,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *     on the specific curve.
      *     @param _fee The fee taken by the LP in each trade. Can only be non-zero if _poolType is Trade.
      *     @param _spotPrice The initial selling spot price
+     *     @param _propertyChecker The contract to use for verifying properties of IDs sent in
      *     @param _initialNFTIDs The list of IDs of NFTs to transfer from the sender to the pair
      *     @return pair The new pair
      */
@@ -140,18 +141,20 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Creates a pair contract using EIP-1167.
-     *     @param _nft The NFT contract of the collection the pair trades
-     *     @param _bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
-     *     @param _assetRecipient The address that will receive the assets traders give during trades.
+     *     @param nft The NFT contract of the collection the pair trades
+     *     @param bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
+     *     @param assetRecipient The address that will receive the assets traders give during trades.
      *                             If set to address(0), assets will be sent to the pool address.
      *                             Not available to TRADE pools.
-     *     @param _poolType TOKEN, NFT, or TRADE
-     *     @param _delta The delta value used by the bonding curve. The meaning of delta depends
+     *     @param poolType TOKEN, NFT, or TRADE
+     *     @param delta The delta value used by the bonding curve. The meaning of delta depends
      *     on the specific curve.
-     *     @param _fee The fee taken by the LP in each trade. Can only be non-zero if _poolType is Trade.
-     *     @param _spotPrice The initial selling spot price, in ETH
-     *     @param _initialNFTIDs The list of IDs of NFTs to transfer from the sender to the pair
-     *     @param _initialTokenBalance The initial token balance sent from the sender to the new pair
+     *     @param fee The fee taken by the LP in each trade. Can only be non-zero if poolType is Trade.
+     *     @param spotPrice Param 1 for the bonding curve, usually used for start price
+     *     @param delta Param 2 for the bonding curve, usually used for dynamic adjustment
+     *     @param propertyChecker The contract to use for verifying properties of IDs sent in
+     *     @param initialNFTIDs The list of IDs of NFTs to transfer from the sender to the pair
+     *     @param initialTokenBalance The initial token balance sent from the sender to the new pair
      *     @return pair The new pair
      */
     struct CreateERC20PairParams {

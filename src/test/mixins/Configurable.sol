@@ -26,6 +26,23 @@ abstract contract Configurable {
         address routerAddress /* Yes, this is weird, but due to how we encapsulate state for a Pair's ERC20 token, this is an easy way to set approval for the router.*/
     ) public payable virtual returns (LSSVMPair);
 
+    struct PairCreationParamsWithPropertyChecker {
+        LSSVMPairFactory factory;
+        IERC721 nft;
+        ICurve bondingCurve;
+        address payable assetRecipient;
+        LSSVMPair.PoolType poolType;
+        uint128 delta;
+        uint96 fee;
+        uint128 spotPrice;
+        uint256[] _idList;
+        uint256 initialTokenBalance;
+        address routerAddress; 
+        address propertyChecker;
+    }
+    
+    function setupPairWithPropertyChecker(PairCreationParamsWithPropertyChecker memory params) public payable virtual returns (LSSVMPair);
+
     function setupCurve() public virtual returns (ICurve);
 
     function setup721() public virtual returns (IERC721Mintable) {
