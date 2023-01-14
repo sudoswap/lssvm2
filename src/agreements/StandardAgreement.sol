@@ -186,14 +186,15 @@ contract StandardAgreement is
                 ILSSVMPairFactoryLike.PairVariant.ETH
             )
         ) {
-            Splitter(payable(pair.getAssetRecipient())).withdrawAllETH();
-        } else if (
+            Splitter(payable(pair.getFeeRecipient())).withdrawAllETH();
+        } 
+        else if (
             pairFactory.isPair(
                 pairAddress,
                 ILSSVMPairFactoryLike.PairVariant.ERC20
             )
         ) {
-            Splitter(payable(pair.getAssetRecipient()))
+            Splitter(payable(pair.getFeeRecipient()))
                 .withdrawAllBaseQuoteTokens();
         }
 

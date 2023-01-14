@@ -88,7 +88,7 @@ abstract contract AgreementE2E is
             factory,
             test721,
             bondingCurve,
-            payable(address(0)),
+            payable(address(0)), // asset recipient
             LSSVMPair.PoolType.TRADE,
             delta,
             0, // 0% for trade fee
@@ -223,7 +223,7 @@ abstract contract AgreementE2E is
 
     // Standard Agreement + Agreement Factory tests
 
-    // Creating a Standard Agreement works as expected
+    // Creating a Standard Agreement works as expected, values are as expected
     function test_createAgreementFromFactory() public {
         address payable agreementFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
@@ -355,6 +355,108 @@ abstract contract AgreementE2E is
         mockPair.transferOwnership{value: ethCost}(address(newAgreement), "");
     }
 
+    // Leaving after the expiry date succeeds
+    function test_leaveAgreementAfterExpiry() public {
+
+        // Set up basic Agreement
+        address payable agreementFeeRecipient = payable(address(123));
+        uint256 ethCost = 0;
+        uint64 secDuration = 100;
+        uint64 feeSplitBps = 2;
+        uint64 newRoyaltyBps = 1000; // 10% in bps
+        StandardAgreement newAgreement = agreementFactory.createAgreement(
+            agreementFeeRecipient,
+            ethCost,
+            secDuration,
+            feeSplitBps,
+            newRoyaltyBps
+        );
+        factory.toggleAgreementForCollection(
+            address(newAgreement),
+            address(test721),
+            true
+        );
+
+        // Opt into the Agreement
+        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+
+        // Skip ahead in time
+        skip(secDuration + 1);
+
+        // Attempt to leave the Agreement
+        newAgreement.reclaimPair(address(pair));
+
+        // Check that the owner is now set back to caller
+        assertEq(pair.owner(), address(this));
+        // Prev fee recipient defaulted to the pair, so it should still be the pair
+        assertEq(pair.getFeeRecipient(), address(pair)); 
+        (bool isInAgreement,) = factory.agreementForPair(address(pair));
+        assertEq(isInAgreement, false);
+    }
+
+    // Leaving after the expiry date succeeds
+    function testFail_leaveAgreementAfterExpiryAsDiffCaller() public {
+
+        // Set up basic Agreement
+        address payable agreementFeeRecipient = payable(address(123));
+        uint256 ethCost = 0;
+        uint64 secDuration = 100;
+        uint64 feeSplitBps = 2;
+        uint64 newRoyaltyBps = 1000; // 10% in bps
+        StandardAgreement newAgreement = agreementFactory.createAgreement(
+            agreementFeeRecipient,
+            ethCost,
+            secDuration,
+            feeSplitBps,
+            newRoyaltyBps
+        );
+        factory.toggleAgreementForCollection(
+            address(newAgreement),
+            address(test721),
+            true
+        );
+
+        // Opt into the Agreement
+        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+
+        // Skip ahead in time
+        skip(secDuration + 1);
+
+        hoax(address(12321));
+
+        // Attempt to leave the Agreement
+        newAgreement.reclaimPair(address(pair));
+    }
+
+    // Leaving before the expiry date fails
+    function testFail_leaveAgreementBeforeExpiry() public {
+
+        // Set up basic Agreement
+        address payable agreementFeeRecipient = payable(address(123));
+        uint256 ethCost = 0 ether;
+        uint64 secDuration = 100;
+        uint64 feeSplitBps = 2;
+        uint64 newRoyaltyBps = 1000; // 10% in bps
+        StandardAgreement newAgreement = agreementFactory.createAgreement(
+            agreementFeeRecipient,
+            ethCost,
+            secDuration,
+            feeSplitBps,
+            newRoyaltyBps
+        );
+        factory.toggleAgreementForCollection(
+            address(newAgreement),
+            address(test721),
+            true
+        );
+
+        // Opt into the Agreement
+        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+
+        // Attempt to leave the Agreement
+        newAgreement.reclaimPair(address(pair));
+    }
+
     // Splitter tests
 
     // A pair can enter a Standard Agreement if authorized
@@ -392,8 +494,16 @@ abstract contract AgreementE2E is
         );
 
         // Verify the Splitter has the correct variables
-        assertEq(Splitter(pair.getFeeRecipient()).getParentAgreement(), address(newAgreement), "Incorrect parent");
-        assertEq(Splitter(pair.getFeeRecipient()).getPairAddressForSplitter(), address(pair), "Incorrect pair");
+        assertEq(
+            Splitter(pair.getFeeRecipient()).getParentAgreement(),
+            address(newAgreement),
+            "Incorrect parent"
+        );
+        assertEq(
+            Splitter(pair.getFeeRecipient()).getPairAddressForSplitter(),
+            address(pair),
+            "Incorrect pair"
+        );
 
         // Perform a buy for item #1
         (
@@ -404,10 +514,9 @@ abstract contract AgreementE2E is
             /* new delta */
             /* new spot price*/
             uint256 inputAmount,
-            uint256 tradeFee,
+            uint256 tradeFee, // protocolFee
 
-        ) = // protocolFee
-            pair.bondingCurve().getBuyInfo(
+        ) = pair.bondingCurve().getBuyInfo(
                 pair.spotPrice(),
                 pair.delta(),
                 1,
@@ -435,7 +544,9 @@ abstract contract AgreementE2E is
         }
 
         // Ensure that the Agreement-set fee recipient received the tokens
-        uint256 agreementFeeRecipientBalance = getBalance(agreementFeeRecipient);
+        uint256 agreementFeeRecipientBalance = getBalance(
+            agreementFeeRecipient
+        );
         assertEq(agreementFeeRecipientBalance, tradeFee);
         uint256 tradeFeeRecipientBalance = getBalance(pairFeeRecipient);
         assertEq(tradeFeeRecipientBalance, tradeFee);
@@ -452,14 +563,13 @@ abstract contract AgreementE2E is
             inputAmount,
             tradeFee,
 
-        ) = // protocolFee
-            pair.bondingCurve().getBuyInfo(
-                pair.spotPrice(),
-                pair.delta(),
-                2,
-                pair.fee(),
-                factory.protocolFeeMultiplier()
-            );
+        ) = pair.bondingCurve().getBuyInfo( // protocolFee
+            pair.spotPrice(),
+            pair.delta(),
+            2,
+            pair.fee(),
+            factory.protocolFeeMultiplier()
+        );
         specificIdToBuy = new uint256[](2);
         specificIdToBuy[0] = 2;
         specificIdToBuy[1] = 3;
