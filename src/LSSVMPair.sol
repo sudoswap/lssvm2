@@ -18,6 +18,7 @@ import {ReentrancyGuard} from "./lib/ReentrancyGuard.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
 import {OwnableWithTransferCallback} from "./lib/OwnableWithTransferCallback.sol";
+import {IPropertyChecker} from "./property-checking/IPropertyChecker.sol";
 
 /// @title The base contract for an NFT/TOKEN AMM pair
 /// @author boredGenius and 0xmons
@@ -247,6 +248,83 @@ abstract contract LSSVMPair is
             nftIds.length,
             minExpectedTokenOutput,
             _bondingCurve,
+            _factory
+        );
+
+        // Compute royalties
+        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(
+            nftIds[0],
+            outputAmount
+        );
+
+        // Deduct royalties from outputAmount
+        unchecked {
+            // Safe because we already require outputAmount >= royaltyAmount in _calculateRoyalties()
+            outputAmount -= royaltyAmount;
+        }
+
+        _sendTokenOutput(tokenRecipient, outputAmount);
+
+        _sendTokenOutput(payable(royaltyRecipient), royaltyAmount);
+
+        _payProtocolFeeFromPair(_factory, protocolFee);
+
+        _takeNFTsFromSender(nft(), nftIds, _factory, isRouter, routerCaller);
+
+        emit SwapNFTInPair(outputAmount, nftIds);
+    }
+    
+    /**
+     * @notice Sends a set of NFTs to the pair in exchange for token
+     *     @dev To compute the amount of token to that will be received, call bondingCurve.getSellInfo.
+     *     @param nftIds The list of IDs of the NFTs to sell to the pair
+     *     @param minExpectedTokenOutput The minimum acceptable token received by the sender. If the actual
+     *     amount is less than this value, the transaction will be reverted.
+     *     @param tokenRecipient The recipient of the token output
+     *     @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
+     *     ETH pairs.
+     *     @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
+     *     ETH pairs.
+     *     @param propertyCheckerParams Parameters to pass into the pair's underlying property checker
+     *     @return outputAmount The amount of token received
+     */
+    function swapNFTsForToken(
+        uint256[] calldata nftIds,
+        uint256 minExpectedTokenOutput,
+        address payable tokenRecipient,
+        bool isRouter,
+        address routerCaller,
+        bytes calldata propertyCheckerParams
+    ) external virtual nonReentrant returns (uint256 outputAmount) {
+
+        {
+            require(IPropertyChecker(propertyChecker()).hasProperties(nftIds, propertyCheckerParams), "Property check failed");
+        }
+
+        // Store locally to remove extra calls
+        ILSSVMPairFactoryLike _factory = factory();
+
+        // Input validation
+        {
+            PoolType _poolType = poolType();
+            require(
+                _poolType == PoolType.TOKEN || _poolType == PoolType.TRADE,
+                "Wrong Pool type"
+            );
+            require(nftIds.length > 0, "Must ask for > 0 NFTs");
+        }
+
+        // Call bonding curve for pricing information
+        uint256 protocolFee;
+        uint256 tradeFee;
+        (
+            tradeFee,
+            protocolFee,
+            outputAmount
+        ) = _calculateSellInfoAndUpdatePoolParams(
+            nftIds.length,
+            minExpectedTokenOutput,
+            bondingCurve(),
             _factory
         );
 
