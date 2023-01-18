@@ -248,6 +248,8 @@ abstract contract AgreementE2E is
     }
 
     // A pair can enter a Standard Agreement if authorized
+    // Owner can change pair fee within tolerance after entering Agreement
+    // Modified royalty is applied after entering Agreement
     function test_enterAgreementForPool() public {
         address payable agreementFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
@@ -312,6 +314,35 @@ abstract contract AgreementE2E is
             secondRoyaltyPayment,
             calcRoyalty(outputAmount, newRoyaltyBps)
         );
+
+        // Changing the fee to under 20% works
+        uint96 newFee = 0.2e18;
+        newAgreement.changeFee(address(pair), newFee);
+    }
+
+    function testFail_changeFeeTooHigh() public {
+      address payable agreementFeeRecipient = payable(address(123));
+        uint256 ethCost = 0.1 ether;
+        uint64 secDuration = 1;
+        uint64 feeSplitBps = 2;
+        uint64 newRoyaltyBps = 1000; // 10% in bps
+        StandardAgreement newAgreement = agreementFactory.createAgreement(
+            agreementFeeRecipient,
+            ethCost,
+            secDuration,
+            feeSplitBps,
+            newRoyaltyBps
+        );
+        factory.toggleAgreementForCollection(
+            address(newAgreement),
+            address(test721),
+            true
+        );
+        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+
+        // Setting new fee to be above 20%
+        uint256 newFee = 0.2e18 + 1;
+        newAgreement.changeFee(address(pair), uint96(newFee));
     }
 
     // A pair cannot enter a Standard Agreement if the Agreement is unauthorized
@@ -426,6 +457,44 @@ abstract contract AgreementE2E is
 
         // Attempt to leave the Agreement
         newAgreement.reclaimPair(address(pair));
+
+        // Perform a buy for item #1
+        (
+            ,
+            ,
+            ,
+            /* error*/
+            /* new delta */
+            /* new spot price*/
+            uint256 inputAmount,
+            , // protocolFee
+
+        ) = pair.bondingCurve().getBuyInfo(
+                pair.spotPrice(),
+                pair.delta(),
+                1,
+                pair.fee(),
+                factory.protocolFeeMultiplier()
+            );
+        uint256[] memory specificIdToBuy = new uint256[](1);
+        specificIdToBuy[0] = 1;
+
+        // Check test2981
+        (address royaltyRecipient, uint256 royaltyAmount) = test2981.royaltyInfo(1, inputAmount);
+
+        // Get before balance
+        uint256 startBalance = this.getBalance(royaltyRecipient);
+
+        // Do the swap
+        pair.swapTokenForSpecificNFTs{
+            value: this.modifyInputAmount(inputAmount)
+        }(specificIdToBuy, inputAmount, address(this), false, address(this));
+
+        // Get after balance
+        uint256 afterBalance = this.getBalance(royaltyRecipient);
+
+        // Ensure the right royalty amount was paid
+        assertEq(afterBalance-startBalance, royaltyAmount);
     }
 
     // Leaving before the expiry date fails

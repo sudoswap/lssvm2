@@ -23,7 +23,7 @@ contract StandardAgreement is
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for address payable;
 
-    uint256 MAX_FEE = 0.2e18; // Max fee of 20%
+    uint96 constant MAX_SETTABLE_FEE = 2e17; // Max fee of 20%
 
     mapping(address => PairInAgreement) public pairInfo;
     address payable public agreementFeeRecipient;
@@ -227,7 +227,7 @@ contract StandardAgreement is
         PairInAgreement memory agreementInfo = pairInfo[pairAddress];
         // Verify that the caller is the previous owner of the pair
         require(msg.sender == agreementInfo.prevOwner, "Not prev owner");
-        require(newFee <= MAX_FEE, "Fee too high");
+        require(newFee <= MAX_SETTABLE_FEE, "Fee too high");
         ILSSVMPair(pairAddress).changeFee(newFee);
     }
 

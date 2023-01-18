@@ -995,7 +995,7 @@ abstract contract LSSVMPair is
     function changeFee(uint96 newFee) external onlyOwner {
         PoolType _poolType = poolType();
         require(_poolType == PoolType.TRADE, "Only for Trade pools");
-        require(newFee < MAX_FEE, "Trade fee must be less than 90%");
+        require(newFee < MAX_FEE, "Trade fee must be less than 50%");
         if (fee != newFee) {
             fee = newFee;
             emit FeeUpdate(newFee);
