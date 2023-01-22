@@ -63,5 +63,7 @@ abstract contract Configurable {
 
     function getParamsForPartialFillTest() public virtual returns (uint128 spotPrice, uint128 delta);
 
+    function getParamsForAdjustingPriceToBuy(LSSVMPair pair, uint256 percentage, bool isIncrease) public virtual returns (uint128 spotPrice, uint128 delta);
+
     receive() external payable {}
 }

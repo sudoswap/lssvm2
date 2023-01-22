@@ -16,7 +16,7 @@ import {LSSVMPairCloner} from "./lib/LSSVMPairCloner.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 
 /**
- * Imports for AuthOracle (forked from manifold.xyz Royalty Registry)
+ * Imports for authAllowedForToken (forked from manifold.xyz Royalty Registry)
  */
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";

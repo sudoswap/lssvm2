@@ -320,8 +320,113 @@ abstract contract AgreementE2E is
         newAgreement.changeFee(address(pair), newFee);
     }
 
+    // Changing the price up works (because there are tokens)
+    // Changing the price down works (because there are NFTs)
+    function test_changeParamsAfterEnteringAgreement() public {
+
+        // Set up sample Agreement
+        address payable agreementFeeRecipient = payable(address(123));
+        StandardAgreement newAgreement = agreementFactory.createAgreement(
+            agreementFeeRecipient,
+            0,
+            1,
+            2,
+            1000
+        );
+        factory.toggleAgreementForCollection(
+            address(newAgreement),
+            address(test721),
+            true
+        );
+
+        // Opt into the Agreement
+        pair.transferOwnership(address(newAgreement), "");
+
+        // Get new params for changing price to buy up
+        uint256 percentage = 1.1 * 1e18; // 10%
+        (uint128 newSpotPrice, uint128 newDelta) = this
+            .getParamsForAdjustingPriceToBuy(pair, percentage, true);
+
+        // Changing price up works
+        newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+
+        // Get new params for changing price to buy down
+        percentage = 0.9 * 1e18; // 10%
+        (newSpotPrice, newDelta) = this
+            .getParamsForAdjustingPriceToBuy(pair, percentage, true);
+
+        // Changing price down works
+        newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+    }
+
+    // Changing the price up fails (because there are no tokens)
+    function testFail_changeBuyPriceUpNoTokens() public {
+
+      // Set up sample Agreement
+        address payable agreementFeeRecipient = payable(address(123));
+        StandardAgreement newAgreement = agreementFactory.createAgreement(
+            agreementFeeRecipient,
+            0,
+            1,
+            2,
+            1000
+        );
+        factory.toggleAgreementForCollection(
+            address(newAgreement),
+            address(test721),
+            true
+        );
+
+        // Withdraw tokens from pair
+        this.withdrawTokens(pair);
+
+        // Opt into the Agreement
+        pair.transferOwnership(address(newAgreement), "");
+
+        // Get new params for changing price to buy up
+        uint256 percentage = 1.1 * 1e18; // 10%
+        (uint128 newSpotPrice, uint128 newDelta) = this
+            .getParamsForAdjustingPriceToBuy(pair, percentage, true);
+
+        // Changing price up should fail because there is no more buy pressure
+        newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+    }
+
+    // Changing the price down fails (because there are no NFTs)
+    function testFail_changeBuyPriceDownNoNFTs() public {
+
+      // Set up sample Agreement
+        address payable agreementFeeRecipient = payable(address(123));
+        StandardAgreement newAgreement = agreementFactory.createAgreement(
+            agreementFeeRecipient,
+            0,
+            1,
+            2,
+            1000
+        );
+        factory.toggleAgreementForCollection(
+            address(newAgreement),
+            address(test721),
+            true
+        );
+
+        // Withdraw tokens from pair
+        pair.withdrawERC721(pair.nft(), idList);
+
+        // Opt into the Agreement
+        pair.transferOwnership(address(newAgreement), "");
+
+        // Get new params for changing price to buy up
+        uint256 percentage = 0.9 * 1e18; // 10%
+        (uint128 newSpotPrice, uint128 newDelta) = this
+            .getParamsForAdjustingPriceToBuy(pair, percentage, true);
+
+        // Changing price down should fail because there is no more nft ivnentory
+        newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+    }
+
     function testFail_changeFeeTooHigh() public {
-      address payable agreementFeeRecipient = payable(address(123));
+        address payable agreementFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
@@ -388,7 +493,6 @@ abstract contract AgreementE2E is
 
     // Leaving after the expiry date succeeds
     function test_leaveAgreementAfterExpiry() public {
-
         // Set up basic Agreement
         address payable agreementFeeRecipient = payable(address(123));
         uint256 ethCost = 0;
@@ -420,14 +524,13 @@ abstract contract AgreementE2E is
         // Check that the owner is now set back to caller
         assertEq(pair.owner(), address(this));
         // Prev fee recipient defaulted to the pair, so it should still be the pair
-        assertEq(pair.getFeeRecipient(), address(pair)); 
-        (bool isInAgreement,) = factory.agreementForPair(address(pair));
+        assertEq(pair.getFeeRecipient(), address(pair));
+        (bool isInAgreement, ) = factory.agreementForPair(address(pair));
         assertEq(isInAgreement, false);
     }
 
     // Leaving after the expiry date succeeds
     function testFail_leaveAgreementAfterExpiryAsDiffCaller() public {
-
         // Set up basic Agreement
         address payable agreementFeeRecipient = payable(address(123));
         uint256 ethCost = 0;
@@ -466,8 +569,8 @@ abstract contract AgreementE2E is
             /* error*/
             /* new delta */
             /* new spot price*/
-            uint256 inputAmount,
-            , // protocolFee
+            uint256 inputAmount, // protocolFee
+            ,
 
         ) = pair.bondingCurve().getBuyInfo(
                 pair.spotPrice(),
@@ -480,7 +583,8 @@ abstract contract AgreementE2E is
         specificIdToBuy[0] = 1;
 
         // Check test2981
-        (address royaltyRecipient, uint256 royaltyAmount) = test2981.royaltyInfo(1, inputAmount);
+        (address royaltyRecipient, uint256 royaltyAmount) = test2981
+            .royaltyInfo(1, inputAmount);
 
         // Get before balance
         uint256 startBalance = this.getBalance(royaltyRecipient);
@@ -494,12 +598,11 @@ abstract contract AgreementE2E is
         uint256 afterBalance = this.getBalance(royaltyRecipient);
 
         // Ensure the right royalty amount was paid
-        assertEq(afterBalance-startBalance, royaltyAmount);
+        assertEq(afterBalance - startBalance, royaltyAmount);
     }
 
     // Leaving before the expiry date fails
     function testFail_leaveAgreementBeforeExpiry() public {
-
         // Set up basic Agreement
         address payable agreementFeeRecipient = payable(address(123));
         uint256 ethCost = 0 ether;

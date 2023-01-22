@@ -5,7 +5,7 @@ import {IPropertyChecker} from "./IPropertyChecker.sol";
 import {Clone} from "clones-with-immutable-args/Clone.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-contract RangePropertyChecker is IPropertyChecker, Clone {
+contract MerklePropertyChecker is IPropertyChecker, Clone {
 
     // Immutable params
 

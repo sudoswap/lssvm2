@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {Configurable} from "./Configurable.sol";
+import {LSSVMPair} from "../../LSSVMPair.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {ExponentialCurve} from "../../bonding-curves/ExponentialCurve.sol";
 
@@ -42,5 +43,18 @@ abstract contract UsingExponentialCurve is Configurable {
     // Return 1 eth as spot price and 10% as the delta scaling
     function getParamsForPartialFillTest() public pure override returns (uint128 spotPrice, uint128 delta) {
         return (10 ** 18, 1.1 * (10 ** 18));
+    }
+
+    // Adjusts price up or down
+    function getParamsForAdjustingPriceToBuy(LSSVMPair pair, uint256 percentage, bool isIncrease) public view override returns (uint128 spotPrice, uint128 delta) {
+      delta = pair.delta();
+      if (isIncrease) {
+        // Multiply by multiplier, divide by base
+        spotPrice = uint128((pair.spotPrice() * percentage) / 1e18);
+      } 
+      else {
+        // Multiply by base, divide by multiplier
+        spotPrice = uint128((pair.spotPrice() / 1e18) * percentage);
+      }
     }
 }
