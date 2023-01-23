@@ -228,9 +228,9 @@ abstract contract PropertyChecking is
     }
 
     // Tests swapping behavior when the tokenId is in and not in the given merkle proof
-    function test_merklePropertyChecker() public {
+    function test_merklePropertyCheckerSingleId() public {
         // Create merkle tree
-        uint256[2] memory tokenIds = [1, 2];
+        uint256[2] memory tokenIds = [uint256(1), uint256(2)];
         bytes32[] memory hashes = new bytes32[](3);
         hashes[0] = keccak256(abi.encodePacked(tokenIds[0]));
         hashes[1] = keccak256(abi.encodePacked(tokenIds[1]));
@@ -298,6 +298,89 @@ abstract contract PropertyChecking is
             false,
             address(this),
             proofListEncoded
+        );
+    }
+
+    // Tests swapping behavior when multiple tokenIds are passed
+    function test_merklePropertyCheckerMultipleIds() public {
+        // Create merkle tree
+        uint256[2] memory tokenIds = [uint256(1), uint256(2)];
+        bytes32[] memory hashes = new bytes32[](3);
+        hashes[0] = keccak256(abi.encodePacked(tokenIds[0]));
+        hashes[1] = keccak256(abi.encodePacked(tokenIds[1]));
+        hashes[2] = keccak256(abi.encodePacked(hashes[1], hashes[0]));
+
+        MerklePropertyChecker checker = propertyCheckerFactory
+            .createMerklePropertyChecker(hashes[2]);
+
+        // Deploy a pair with the property checker set
+        PairCreationParamsWithPropertyChecker
+            memory params = PairCreationParamsWithPropertyChecker({
+                factory: factory,
+                nft: test721,
+                bondingCurve: bondingCurve,
+                assetRecipient: payable(address(0)),
+                poolType: LSSVMPair.PoolType.TRADE,
+                delta: delta,
+                fee: 0,
+                spotPrice: spotPrice,
+                _idList: emptyList,
+                initialTokenBalance: tokenAmount,
+                routerAddress: address(0),
+                propertyChecker: address(checker)
+            });
+
+        LSSVMPair pair = this.setupPairWithPropertyChecker{
+            value: this.modifyInputAmount(tokenAmount)
+        }(params);
+
+        // Mint any extra tokens as needed
+        testERC20 = ERC20(address(new Test20()));
+        IMintable(address(testERC20)).mint(address(pair), 100 ether);
+        test721.setApprovalForAll(address(pair), true);
+        testERC20.approve(address(pair), 10000 ether);
+
+        (, , , uint256 outputAmount, ) = pair.getSellNFTQuote(1);
+        uint256[] memory idsToSell = new uint256[](2);
+
+        // Create encoded proof list
+        bytes32[] memory proof1 = new bytes32[](1);
+        proof1[0] = hashes[1];
+        bytes memory proof1Encoded = abi.encode(proof1);
+        
+        // Create encoded merkle proof list
+        bytes[] memory proofList = new bytes[](2);
+        proofList[0] = proof1Encoded;
+        proofList[1] = proof1Encoded; // Use dummy value here
+
+        // A sell for [1,3] will fail because 3 is not part of the merkle tree
+        idsToSell[0] = 1;
+        idsToSell[1] = 3;
+        vm.expectRevert("Property check failed");
+        pair.swapNFTsForToken(
+            idsToSell,
+            outputAmount,
+            payable(address(this)),
+            false,
+            address(this),
+            abi.encode(proofList)
+        );
+
+        // Create second proof and add it to the proof list
+        bytes32[] memory proof2 = new bytes32[](1);
+        proof2[0] = hashes[0];
+        bytes memory proof2Encoded = abi.encode(proof2);
+        proofList[1] = proof2Encoded;
+
+        // A sell for ids [1,2] will succeed because both ids are part of the merkle tree
+        idsToSell[1] = 2;
+        pair.swapNFTsForToken(
+            idsToSell,
+            outputAmount,
+            payable(address(this)),
+            false,
+            address(this),
+            abi.encode(proofList)
         );
     }
 }
