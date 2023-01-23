@@ -230,9 +230,7 @@ abstract contract PropertyChecking is
     // Tests swapping behavior when the tokenId is in and not in the given merkle proof
     function test_merklePropertyChecker() public {
         // Create merkle tree
-        uint256 tokenId1 = 1;
-        uint256 tokenId2 = 2;
-        uint256[2] memory tokenIds = [tokenId1, tokenId2];
+        uint256[2] memory tokenIds = [1, 2];
         bytes32[] memory hashes = new bytes32[](3);
         hashes[0] = keccak256(abi.encodePacked(tokenIds[0]));
         hashes[1] = keccak256(abi.encodePacked(tokenIds[1]));
