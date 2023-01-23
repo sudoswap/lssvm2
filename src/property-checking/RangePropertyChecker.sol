@@ -19,20 +19,20 @@ contract RangePropertyChecker is IPropertyChecker, Clone {
      * @return Returns the upper bound of IDs allowed
      */
     function getUpperBoundInclusive() public pure returns (uint256) {
-        return _getArgUint64(32);
+        return _getArgUint256(32);
     }
 
     function hasProperties(uint256[] calldata ids, bytes calldata) external pure returns(bool isAllowed) {
         isAllowed = true;
         uint256 lowerBound = getLowerBoundInclusive();
         uint256 upperBound = getUpperBoundInclusive();
-        for (uint i; i < ids.length;) {
-            if (i > upperBound || i < lowerBound) {
-                return false;
-            }
-            unchecked {
-                ++i;
-            }
+        for (uint i; i < ids.length; i++) {
+          if (ids[i] < lowerBound) {
+            return false;
+          }
+          else if (ids[i] > upperBound) {
+            return false;
+          }
         }
     }
 }

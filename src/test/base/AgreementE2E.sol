@@ -221,7 +221,7 @@ abstract contract AgreementE2E is
         factory.toggleBpsForPairInAgreement(address(pair), newBps, true);
     }
 
-    // Standard Agreement + Agreement Factory tests
+    // Standard Agreement + Agreement Factory tests:
 
     // Creating a Standard Agreement works as expected, values are as expected
     function test_createAgreementFromFactory() public {

@@ -22,21 +22,22 @@ contract PropertyCheckerFactory {
         rangePropertyCheckerImplementation = _rangePropertyCheckerImplementation;
     }
 
-    function createMerklePropertyChecker(bytes32 root) public {
+    function createMerklePropertyChecker(bytes32 root) public returns (MerklePropertyChecker) {
         bytes memory data = abi.encodePacked(uint256(root));
         MerklePropertyChecker checker = MerklePropertyChecker(
             address(merklePropertyCheckerImplementation).clone(data)
         );
         emit NewMerklePropertyChecker(address(checker), root);
+        return checker;
     }
 
     function createRangePropertyChecker(
         uint256 startInclusive,
         uint256 endInclusive
-    ) public {
+    ) public returns (RangePropertyChecker) {
         bytes memory data = abi.encodePacked(startInclusive, endInclusive);
         RangePropertyChecker checker = RangePropertyChecker(address(rangePropertyCheckerImplementation).clone(data));
         emit NewRangePropertyChecker(address(checker), startInclusive, endInclusive);
-
+        return checker;
     }
 }
