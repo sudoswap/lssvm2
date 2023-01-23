@@ -31,11 +31,7 @@ import {PropertyCheckerFactory} from "../../property-checking/PropertyCheckerFac
 import {Test20} from "../../mocks/Test20.sol";
 import {Test721} from "../../mocks/Test721.sol";
 
-abstract contract PropertyChecking is
-    Test,
-    ERC721Holder,
-    ConfigurableWithRoyalties
-{
+abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalties {
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 20 ether;
     uint256 tokenAmount = 100 ether;
@@ -59,10 +55,7 @@ abstract contract PropertyChecking is
         royaltyRegistry = setupRoyaltyRegistry();
 
         // Set a royalty override
-        royaltyRegistry.setRoyaltyLookupAddress(
-            address(test721),
-            address(test2981)
-        );
+        royaltyRegistry.setRoyaltyLookupAddress(address(test721), address(test2981));
 
         // Set up the pair templates and pair factory
         LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
@@ -89,74 +82,60 @@ abstract contract PropertyChecking is
 
     // Tests that swapping for an item if the pair has properties set will fail if property data is not passed in
     function test_normalSwapFailsIfPropertyCheckerSet() public {
-        RangePropertyChecker checker = propertyCheckerFactory
-            .createRangePropertyChecker(0, 0);
+        RangePropertyChecker checker = propertyCheckerFactory.createRangePropertyChecker(0, 0);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker
-            memory params = PairCreationParamsWithPropertyChecker({
-                factory: factory,
-                nft: test721,
-                bondingCurve: bondingCurve,
-                assetRecipient: payable(address(0)),
-                poolType: LSSVMPair.PoolType.TRADE,
-                delta: delta,
-                fee: 0,
-                spotPrice: spotPrice,
-                _idList: emptyList,
-                initialTokenBalance: tokenAmount,
-                routerAddress: address(0),
-                propertyChecker: address(checker)
-            });
+        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+            factory: factory,
+            nft: test721,
+            bondingCurve: bondingCurve,
+            assetRecipient: payable(address(0)),
+            poolType: LSSVMPair.PoolType.TRADE,
+            delta: delta,
+            fee: 0,
+            spotPrice: spotPrice,
+            _idList: emptyList,
+            initialTokenBalance: tokenAmount,
+            routerAddress: address(0),
+            propertyChecker: address(checker)
+        });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{
-            value: this.modifyInputAmount(tokenAmount)
-        }(params);
+        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Attempt to perform a sell for item #1
-        (, , , uint256 outputAmount, ) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
 
         vm.expectRevert("Verify property");
 
-        pair.swapNFTsForToken(
-            specificIdToSell,
-            outputAmount,
-            payable(address(this)),
-            false,
-            address(this)
-        );
+        pair.swapNFTsForToken(specificIdToSell, outputAmount, payable(address(this)), false, address(this));
 
         // Should fail because we haven't specified the property data
     }
-    
+
     // RangePropertyChecker
     // Tests that swapping for an item if the pair has properties set will fail if property is not fulfilled
     function test_propertySwapFailsIfOutOfRange() public {
-        RangePropertyChecker checker = propertyCheckerFactory
-            .createRangePropertyChecker(0, 0);
+        RangePropertyChecker checker = propertyCheckerFactory.createRangePropertyChecker(0, 0);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker
-            memory params = PairCreationParamsWithPropertyChecker({
-                factory: factory,
-                nft: test721,
-                bondingCurve: bondingCurve,
-                assetRecipient: payable(address(0)),
-                poolType: LSSVMPair.PoolType.TRADE,
-                delta: delta,
-                fee: 0,
-                spotPrice: spotPrice,
-                _idList: emptyList,
-                initialTokenBalance: tokenAmount,
-                routerAddress: address(0),
-                propertyChecker: address(checker)
-            });
+        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+            factory: factory,
+            nft: test721,
+            bondingCurve: bondingCurve,
+            assetRecipient: payable(address(0)),
+            poolType: LSSVMPair.PoolType.TRADE,
+            delta: delta,
+            fee: 0,
+            spotPrice: spotPrice,
+            _idList: emptyList,
+            initialTokenBalance: tokenAmount,
+            routerAddress: address(0),
+            propertyChecker: address(checker)
+        });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{
-            value: this.modifyInputAmount(tokenAmount)
-        }(params);
+        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -165,7 +144,7 @@ abstract contract PropertyChecking is
         testERC20.approve(address(pair), 10000 ether);
 
         // Attempt to perform a sell for item #1
-        (, , , uint256 outputAmount, ) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
 
@@ -183,29 +162,25 @@ abstract contract PropertyChecking is
 
     // Tests that swapping for an item if the pair has properties set will succeed if property is fulfilled
     function test_propertySwapSucceedsIfInRange() public {
-        RangePropertyChecker checker = propertyCheckerFactory
-            .createRangePropertyChecker(0, 10);
+        RangePropertyChecker checker = propertyCheckerFactory.createRangePropertyChecker(0, 10);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker
-            memory params = PairCreationParamsWithPropertyChecker({
-                factory: factory,
-                nft: test721,
-                bondingCurve: bondingCurve,
-                assetRecipient: payable(address(0)),
-                poolType: LSSVMPair.PoolType.TRADE,
-                delta: delta,
-                fee: 0,
-                spotPrice: spotPrice,
-                _idList: emptyList,
-                initialTokenBalance: tokenAmount,
-                routerAddress: address(0),
-                propertyChecker: address(checker)
-            });
+        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+            factory: factory,
+            nft: test721,
+            bondingCurve: bondingCurve,
+            assetRecipient: payable(address(0)),
+            poolType: LSSVMPair.PoolType.TRADE,
+            delta: delta,
+            fee: 0,
+            spotPrice: spotPrice,
+            _idList: emptyList,
+            initialTokenBalance: tokenAmount,
+            routerAddress: address(0),
+            propertyChecker: address(checker)
+        });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{
-            value: this.modifyInputAmount(tokenAmount)
-        }(params);
+        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -214,7 +189,7 @@ abstract contract PropertyChecking is
         testERC20.approve(address(pair), 10000 ether);
 
         // Perform a sell for item #1
-        (, , , uint256 outputAmount, ) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
         pair.swapNFTsForToken(

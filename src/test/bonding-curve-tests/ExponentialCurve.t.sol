@@ -25,8 +25,14 @@ contract ExponentialCurveTest is Test {
         uint256 numItems = 5;
         uint256 feeMultiplier = (FixedPointMathLib.WAD * 5) / 1000; // 0.5%
         uint256 protocolFeeMultiplier = (FixedPointMathLib.WAD * 3) / 1000; // 0.3%
-        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue, /* tradeFee */, uint256 protocolFee) =
-            curve.getBuyInfo(spotPrice, delta, numItems, feeMultiplier, protocolFeeMultiplier);
+        (
+            CurveErrorCodes.Error error,
+            uint256 newSpotPrice,
+            uint256 newDelta,
+            uint256 inputValue, /* tradeFee */
+            ,
+            uint256 protocolFee
+        ) = curve.getBuyInfo(spotPrice, delta, numItems, feeMultiplier, protocolFeeMultiplier);
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
         assertEq(newSpotPrice, 96 ether, "Spot price incorrect");
         assertEq(newDelta, 2 ether, "Delta incorrect");
@@ -68,8 +74,14 @@ contract ExponentialCurveTest is Test {
         uint256 numItems = 5;
         uint256 feeMultiplier = (FixedPointMathLib.WAD * 5) / 1000; // 0.5%
         uint256 protocolFeeMultiplier = (FixedPointMathLib.WAD * 3) / 1000; // 0.3%
-        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 outputValue, /* tradeFee */, uint256 protocolFee)
-        = curve.getSellInfo(spotPrice, delta, numItems, feeMultiplier, protocolFeeMultiplier);
+        (
+            CurveErrorCodes.Error error,
+            uint256 newSpotPrice,
+            uint256 newDelta,
+            uint256 outputValue, /* tradeFee */
+            ,
+            uint256 protocolFee
+        ) = curve.getSellInfo(spotPrice, delta, numItems, feeMultiplier, protocolFeeMultiplier);
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
         assertEq(newSpotPrice, 0.09375 ether, "Spot price incorrect");
         assertEq(newDelta, 2 ether, "Delta incorrect");

@@ -32,11 +32,7 @@ import {Test721} from "../../mocks/Test721.sol";
 import {Test1155} from "../../mocks/Test1155.sol";
 import {MockPair} from "../../mocks/MockPair.sol";
 
-abstract contract AgreementE2E is
-    Test,
-    ERC721Holder,
-    ConfigurableWithRoyalties
-{
+abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 20 ether;
     uint256 tokenAmount = 100 ether;
@@ -62,10 +58,7 @@ abstract contract AgreementE2E is
         royaltyRegistry = setupRoyaltyRegistry();
 
         // Set a royalty override
-        royaltyRegistry.setRoyaltyLookupAddress(
-            address(test721),
-            address(test2981)
-        );
+        royaltyRegistry.setRoyaltyLookupAddress(address(test721), address(test2981));
 
         // Set up the pair templates and pair factory
         LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
@@ -119,54 +112,29 @@ abstract contract AgreementE2E is
     // An authorized caller can correctly add/remove an Agreement on the factory
     function test_addAgreementAsAuth() public {
         address agreementAddress = address(69420);
-        factory.toggleAgreementForCollection(
-            agreementAddress,
-            address(test721),
-            true
-        );
-        assertEq(
-            factory.authorizedAgreement(agreementAddress),
-            address(test721)
-        );
-        factory.toggleAgreementForCollection(
-            agreementAddress,
-            address(test721),
-            false
-        );
+        factory.toggleAgreementForCollection(agreementAddress, address(test721), true);
+        assertEq(factory.authorizedAgreement(agreementAddress), address(test721));
+        factory.toggleAgreementForCollection(agreementAddress, address(test721), false);
         assertEq(factory.authorizedAgreement(agreementAddress), address(0));
     }
 
     // An unauthorized caller cannot add/remove an Agreement on the factory
     function testFail_addAgreementAsNotAuth() public {
         IOwnable(address(test721)).transferOwnership(address(12345));
-        factory.toggleAgreementForCollection(
-            address(1),
-            address(test721),
-            true
-        );
+        factory.toggleAgreementForCollection(address(1), address(test721), true);
     }
 
     function testFail_removeAgreementAsNotAuth() public {
         IOwnable(address(test721)).transferOwnership(address(12345));
-        factory.toggleAgreementForCollection(
-            address(1),
-            address(test721),
-            false
-        );
+        factory.toggleAgreementForCollection(address(1), address(test721), false);
     }
 
     // An authorized Agreement can set/remove a pair specific royalty bps to be applied
     function test_setPairSpecificRoyaltyBps() public {
-        factory.toggleAgreementForCollection(
-            address(this),
-            address(test721),
-            true
-        );
+        factory.toggleAgreementForCollection(address(this), address(test721), true);
         uint96 newBps = 12345;
         factory.toggleBpsForPairInAgreement(address(pair), newBps, true);
-        (bool isInAgreement, uint96 royaltyBps) = factory.agreementForPair(
-            address(pair)
-        );
+        (bool isInAgreement, uint96 royaltyBps) = factory.agreementForPair(address(pair));
         assertEq(isInAgreement, true);
         assertEq(royaltyBps, newBps);
         factory.toggleBpsForPairInAgreement(address(pair), newBps, false);
@@ -177,22 +145,14 @@ abstract contract AgreementE2E is
     // An Agreement cannot toggle royalty bps for a pair if the underlying nft collection is different than what
     // the Agreement is authorized for
     function testFail_setPairSpecificRoyaltyBpsForDiffNFTPair() public {
-        factory.toggleAgreementForCollection(
-            address(this),
-            address(test721Other),
-            true
-        );
+        factory.toggleAgreementForCollection(address(this), address(test721Other), true);
         uint96 newBps = 12345;
         factory.toggleBpsForPairInAgreement(address(pair), newBps, true);
     }
 
     // An Agreement cannot set pair specific royalty bps for a non-pair address
     function testFail_setPairSpecificRoyaltyBpsForNonPool() public {
-        factory.toggleAgreementForCollection(
-            address(this),
-            address(test721),
-            true
-        );
+        factory.toggleAgreementForCollection(address(this), address(test721), true);
         uint96 newBps = 12345;
         factory.toggleBpsForPairInAgreement(address(this), newBps, true);
     }
@@ -204,19 +164,9 @@ abstract contract AgreementE2E is
     }
 
     // A non-Agreement caller cannot set the pair-specific royalty bps even if it was previously authorized
-    function testFail_setPairSpecificRoyaltyBpsNotAuthEvenAfterPrevAuth()
-        public
-    {
-        factory.toggleAgreementForCollection(
-            address(this),
-            address(test721),
-            true
-        );
-        factory.toggleAgreementForCollection(
-            address(this),
-            address(test721),
-            false
-        );
+    function testFail_setPairSpecificRoyaltyBpsNotAuthEvenAfterPrevAuth() public {
+        factory.toggleAgreementForCollection(address(this), address(test721), true);
+        factory.toggleAgreementForCollection(address(this), address(test721), false);
         uint96 newBps = 12345;
         factory.toggleBpsForPairInAgreement(address(pair), newBps, true);
     }
@@ -230,13 +180,8 @@ abstract contract AgreementE2E is
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 royaltyBps = 3;
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            ethCost,
-            secDuration,
-            feeSplitBps,
-            royaltyBps
-        );
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, royaltyBps);
         assertEq(newAgreement.agreementFeeRecipient(), agreementFeeRecipient);
         assertEq(newAgreement.getAgreementCost(), ethCost);
         assertEq(newAgreement.getLockDuration(), secDuration);
@@ -256,64 +201,40 @@ abstract contract AgreementE2E is
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            ethCost,
-            secDuration,
-            feeSplitBps,
-            newRoyaltyBps
-        );
-        factory.toggleAgreementForCollection(
-            address(newAgreement),
-            address(test721),
-            true
-        );
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
         pair.transferOwnership{value: ethCost}(address(newAgreement), "");
 
         // Check the upfront fee was received
         assertEq(agreementFeeRecipient.balance, ethCost);
 
         // Check the Agreement has been applied, with the new bps
-        (bool isInAgreement, uint96 pairRoyaltyBps) = factory.agreementForPair(
-            address(pair)
-        );
+        (bool isInAgreement, uint96 pairRoyaltyBps) = factory.agreementForPair(address(pair));
         assertEq(isInAgreement, true);
         assertEq(pairRoyaltyBps, newRoyaltyBps);
 
         // Check that the fee address is no longer the pool (i.e. a fee splitter has been deployed)
-        require(
-            pair.getFeeRecipient() != address(pair),
-            "Splitter not deployed"
-        );
+        require(pair.getFeeRecipient() != address(pair), "Splitter not deployed");
 
         // Perform a buy for item #1
-        (, , , uint256 inputAmount, ) = pair.getBuyNFTQuote(1);
+        (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(1);
         uint256[] memory specificIdToBuy = new uint256[](1);
         specificIdToBuy[0] = 1;
-        pair.swapTokenForSpecificNFTs{
-            value: this.modifyInputAmount(inputAmount)
-        }(specificIdToBuy, inputAmount, address(this), false, address(this));
+        pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
+            specificIdToBuy, inputAmount, address(this), false, address(this)
+        );
 
         uint256 royaltyBalance = getBalance(ROYALTY_RECEIVER);
         assertEq(royaltyBalance, calcRoyalty(inputAmount, newRoyaltyBps));
 
         // Perform a sell for item #1
-        (, , , uint256 outputAmount, ) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
-        pair.swapNFTsForToken(
-            specificIdToSell,
-            outputAmount,
-            payable(address(this)),
-            false,
-            address(this)
-        );
-        uint256 secondRoyaltyPayment = getBalance(ROYALTY_RECEIVER) -
-            royaltyBalance;
-        assertEq(
-            secondRoyaltyPayment,
-            calcRoyalty(outputAmount, newRoyaltyBps)
-        );
+        pair.swapNFTsForToken(specificIdToSell, outputAmount, payable(address(this)), false, address(this));
+        uint256 secondRoyaltyPayment = getBalance(ROYALTY_RECEIVER) - royaltyBalance;
+        assertEq(secondRoyaltyPayment, calcRoyalty(outputAmount, newRoyaltyBps));
 
         // Changing the fee to under 20% works
         uint96 newFee = 0.2e18;
@@ -323,37 +244,24 @@ abstract contract AgreementE2E is
     // Changing the price up works (because there are tokens)
     // Changing the price down works (because there are NFTs)
     function test_changeParamsAfterEnteringAgreement() public {
-
         // Set up sample Agreement
         address payable agreementFeeRecipient = payable(address(123));
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            0,
-            1,
-            2,
-            1000
-        );
-        factory.toggleAgreementForCollection(
-            address(newAgreement),
-            address(test721),
-            true
-        );
+        StandardAgreement newAgreement = agreementFactory.createAgreement(agreementFeeRecipient, 0, 1, 2, 1000);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
 
         // Opt into the Agreement
         pair.transferOwnership(address(newAgreement), "");
 
         // Get new params for changing price to buy up
         uint256 percentage = 1.1 * 1e18; // 10%
-        (uint128 newSpotPrice, uint128 newDelta) = this
-            .getParamsForAdjustingPriceToBuy(pair, percentage, true);
+        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price up works
         newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
 
         // Get new params for changing price to buy down
         percentage = 0.9 * 1e18; // 10%
-        (newSpotPrice, newDelta) = this
-            .getParamsForAdjustingPriceToBuy(pair, percentage, true);
+        (newSpotPrice, newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price down works
         newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
@@ -361,21 +269,10 @@ abstract contract AgreementE2E is
 
     // Changing the price up fails (because there are no tokens)
     function testFail_changeBuyPriceUpNoTokens() public {
-
-      // Set up sample Agreement
+        // Set up sample Agreement
         address payable agreementFeeRecipient = payable(address(123));
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            0,
-            1,
-            2,
-            1000
-        );
-        factory.toggleAgreementForCollection(
-            address(newAgreement),
-            address(test721),
-            true
-        );
+        StandardAgreement newAgreement = agreementFactory.createAgreement(agreementFeeRecipient, 0, 1, 2, 1000);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
 
         // Withdraw tokens from pair
         this.withdrawTokens(pair);
@@ -385,8 +282,7 @@ abstract contract AgreementE2E is
 
         // Get new params for changing price to buy up
         uint256 percentage = 1.1 * 1e18; // 10%
-        (uint128 newSpotPrice, uint128 newDelta) = this
-            .getParamsForAdjustingPriceToBuy(pair, percentage, true);
+        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price up should fail because there is no more buy pressure
         newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
@@ -394,21 +290,10 @@ abstract contract AgreementE2E is
 
     // Changing the price down fails (because there are no NFTs)
     function testFail_changeBuyPriceDownNoNFTs() public {
-
-      // Set up sample Agreement
+        // Set up sample Agreement
         address payable agreementFeeRecipient = payable(address(123));
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            0,
-            1,
-            2,
-            1000
-        );
-        factory.toggleAgreementForCollection(
-            address(newAgreement),
-            address(test721),
-            true
-        );
+        StandardAgreement newAgreement = agreementFactory.createAgreement(agreementFeeRecipient, 0, 1, 2, 1000);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
 
         // Withdraw tokens from pair
         pair.withdrawERC721(pair.nft(), idList);
@@ -418,8 +303,7 @@ abstract contract AgreementE2E is
 
         // Get new params for changing price to buy up
         uint256 percentage = 0.9 * 1e18; // 10%
-        (uint128 newSpotPrice, uint128 newDelta) = this
-            .getParamsForAdjustingPriceToBuy(pair, percentage, true);
+        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price down should fail because there is no more nft ivnentory
         newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
@@ -431,18 +315,9 @@ abstract contract AgreementE2E is
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            ethCost,
-            secDuration,
-            feeSplitBps,
-            newRoyaltyBps
-        );
-        factory.toggleAgreementForCollection(
-            address(newAgreement),
-            address(test721),
-            true
-        );
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
         pair.transferOwnership{value: ethCost}(address(newAgreement), "");
 
         // Setting new fee to be above 20%
@@ -451,21 +326,14 @@ abstract contract AgreementE2E is
     }
 
     // A pair cannot enter a Standard Agreement if the Agreement is unauthorized
-    function testFail_enterAgreementForPoolIfAgreementIsNotAuthHasNoEffect()
-        public
-    {
+    function testFail_enterAgreementForPoolIfAgreementIsNotAuthHasNoEffect() public {
         address payable agreementFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 10000; // 10% in bps
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            ethCost,
-            secDuration,
-            feeSplitBps,
-            newRoyaltyBps
-        );
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
         pair.transferOwnership{value: ethCost}(address(newAgreement), "");
     }
 
@@ -476,18 +344,9 @@ abstract contract AgreementE2E is
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            ethCost,
-            secDuration,
-            feeSplitBps,
-            newRoyaltyBps
-        );
-        factory.toggleAgreementForCollection(
-            address(newAgreement),
-            address(test721),
-            true
-        );
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
         mockPair.transferOwnership{value: ethCost}(address(newAgreement), "");
     }
 
@@ -499,18 +358,9 @@ abstract contract AgreementE2E is
         uint64 secDuration = 100;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            ethCost,
-            secDuration,
-            feeSplitBps,
-            newRoyaltyBps
-        );
-        factory.toggleAgreementForCollection(
-            address(newAgreement),
-            address(test721),
-            true
-        );
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
 
         // Opt into the Agreement
         pair.transferOwnership{value: ethCost}(address(newAgreement), "");
@@ -525,7 +375,7 @@ abstract contract AgreementE2E is
         assertEq(pair.owner(), address(this));
         // Prev fee recipient defaulted to the pair, so it should still be the pair
         assertEq(pair.getFeeRecipient(), address(pair));
-        (bool isInAgreement, ) = factory.agreementForPair(address(pair));
+        (bool isInAgreement,) = factory.agreementForPair(address(pair));
         assertEq(isInAgreement, false);
     }
 
@@ -537,18 +387,9 @@ abstract contract AgreementE2E is
         uint64 secDuration = 100;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            ethCost,
-            secDuration,
-            feeSplitBps,
-            newRoyaltyBps
-        );
-        factory.toggleAgreementForCollection(
-            address(newAgreement),
-            address(test721),
-            true
-        );
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
 
         // Opt into the Agreement
         pair.transferOwnership{value: ethCost}(address(newAgreement), "");
@@ -571,28 +412,22 @@ abstract contract AgreementE2E is
             /* new spot price*/
             uint256 inputAmount, // protocolFee
             ,
-
         ) = pair.bondingCurve().getBuyInfo(
-                pair.spotPrice(),
-                pair.delta(),
-                1,
-                pair.fee(),
-                factory.protocolFeeMultiplier()
-            );
+            pair.spotPrice(), pair.delta(), 1, pair.fee(), factory.protocolFeeMultiplier()
+        );
         uint256[] memory specificIdToBuy = new uint256[](1);
         specificIdToBuy[0] = 1;
 
         // Check test2981
-        (address royaltyRecipient, uint256 royaltyAmount) = test2981
-            .royaltyInfo(1, inputAmount);
+        (address royaltyRecipient, uint256 royaltyAmount) = test2981.royaltyInfo(1, inputAmount);
 
         // Get before balance
         uint256 startBalance = this.getBalance(royaltyRecipient);
 
         // Do the swap
-        pair.swapTokenForSpecificNFTs{
-            value: this.modifyInputAmount(inputAmount)
-        }(specificIdToBuy, inputAmount, address(this), false, address(this));
+        pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
+            specificIdToBuy, inputAmount, address(this), false, address(this)
+        );
 
         // Get after balance
         uint256 afterBalance = this.getBalance(royaltyRecipient);
@@ -609,18 +444,9 @@ abstract contract AgreementE2E is
         uint64 secDuration = 100;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            ethCost,
-            secDuration,
-            feeSplitBps,
-            newRoyaltyBps
-        );
-        factory.toggleAgreementForCollection(
-            address(newAgreement),
-            address(test721),
-            true
-        );
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
 
         // Opt into the Agreement
         pair.transferOwnership{value: ethCost}(address(newAgreement), "");
@@ -645,37 +471,17 @@ abstract contract AgreementE2E is
         uint64 secDuration = 1;
         uint64 feeSplitBps = 5000; // 50% split
         uint64 newRoyaltyBps = 0; // 0% in bps
-        StandardAgreement newAgreement = agreementFactory.createAgreement(
-            agreementFeeRecipient,
-            ethCost,
-            secDuration,
-            feeSplitBps,
-            newRoyaltyBps
-        );
-        factory.toggleAgreementForCollection(
-            address(newAgreement),
-            address(test721),
-            true
-        );
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
         pair.transferOwnership{value: ethCost}(address(newAgreement), "");
 
         // Check that the fee address is no longer the pool (i.e. a fee splitter has been deployed)
-        require(
-            pair.getFeeRecipient() != address(pair),
-            "Splitter not deployed"
-        );
+        require(pair.getFeeRecipient() != address(pair), "Splitter not deployed");
 
         // Verify the Splitter has the correct variables
-        assertEq(
-            Splitter(pair.getFeeRecipient()).getParentAgreement(),
-            address(newAgreement),
-            "Incorrect parent"
-        );
-        assertEq(
-            Splitter(pair.getFeeRecipient()).getPairAddressForSplitter(),
-            address(pair),
-            "Incorrect pair"
-        );
+        assertEq(Splitter(pair.getFeeRecipient()).getParentAgreement(), address(newAgreement), "Incorrect parent");
+        assertEq(Splitter(pair.getFeeRecipient()).getPairAddressForSplitter(), address(pair), "Incorrect pair");
 
         // Perform a buy for item #1
         (
@@ -687,19 +493,14 @@ abstract contract AgreementE2E is
             /* new spot price*/
             uint256 inputAmount,
             uint256 tradeFee, // protocolFee
-
         ) = pair.bondingCurve().getBuyInfo(
-                pair.spotPrice(),
-                pair.delta(),
-                1,
-                pair.fee(),
-                factory.protocolFeeMultiplier()
-            );
+            pair.spotPrice(), pair.delta(), 1, pair.fee(), factory.protocolFeeMultiplier()
+        );
         uint256[] memory specificIdToBuy = new uint256[](1);
         specificIdToBuy[0] = 1;
-        pair.swapTokenForSpecificNFTs{
-            value: this.modifyInputAmount(inputAmount)
-        }(specificIdToBuy, inputAmount, address(this), false, address(this));
+        pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
+            specificIdToBuy, inputAmount, address(this), false, address(this)
+        );
 
         // Ensure that 2x the trade fee went to the splitter
         address payable splitterAddress = pair.getFeeRecipient();
@@ -707,18 +508,14 @@ abstract contract AgreementE2E is
         assertEq(splitterBalance, 2 * tradeFee);
 
         // Withdraw the tokens
-        if (
-            factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ETH)
-        ) {
+        if (factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ETH)) {
             Splitter(splitterAddress).withdrawAllETH();
         } else {
             Splitter(splitterAddress).withdrawAllBaseQuoteTokens();
         }
 
         // Ensure that the Agreement-set fee recipient received the tokens
-        uint256 agreementFeeRecipientBalance = getBalance(
-            agreementFeeRecipient
-        );
+        uint256 agreementFeeRecipientBalance = getBalance(agreementFeeRecipient);
         assertEq(agreementFeeRecipientBalance, tradeFee);
         uint256 tradeFeeRecipientBalance = getBalance(pairFeeRecipient);
         assertEq(tradeFeeRecipientBalance, tradeFee);
@@ -734,20 +531,14 @@ abstract contract AgreementE2E is
             /* new spot price*/
             inputAmount,
             tradeFee,
-
         ) = pair.bondingCurve().getBuyInfo( // protocolFee
-            pair.spotPrice(),
-            pair.delta(),
-            2,
-            pair.fee(),
-            factory.protocolFeeMultiplier()
-        );
+        pair.spotPrice(), pair.delta(), 2, pair.fee(), factory.protocolFeeMultiplier());
         specificIdToBuy = new uint256[](2);
         specificIdToBuy[0] = 2;
         specificIdToBuy[1] = 3;
-        pair.swapTokenForSpecificNFTs{
-            value: this.modifyInputAmount(inputAmount)
-        }(specificIdToBuy, inputAmount, address(this), false, address(this));
+        pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
+            specificIdToBuy, inputAmount, address(this), false, address(this)
+        );
 
         // Ensure that 2x the trade fee went to the splitter
         splitterAddress = pair.getFeeRecipient();

@@ -5,7 +5,6 @@ import {IPropertyChecker} from "./IPropertyChecker.sol";
 import {Clone} from "clones-with-immutable-args/Clone.sol";
 
 contract RangePropertyChecker is IPropertyChecker, Clone {
-
     // Immutable params
 
     /**
@@ -22,17 +21,16 @@ contract RangePropertyChecker is IPropertyChecker, Clone {
         return _getArgUint256(32);
     }
 
-    function hasProperties(uint256[] calldata ids, bytes calldata) external pure returns(bool isAllowed) {
+    function hasProperties(uint256[] calldata ids, bytes calldata) external pure returns (bool isAllowed) {
         isAllowed = true;
         uint256 lowerBound = getLowerBoundInclusive();
         uint256 upperBound = getUpperBoundInclusive();
-        for (uint i; i < ids.length; i++) {
-          if (ids[i] < lowerBound) {
-            return false;
-          }
-          else if (ids[i] > upperBound) {
-            return false;
-          }
+        for (uint256 i; i < ids.length; i++) {
+            if (ids[i] < lowerBound) {
+                return false;
+            } else if (ids[i] > upperBound) {
+                return false;
+            }
         }
     }
 }

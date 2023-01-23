@@ -24,15 +24,19 @@ abstract contract UsingXykCurve is Configurable {
     }
 
     // Adjusts price up or down
-    function getParamsForAdjustingPriceToBuy(LSSVMPair pair, uint256 percentage, bool isIncrease) public view override returns (uint128 spotPrice, uint128 delta) {
-      delta = pair.delta();
-      if (isIncrease) {
-        // Multiply token reserves by multiplier, divide by base for both spot price and delta
-        spotPrice = uint128((pair.spotPrice() * percentage) / 1e18);
-      } 
-      else {
-        // Multiply token reserves by base, divide by multiplier for both spot price and delta
-        spotPrice = uint128((pair.spotPrice() / 1e18) * percentage);
-      }
+    function getParamsForAdjustingPriceToBuy(LSSVMPair pair, uint256 percentage, bool isIncrease)
+        public
+        view
+        override
+        returns (uint128 spotPrice, uint128 delta)
+    {
+        delta = pair.delta();
+        if (isIncrease) {
+            // Multiply token reserves by multiplier, divide by base for both spot price and delta
+            spotPrice = uint128((pair.spotPrice() * percentage) / 1e18);
+        } else {
+            // Multiply token reserves by base, divide by multiplier for both spot price and delta
+            spotPrice = uint128((pair.spotPrice() / 1e18) * percentage);
+        }
     }
 }

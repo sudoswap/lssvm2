@@ -31,10 +31,10 @@ contract PropertyCheckerFactory {
         return checker;
     }
 
-    function createRangePropertyChecker(
-        uint256 startInclusive,
-        uint256 endInclusive
-    ) public returns (RangePropertyChecker) {
+    function createRangePropertyChecker(uint256 startInclusive, uint256 endInclusive)
+        public
+        returns (RangePropertyChecker)
+    {
         bytes memory data = abi.encodePacked(startInclusive, endInclusive);
         RangePropertyChecker checker = RangePropertyChecker(address(rangePropertyCheckerImplementation).clone(data));
         emit NewRangePropertyChecker(address(checker), startInclusive, endInclusive);

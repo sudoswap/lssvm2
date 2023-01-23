@@ -11,8 +11,7 @@ abstract contract OwnableWithTransferCallback {
     using ERC165Checker for address;
     using Address for address;
 
-    bytes4 constant TRANSFER_CALLBACK =
-        type(IOwnershipTransferReceiver).interfaceId;
+    bytes4 constant TRANSFER_CALLBACK = type(IOwnershipTransferReceiver).interfaceId;
 
     error Ownable_NotOwner();
     error Ownable_NewOwnerZeroAddress();
@@ -41,25 +40,17 @@ abstract contract OwnableWithTransferCallback {
     /// Disallows setting to the zero address as a way to more gas-efficiently avoid reinitialization
     /// When ownership is transferred, if the new owner implements IOwnershipTransferCallback, we make a callback
     /// Can only be called by the current owner.
-    function transferOwnership(address newOwner, bytes memory data)
-        public
-        payable
-        virtual
-        onlyOwner
-    {
+    function transferOwnership(address newOwner, bytes memory data) public payable virtual onlyOwner {
         if (newOwner == address(0)) revert Ownable_NewOwnerZeroAddress();
         _transferOwnership(newOwner);
 
         if (newOwner.isContract()) {
-            try
-                IOwnershipTransferReceiver(newOwner).onOwnershipTransferred{
-                    value: msg.value
-                }(msg.sender, data)
-            {} catch (bytes memory reason) {
+            try IOwnershipTransferReceiver(newOwner).onOwnershipTransferred{value: msg.value}(msg.sender, data) {}
+            catch (bytes memory reason) {
                 // Then we just transferred to a contract w/ no callback, this is fine
                 if (reason.length == 0) {
-                  // No need to revert
-                } 
+                    // No need to revert
+                }
                 // Otherwise, the callback had an error, and we should revert
                 else {
                     /// @solidity memory-safe-assembly

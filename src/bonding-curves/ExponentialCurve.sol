@@ -38,7 +38,14 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 inputValue, uint256 tradeFee, uint256 protocolFee)
+        returns (
+            Error error,
+            uint128 newSpotPrice,
+            uint128 newDelta,
+            uint256 inputValue,
+            uint256 tradeFee,
+            uint256 protocolFee
+        )
     {
         // NOTE: we assume delta is > 1, as checked by validateDelta()
         // We only calculate changes for buying 1 or more NFTs
@@ -66,8 +73,7 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         // If the user buys n items, then the total cost is equal to:
         // buySpotPrice + (delta * buySpotPrice) + (delta^2 * buySpotPrice) + ... (delta^(numItems - 1) * buySpotPrice)
         // This is equal to buySpotPrice * (delta^n - 1) / (delta - 1)
-        inputValue =
-            buySpotPrice.mulWadUp((deltaPowN - FixedPointMathLib.WAD).divWadUp(delta - FixedPointMathLib.WAD));
+        inputValue = buySpotPrice.mulWadUp((deltaPowN - FixedPointMathLib.WAD).divWadUp(delta - FixedPointMathLib.WAD));
 
         // Account for the protocol fee, a flat percentage of the buy amount
         protocolFee = inputValue.mulWadUp(protocolFeeMultiplier);
@@ -102,7 +108,14 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 outputValue, uint256 tradeFee, uint256 protocolFee)
+        returns (
+            Error error,
+            uint128 newSpotPrice,
+            uint128 newDelta,
+            uint256 outputValue,
+            uint256 tradeFee,
+            uint256 protocolFee
+        )
     {
         // NOTE: we assume delta is > 1, as checked by validateDelta()
 

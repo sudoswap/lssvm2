@@ -65,7 +65,7 @@ library LSSVMPairCloner {
             // 01          | ADD                   | cds+extra 0 0 0 0       | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 3d          | RETURNDATASIZE        | 0 cds 0 0 0 0           | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 73 addr     | PUSH20 0x123…         | addr 0 cds 0 0 0 0      | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            mstore(ptr, hex"60_86_3d8160093d39f3_3d3d3d3d363d3d3760_51_603536393660_51_013d73000000")
+            mstore(ptr, hex"60863d8160093d39f33d3d3d3d363d3d37605160353639366051013d73000000")
             mstore(add(ptr, 0x1d), shl(0x60, implementation))
 
             // 5a          | GAS                   | gas addr 0 cds 0 0 0 0  | [0, cds) = calldata, [cds, cds+0x35) = extraData
@@ -156,7 +156,7 @@ library LSSVMPairCloner {
             // 01          | ADD                   | cds+extra 0 0 0 0       | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 3d          | RETURNDATASIZE        | 0 cds 0 0 0 0           | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 73 addr     | PUSH20 0x123…         | addr 0 cds 0 0 0 0      | [0, cds) = calldata, [cds, cds+0x35) = extraData
-            mstore(ptr, hex"60_9a_3d8160093d39f3_3d3d3d3d363d3d3760_65_603536393660_65_013d73000000")
+            mstore(ptr, hex"609a3d8160093d39f33d3d3d3d363d3d37606560353639366065013d73000000")
             mstore(add(ptr, 0x1d), shl(0x60, implementation))
 
             // 5a          | GAS                   | gas addr 0 cds 0 0 0 0  | [0, cds) = calldata, [cds, cds+0x35) = extraData
@@ -208,7 +208,7 @@ library LSSVMPairCloner {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             let ptr := mload(0x40)
-            mstore(ptr, hex"3d3d3d3d363d3d3760_51_603536393660_51_013d73000000000000000000000000")
+            mstore(ptr, hex"3d3d3d3d363d3d37605160353639366051013d73000000000000000000000000")
             mstore(add(ptr, 0x14), shl(0x60, implementation))
             mstore(add(ptr, 0x28), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
             mstore(add(ptr, 0x35), shl(0x60, factory))
@@ -242,7 +242,7 @@ library LSSVMPairCloner {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             let ptr := mload(0x40)
-            mstore(ptr, hex"3d3d3d3d363d3d3760_65_603536393660_65_013d73000000000000000000000000")
+            mstore(ptr, hex"3d3d3d3d363d3d37606560353639366065013d73000000000000000000000000")
             mstore(add(ptr, 0x14), shl(0x60, implementation))
             mstore(add(ptr, 0x28), hex"5af43d3d93803e603357fd5bf300000000000000000000000000000000000000")
             mstore(add(ptr, 0x35), shl(0x60, factory))
