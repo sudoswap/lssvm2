@@ -49,7 +49,14 @@ contract XykCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 inputValue, uint256 tradeFee, uint256 protocolFee)
+        returns (
+            Error error,
+            uint128 newSpotPrice,
+            uint128 newDelta,
+            uint256 inputValue,
+            uint256 tradeFee,
+            uint256 protocolFee
+        )
     {
         if (numItems == 0) {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
@@ -93,7 +100,14 @@ contract XykCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 outputValue, uint256 tradeFee, uint256 protocolFee)
+        returns (
+            Error error,
+            uint128 newSpotPrice,
+            uint128 newDelta,
+            uint256 outputValue,
+            uint256 tradeFee,
+            uint256 protocolFee
+        )
     {
         if (numItems == 0) {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);

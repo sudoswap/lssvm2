@@ -110,32 +110,13 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         address _propertyChecker,
         uint256[] calldata _initialNFTIDs
     ) external payable returns (LSSVMPairETH pair) {
-        require(
-            bondingCurveAllowed[_bondingCurve],
-            "Bonding curve not whitelisted"
-        );
+        require(bondingCurveAllowed[_bondingCurve], "Bonding curve not whitelisted");
 
         pair = LSSVMPairETH(
-            payable(
-                address(ethTemplate).cloneETHPair(
-                    this,
-                    _bondingCurve,
-                    _nft,
-                    uint8(_poolType),
-                    _propertyChecker
-                )
-            )
+            payable(address(ethTemplate).cloneETHPair(this, _bondingCurve, _nft, uint8(_poolType), _propertyChecker))
         );
 
-        _initializePairETH(
-            pair,
-            _nft,
-            _assetRecipient,
-            _delta,
-            _fee,
-            _spotPrice,
-            _initialNFTIDs
-        );
+        _initializePairETH(pair, _nft, _assetRecipient, _delta, _fee, _spotPrice, _initialNFTIDs);
         emit NewPair(address(pair));
     }
 
@@ -171,24 +152,13 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint256 initialTokenBalance;
     }
 
-    function createPairERC20(CreateERC20PairParams calldata params)
-        external
-        returns (LSSVMPairERC20 pair)
-    {
-        require(
-            bondingCurveAllowed[params.bondingCurve],
-            "Bonding curve not whitelisted"
-        );
+    function createPairERC20(CreateERC20PairParams calldata params) external returns (LSSVMPairERC20 pair) {
+        require(bondingCurveAllowed[params.bondingCurve], "Bonding curve not whitelisted");
 
         pair = LSSVMPairERC20(
             payable(
                 address(erc20Template).cloneERC20Pair(
-                    this,
-                    params.bondingCurve,
-                    params.nft,
-                    uint8(params.poolType),
-                    params.propertyChecker,
-                    params.token
+                    this, params.bondingCurve, params.nft, uint8(params.poolType), params.propertyChecker, params.token
                 )
             )
         );
@@ -213,26 +183,11 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *     @param variant The pair variant (Pair uses ETH or ERC20)
      *     @return True if the address is the specified pair variant, false otherwise
      */
-    function isPair(address potentialPair, PairVariant variant)
-        public
-        view
-        override
-        returns (bool)
-    {
+    function isPair(address potentialPair, PairVariant variant) public view override returns (bool) {
         if (variant == PairVariant.ETH) {
-            return
-                LSSVMPairCloner.isETHPairClone(
-                    address(this),
-                    address(ethTemplate),
-                    potentialPair
-                );
+            return LSSVMPairCloner.isETHPairClone(address(this), address(ethTemplate), potentialPair);
         } else if (variant == PairVariant.ERC20) {
-            return
-                LSSVMPairCloner.isERC20PairClone(
-                    address(this),
-                    address(erc20Template),
-                    potentialPair
-                );
+            return LSSVMPairCloner.isERC20PairClone(address(this), address(erc20Template), potentialPair);
         } else {
             // invalid input
             return false;
@@ -245,16 +200,11 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *   @param proposedAuthAddress The auth address to check
      *   @return True if the proposedAuthAddress is a valid auth for the tokenAddress, false otherwise.
      */
-    function authAllowedForToken(
-        address tokenAddress,
-        address proposedAuthAddress
-    ) public view returns (bool) {
+    function authAllowedForToken(address tokenAddress, address proposedAuthAddress) public view returns (bool) {
         // Check for admin interface
         if (
-            ERC165Checker.supportsInterface(
-                tokenAddress,
-                type(IAdminControl).interfaceId
-            ) && IAdminControl(tokenAddress).isAdmin(proposedAuthAddress)
+            ERC165Checker.supportsInterface(tokenAddress, type(IAdminControl).interfaceId)
+                && IAdminControl(tokenAddress).isAdmin(proposedAuthAddress)
         ) {
             return true;
         }
@@ -263,55 +213,32 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             if (owner == proposedAuthAddress) return true;
 
             if (owner.isContract()) {
-                try OwnableUpgradeable(owner).owner() returns (
-                    address passThroughOwner
-                ) {
+                try OwnableUpgradeable(owner).owner() returns (address passThroughOwner) {
                     if (passThroughOwner == proposedAuthAddress) return true;
                 } catch {}
             }
         } catch {}
         // Check for default OZ auth role
-        try
-            IAccessControlUpgradeable(tokenAddress).hasRole(
-                0x00,
-                proposedAuthAddress
-            )
-        returns (bool hasRole) {
+        try IAccessControlUpgradeable(tokenAddress).hasRole(0x00, proposedAuthAddress) returns (bool hasRole) {
             if (hasRole) return true;
         } catch {}
         // Nifty Gateway overrides
-        try
-            INiftyBuilderInstance(tokenAddress).niftyRegistryContract()
-        returns (address niftyRegistry) {
-            try
-                INiftyRegistry(niftyRegistry).isValidNiftySender(
-                    proposedAuthAddress
-                )
-            returns (bool valid) {
+        try INiftyBuilderInstance(tokenAddress).niftyRegistryContract() returns (address niftyRegistry) {
+            try INiftyRegistry(niftyRegistry).isValidNiftySender(proposedAuthAddress) returns (bool valid) {
                 return valid;
             } catch {}
         } catch {}
         // Foundation overrides
-        try
-            IFoundationTreasuryNode(tokenAddress).getFoundationTreasury()
-        returns (address payable foundationTreasury) {
-            try
-                IFoundationTreasury(foundationTreasury).isAdmin(
-                    proposedAuthAddress
-                )
-            returns (bool isAdmin) {
+        try IFoundationTreasuryNode(tokenAddress).getFoundationTreasury() returns (address payable foundationTreasury) {
+            try IFoundationTreasury(foundationTreasury).isAdmin(proposedAuthAddress) returns (bool isAdmin) {
                 return isAdmin;
             } catch {}
         } catch {}
         // DIGITALAX overrides
-        try IDigitalax(tokenAddress).accessControls() returns (
-            address externalAccessControls
-        ) {
-            try
-                IDigitalaxAccessControls(externalAccessControls).hasAdminRole(
-                    proposedAuthAddress
-                )
-            returns (bool hasRole) {
+        try IDigitalax(tokenAddress).accessControls() returns (address externalAccessControls) {
+            try IDigitalaxAccessControls(externalAccessControls).hasAdminRole(proposedAuthAddress) returns (
+                bool hasRole
+            ) {
                 if (hasRole) return true;
             } catch {}
         } catch {}
@@ -327,11 +254,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @param pairAddress The address of the pair to look up
      * Returns whether or not the pair is in an Agreement, and what its bps should be (if valid)
      */
-    function agreementForPair(address pairAddress)
-        public
-        view
-        returns (bool isInAgreement, uint96 bps)
-    {
+    function agreementForPair(address pairAddress) public view returns (bool isInAgreement, uint96 bps) {
         Agreement memory agreement = bpsForPairInAgreement[pairAddress];
         if (agreement.pairAddress == pairAddress) {
             isInAgreement = true;
@@ -361,10 +284,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *     @param token The token to transfer
      *     @param amount The amount of tokens to transfer
      */
-    function withdrawERC20ProtocolFees(ERC20 token, uint256 amount)
-        external
-        onlyOwner
-    {
+    function withdrawERC20ProtocolFees(ERC20 token, uint256 amount) external onlyOwner {
         token.safeTransfer(protocolFeeRecipient, amount);
     }
 
@@ -372,10 +292,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @notice Changes the protocol fee recipient address. Only callable by the owner.
      *     @param _protocolFeeRecipient The new fee recipient
      */
-    function changeProtocolFeeRecipient(address payable _protocolFeeRecipient)
-        external
-        onlyOwner
-    {
+    function changeProtocolFeeRecipient(address payable _protocolFeeRecipient) external onlyOwner {
         require(_protocolFeeRecipient != address(0), "0 address");
         protocolFeeRecipient = _protocolFeeRecipient;
         emit ProtocolFeeRecipientUpdate(_protocolFeeRecipient);
@@ -385,10 +302,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @notice Changes the protocol fee multiplier. Only callable by the owner.
      *     @param _protocolFeeMultiplier The new fee multiplier, 18 decimals
      */
-    function changeProtocolFeeMultiplier(uint256 _protocolFeeMultiplier)
-        external
-        onlyOwner
-    {
+    function changeProtocolFeeMultiplier(uint256 _protocolFeeMultiplier) external onlyOwner {
         require(_protocolFeeMultiplier <= MAX_PROTOCOL_FEE, "Fee too large");
         protocolFeeMultiplier = _protocolFeeMultiplier;
         emit ProtocolFeeMultiplierUpdate(_protocolFeeMultiplier);
@@ -399,10 +313,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *     @param bondingCurve The bonding curve contract
      *     @param isAllowed True to whitelist, false to remove from whitelist
      */
-    function setBondingCurveAllowed(ICurve bondingCurve, bool isAllowed)
-        external
-        onlyOwner
-    {
+    function setBondingCurveAllowed(ICurve bondingCurve, bool isAllowed) external onlyOwner {
         bondingCurveAllowed[bondingCurve] = isAllowed;
         emit BondingCurveStatusUpdate(bondingCurve, isAllowed);
     }
@@ -413,16 +324,10 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *     @param target The target contract
      *     @param isAllowed True to whitelist, false to remove from whitelist
      */
-    function setCallAllowed(address payable target, bool isAllowed)
-        external
-        onlyOwner
-    {
+    function setCallAllowed(address payable target, bool isAllowed) external onlyOwner {
         // ensure target is not / was not ever a router
         if (isAllowed) {
-            require(
-                !routerStatus[LSSVMRouter(target)].wasEverAllowed,
-                "Can't call router"
-            );
+            require(!routerStatus[LSSVMRouter(target)].wasEverAllowed, "Can't call router");
         }
 
         callAllowed[target] = isAllowed;
@@ -434,18 +339,12 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *     @param _router The router
      *     @param isAllowed True to whitelist, false to remove from whitelist
      */
-    function setRouterAllowed(LSSVMRouter _router, bool isAllowed)
-        external
-        onlyOwner
-    {
+    function setRouterAllowed(LSSVMRouter _router, bool isAllowed) external onlyOwner {
         // ensure target is not arbitrarily callable by pairs
         if (isAllowed) {
             require(!callAllowed[address(_router)], "Can't call router");
         }
-        routerStatus[_router] = RouterStatus({
-            allowed: isAllowed,
-            wasEverAllowed: true
-        });
+        routerStatus[_router] = RouterStatus({allowed: isAllowed, wasEverAllowed: true});
 
         emit RouterStatusUpdate(_router, isAllowed);
     }
@@ -456,15 +355,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *      @param collectionAddress The NFT project that the agreement can administer for
      *      @param isAllowed True to allow, false to revoke
      */
-    function toggleAgreementForCollection(
-        address agreement,
-        address collectionAddress,
-        bool isAllowed
-    ) public {
-        require(
-            authAllowedForToken(collectionAddress, msg.sender),
-            "Unauthorized caller"
-        );
+    function toggleAgreementForCollection(address agreement, address collectionAddress, bool isAllowed) public {
+        require(authAllowedForToken(collectionAddress, msg.sender), "Unauthorized caller");
         if (isAllowed) {
             authorizedAgreement[agreement] = collectionAddress;
         } else {
@@ -477,25 +369,12 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *    @param pairAddress The address of the pool to set a different bps for
      *    @param bps The bps override to set
      */
-    function toggleBpsForPairInAgreement(
-        address pairAddress,
-        uint96 bps,
-        bool isEnteringAgreement
-    ) public {
-      
+    function toggleBpsForPairInAgreement(address pairAddress, uint96 bps, bool isEnteringAgreement) public {
         // Only pairs are valid targets
-        require(
-            isPair(pairAddress, PairVariant.ERC20) ||
-                isPair(pairAddress, PairVariant.ETH),
-            "Not pair"
-        );
+        require(isPair(pairAddress, PairVariant.ERC20) || isPair(pairAddress, PairVariant.ETH), "Not pair");
 
         // Only authorized Agreements for the pair's underlying NFT address can toggle the pair
-        require(
-            authorizedAgreement[msg.sender] ==
-                address(LSSVMPair(pairAddress).nft()),
-            "Unauthorized caller"
-        );
+        require(authorizedAgreement[msg.sender] == address(LSSVMPair(pairAddress).nft()), "Unauthorized caller");
 
         // Check if toggling on or off
         address eitherZeroOrPairAddress = address(0);
@@ -503,10 +382,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             eitherZeroOrPairAddress = pairAddress;
         }
 
-        bpsForPairInAgreement[pairAddress] = Agreement({
-            bps: bps,
-            pairAddress: eitherZeroOrPairAddress
-        });
+        bpsForPairInAgreement[pairAddress] = Agreement({bps: bps, pairAddress: eitherZeroOrPairAddress});
     }
 
     /**
@@ -530,7 +406,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
         // transfer initial NFTs from sender to pair
         uint256 numNFTs = _initialNFTIDs.length;
-        for (uint256 i; i < numNFTs; ) {
+        for (uint256 i; i < numNFTs;) {
             _nft.transferFrom(msg.sender, address(_pair), _initialNFTIDs[i]);
 
             unchecked {
@@ -555,16 +431,12 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
         // transfer initial tokens to pair (if > 0)
         if (_initialTokenBalance > 0) {
-            _token.safeTransferFrom(
-                msg.sender,
-                address(_pair),
-                _initialTokenBalance
-            );
+            _token.safeTransferFrom(msg.sender, address(_pair), _initialTokenBalance);
         }
 
         // transfer initial NFTs from sender to pair
         uint256 numNFTs = _initialNFTIDs.length;
-        for (uint256 i; i < numNFTs; ) {
+        for (uint256 i; i < numNFTs;) {
             _nft.transferFrom(msg.sender, address(_pair), _initialNFTIDs[i]);
 
             unchecked {
@@ -576,24 +448,17 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     /**
      * @dev Used to deposit NFTs into a pair after creation and emit an event for indexing (if recipient is indeed a pair)
      */
-    function depositNFTs(
-        IERC721 _nft,
-        uint256[] calldata ids,
-        address recipient
-    ) external {
+    function depositNFTs(IERC721 _nft, uint256[] calldata ids, address recipient) external {
         // transfer NFTs from caller to recipient
         uint256 numNFTs = ids.length;
-        for (uint256 i; i < numNFTs; ) {
+        for (uint256 i; i < numNFTs;) {
             _nft.transferFrom(msg.sender, recipient, ids[i]);
 
             unchecked {
                 ++i;
             }
         }
-        if (
-            isPair(recipient, PairVariant.ETH) ||
-            isPair(recipient, PairVariant.ERC20)
-        ) {
+        if (isPair(recipient, PairVariant.ETH) || isPair(recipient, PairVariant.ERC20)) {
             emit NFTDeposit(recipient, ids);
         }
     }
@@ -601,16 +466,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     /**
      * @dev Used to deposit ERC20s into a pair after creation and emit an event for indexing (if recipient is indeed an ERC20 pair and the token matches)
      */
-    function depositERC20(
-        ERC20 token,
-        address recipient,
-        uint256 amount
-    ) external {
+    function depositERC20(ERC20 token, address recipient, uint256 amount) external {
         token.safeTransferFrom(msg.sender, recipient, amount);
-        if (
-            isPair(recipient, PairVariant.ERC20) &&
-            token == LSSVMPairERC20(recipient).token()
-        ) {
+        if (isPair(recipient, PairVariant.ERC20) && token == LSSVMPairERC20(recipient).token()) {
             emit TokenDeposit(recipient);
         }
     }

@@ -64,7 +64,17 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         // initialize the pair
         LSSVMPair pair = factory.createPairERC20(
             LSSVMPairFactory.CreateERC20PairParams(
-                test20, nft, bondingCurve, assetRecipient, poolType, delta, fee, spotPrice, address(0), _idList, initialTokenBalance
+                test20,
+                nft,
+                bondingCurve,
+                assetRecipient,
+                poolType,
+                delta,
+                fee,
+                spotPrice,
+                address(0),
+                _idList,
+                initialTokenBalance
             )
         );
 
@@ -74,7 +84,12 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         return pair;
     }
 
-    function setupPairWithPropertyChecker(PairCreationParamsWithPropertyChecker memory params) public payable override returns (LSSVMPair) {
+    function setupPairWithPropertyChecker(PairCreationParamsWithPropertyChecker memory params)
+        public
+        payable
+        override
+        returns (LSSVMPair)
+    {
         // create ERC20 token if not already deployed
         if (address(test20) == address(0)) {
             test20 = new Test20();
@@ -90,7 +105,17 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         // initialize the pair
         LSSVMPair pair = params.factory.createPairERC20(
             LSSVMPairFactory.CreateERC20PairParams(
-                test20, params.nft, params.bondingCurve, params.assetRecipient, params.poolType, params.delta, params.fee, params.spotPrice, params.propertyChecker, params._idList, params.initialTokenBalance
+                test20,
+                params.nft,
+                params.bondingCurve,
+                params.assetRecipient,
+                params.poolType,
+                params.delta,
+                params.fee,
+                params.spotPrice,
+                params.propertyChecker,
+                params._idList,
+                params.initialTokenBalance
             )
         );
 

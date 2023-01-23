@@ -40,7 +40,14 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 inputValue, uint256 tradeFee, uint256 protocolFee)
+        returns (
+            Error error,
+            uint128 newSpotPrice,
+            uint128 newDelta,
+            uint256 inputValue,
+            uint256 tradeFee,
+            uint256 protocolFee
+        )
     {
         // We only calculate changes for buying 1 or more NFTs
         if (numItems == 0) {
@@ -98,7 +105,14 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         external
         pure
         override
-        returns (Error error, uint128 newSpotPrice, uint128 newDelta, uint256 outputValue, uint256 tradeFee, uint256 protocolFee)
+        returns (
+            Error error,
+            uint128 newSpotPrice,
+            uint128 newDelta,
+            uint256 outputValue,
+            uint256 tradeFee,
+            uint256 protocolFee
+        )
     {
         // We only calculate changes for selling 1 or more NFTs
         if (numItems == 0) {

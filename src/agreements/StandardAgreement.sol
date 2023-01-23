@@ -14,12 +14,7 @@ import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 import {IStandardAgreement} from "./IStandardAgreement.sol";
 import {Splitter} from "./Splitter.sol";
 
-contract StandardAgreement is
-    IOwnershipTransferReceiver,
-    OwnableWithTransferCallback,
-    Clone,
-    IStandardAgreement
-{
+contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCallback, Clone, IStandardAgreement {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for address payable;
 
@@ -34,17 +29,12 @@ contract StandardAgreement is
     event AgreementEnteredForPair(address pairAddress);
     event AgreementLeftForPair(address pairAddress);
 
-    constructor(
-        Splitter _splitterImplementation,
-        ILSSVMPairFactoryLike _pairFactory
-    ) {
+    constructor(Splitter _splitterImplementation, ILSSVMPairFactoryLike _pairFactory) {
         splitterImplementation = _splitterImplementation;
         pairFactory = _pairFactory;
     }
 
-    function initialize(address _owner, address payable _agreementFeeRecipient)
-        public
-    {
+    function initialize(address _owner, address payable _agreementFeeRecipient) public {
         require(owner() == address(0), "Initialized");
         __Ownable_init(_owner);
         agreementFeeRecipient = _agreementFeeRecipient;
@@ -85,10 +75,7 @@ contract StandardAgreement is
     /**
      * @param newFeeRecipient The address to receive all payments plus trade fees
      */
-    function setAgreementFeeRecipient(address payable newFeeRecipient)
-        public
-        onlyOwner
-    {
+    function setAgreementFeeRecipient(address payable newFeeRecipient) public onlyOwner {
         agreementFeeRecipient = newFeeRecipient;
     }
 
@@ -98,11 +85,7 @@ contract StandardAgreement is
      * @param pairAddress The address of the pair to look up
      * @return Returns the previously set fee recipient address for a pair
      */
-    function getPrevFeeRecipientForPair(address pairAddress)
-        public
-        view
-        returns (address)
-    {
+    function getPrevFeeRecipientForPair(address pairAddress) public view returns (address) {
         return pairInfo[pairAddress].prevFeeRecipient;
     }
 
@@ -119,10 +102,7 @@ contract StandardAgreement is
      * - the fee recipient of the pair is set to the fee splitter
      * @param prevOwner The owner of the pair calling transferOwnership
      */
-    function onOwnershipTransferred(address prevOwner, bytes memory)
-        public
-        payable
-    {
+    function onOwnershipTransferred(address prevOwner, bytes memory) public payable {
         // Verify the upfront cost
         require(msg.value == getAgreementCost(), "Insufficient payment");
 
@@ -133,17 +113,10 @@ contract StandardAgreement is
 
         // Set the modified royalty bps on the factory
         // @dev This also does the isPair check and pair.nft() check
-        pairFactory.toggleBpsForPairInAgreement(
-            msg.sender,
-            getAgreementRoyaltyBps(),
-            true
-        );
+        pairFactory.toggleBpsForPairInAgreement(msg.sender, getAgreementRoyaltyBps(), true);
 
         // Only for trade pairs
-        require(
-            ILSSVMPair(msg.sender).poolType() == ILSSVMPair.PoolType.TRADE,
-            "Only TRADE pairs"
-        );
+        require(ILSSVMPair(msg.sender).poolType() == ILSSVMPair.PoolType.TRADE, "Only TRADE pairs");
 
         // Store the original owner, unlock date, and old fee recipient
         pairInfo[msg.sender] = PairInAgreement({
@@ -180,40 +153,21 @@ contract StandardAgreement is
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 
         // Split fees (if applicable)
-        if (
-            pairFactory.isPair(
-                pairAddress,
-                ILSSVMPairFactoryLike.PairVariant.ETH
-            )
-        ) {
+        if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ETH)) {
             Splitter(payable(pair.getFeeRecipient())).withdrawAllETH();
-        } 
-        else if (
-            pairFactory.isPair(
-                pairAddress,
-                ILSSVMPairFactoryLike.PairVariant.ERC20
-            )
-        ) {
-            Splitter(payable(pair.getFeeRecipient()))
-                .withdrawAllBaseQuoteTokens();
+        } else if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC20)) {
+            Splitter(payable(pair.getFeeRecipient())).withdrawAllBaseQuoteTokens();
         }
 
         // Change the fee recipient back
         pair.changeAssetRecipient(payable(agreementInfo.prevFeeRecipient));
 
         // Change the ownership back
-        OwnableWithTransferCallback(pairAddress).transferOwnership(
-            agreementInfo.prevOwner,
-            ""
-        );
+        OwnableWithTransferCallback(pairAddress).transferOwnership(agreementInfo.prevOwner, "");
 
         // Disable the royalty override
         // @dev This also does the isPair check and auth check for this Agreement
-        pairFactory.toggleBpsForPairInAgreement(
-            pairAddress,
-            getAgreementRoyaltyBps(),
-            false
-        );
+        pairFactory.toggleBpsForPairInAgreement(pairAddress, getAgreementRoyaltyBps(), false);
 
         emit AgreementLeftForPair(pairAddress);
     }
@@ -237,11 +191,7 @@ contract StandardAgreement is
      * @param newSpotPrice The new spot price
      * @param newDelta The new delta
      */
-    function changeSpotPriceAndDelta(
-        address pairAddress,
-        uint128 newSpotPrice,
-        uint128 newDelta
-    ) public {
+    function changeSpotPriceAndDelta(address pairAddress, uint128 newSpotPrice, uint128 newDelta) public {
         PairInAgreement memory agreementInfo = pairInfo[pairAddress];
 
         // Verify that the caller is the previous owner of the pair
@@ -250,7 +200,7 @@ contract StandardAgreement is
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 
         // Get current price to buy from pair
-        (, , , uint256 priceToBuyFromPair, ) = pair.getBuyNFTQuote(1);
+        (,,, uint256 priceToBuyFromPair,) = pair.getBuyNFTQuote(1);
 
         // Get new price to buy from pair
         (
@@ -262,27 +212,17 @@ contract StandardAgreement is
             /* new delta */
             uint256 newPriceToBuyFromPair, /* trade fee */ /* protocol fee */
             ,
-
-        ) = pair.bondingCurve().getBuyInfo(
-                newSpotPrice,
-                newDelta,
-                1,
-                pair.fee(),
-                pairFactory.protocolFeeMultiplier()
-            );
+        ) = pair.bondingCurve().getBuyInfo(newSpotPrice, newDelta, 1, pair.fee(), pairFactory.protocolFeeMultiplier());
 
         // If the price to buy is now lower (i.e. NFTs are now cheaper), and there is at least 1 NFT in pair, then make the change
-        if (
-            (newPriceToBuyFromPair < priceToBuyFromPair) &&
-            pair.nft().balanceOf(pairAddress) >= 1
-        ) {
+        if ((newPriceToBuyFromPair < priceToBuyFromPair) && pair.nft().balanceOf(pairAddress) >= 1) {
             pair.changeSpotPrice(newSpotPrice);
             pair.changeDelta(newDelta);
             return;
         }
 
         // Get current price to buy from pair
-        (, , , uint256 priceToSellToPair, ) = pair.getSellNFTQuote(1);
+        (,,, uint256 priceToSellToPair,) = pair.getSellNFTQuote(1);
 
         // Get new price to sell to pair
         (
@@ -294,38 +234,18 @@ contract StandardAgreement is
             /* new delta */
             uint256 newPriceToSellToPair, /* trade fee */ /* protocol fee */
             ,
-
-        ) = pair.bondingCurve().getSellInfo(
-                newSpotPrice,
-                newDelta,
-                1,
-                pair.fee(),
-                pairFactory.protocolFeeMultiplier()
-            );
+        ) = pair.bondingCurve().getSellInfo(newSpotPrice, newDelta, 1, pair.fee(), pairFactory.protocolFeeMultiplier());
 
         // Get token balance of the pair (ETH or ERC20)
         uint256 pairBalance;
-        if (
-            pairFactory.isPair(
-                pairAddress,
-                ILSSVMPairFactoryLike.PairVariant.ETH
-            )
-        ) {
+        if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ETH)) {
             pairBalance = pairAddress.balance;
-        } else if (
-            pairFactory.isPair(
-                pairAddress,
-                ILSSVMPairFactoryLike.PairVariant.ERC20
-            )
-        ) {
+        } else if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC20)) {
             pairBalance = pair.token().balanceOf(pairAddress);
         }
 
         // If the new sell price is higher, and there is enough liquidity to support at least 1 sell, then make the change
-        if (
-            (newPriceToSellToPair > priceToSellToPair) &&
-            pairBalance > newPriceToSellToPair
-        ) {
+        if ((newPriceToSellToPair > priceToSellToPair) && pairBalance > newPriceToSellToPair) {
             pair.changeSpotPrice(newSpotPrice);
             pair.changeDelta(newDelta);
             return;
@@ -339,11 +259,8 @@ contract StandardAgreement is
      * @param splitterAddresses List of addresses of Splitters to withdraw from
      * @param isETHPair If the underlying Splitter's pair is an ETH pair or not
      */
-    function bulkWithdrawFees(
-        address[] calldata splitterAddresses,
-        bool[] calldata isETHPair
-    ) external onlyOwner {
-        for (uint256 i; i < splitterAddresses.length; ) {
+    function bulkWithdrawFees(address[] calldata splitterAddresses, bool[] calldata isETHPair) external onlyOwner {
+        for (uint256 i; i < splitterAddresses.length;) {
             Splitter splitter = Splitter(payable(splitterAddresses[i]));
             if (isETHPair[i]) {
                 splitter.withdrawAllETH();

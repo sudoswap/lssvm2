@@ -4,10 +4,9 @@ pragma solidity ^0.8.0;
 import {LSSVMRouter} from "./LSSVMRouter.sol";
 
 interface ILSSVMPairFactoryLike {
-
     struct Agreement {
-      uint96 bps;
-      address pairAddress;
+        uint96 bps;
+        address pairAddress;
     }
 
     enum PairVariant {

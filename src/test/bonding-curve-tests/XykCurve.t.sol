@@ -87,7 +87,7 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 numItems = 0;
 
         // act
-        (CurveErrorCodes.Error error, , , , ,) = curve.getSellInfo(0, 0, numItems, 0, 0);
+        (CurveErrorCodes.Error error,,,,,) = curve.getSellInfo(0, 0, numItems, 0, 0);
 
         // assert
         assertEq(

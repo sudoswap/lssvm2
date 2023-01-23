@@ -25,16 +25,20 @@ abstract contract UsingLinearCurve is Configurable {
     }
 
     // Adjusts price up or down
-    function getParamsForAdjustingPriceToBuy(LSSVMPair pair, uint256 percentage, bool isIncrease) public view override returns (uint128 spotPrice, uint128 delta) {
-      if (isIncrease) {
-        // Multiply by multiplier, divide by base for both spot price and delta
-        spotPrice = uint128((pair.spotPrice() * percentage) / 1e18);
-        delta = uint128((pair.delta() * percentage) / 1e18);
-      } 
-      else {
-        // Multiply by base, divide by multiplier for both spot price and delta
-        spotPrice = uint128((pair.spotPrice() / 1e18) * percentage);
-        delta = uint128((pair.delta() * 1e18) / percentage);
-      }
+    function getParamsForAdjustingPriceToBuy(LSSVMPair pair, uint256 percentage, bool isIncrease)
+        public
+        view
+        override
+        returns (uint128 spotPrice, uint128 delta)
+    {
+        if (isIncrease) {
+            // Multiply by multiplier, divide by base for both spot price and delta
+            spotPrice = uint128((pair.spotPrice() * percentage) / 1e18);
+            delta = uint128((pair.delta() * percentage) / 1e18);
+        } else {
+            // Multiply by base, divide by multiplier for both spot price and delta
+            spotPrice = uint128((pair.spotPrice() / 1e18) * percentage);
+            delta = uint128((pair.delta() * 1e18) / percentage);
+        }
     }
 }

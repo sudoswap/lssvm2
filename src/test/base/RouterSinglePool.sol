@@ -95,7 +95,6 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
     }
 
     function test_swapTokenForSingleNFTWithFeeRecipient() public {
-        
         // Set protocol fee to 0% to make the math easier
         factory.changeProtocolFeeMultiplier(0);
 
@@ -115,7 +114,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
 
         // Do trade fee check to ensure that the recipient received the tokens
         // Which should be twice the trade fee amount, i.e. 0.2
-        assertEq(getBalance(tradeFeeRecipient), 2*inputAmount / 11);
+        assertEq(getBalance(tradeFeeRecipient), 2 * inputAmount / 11);
     }
 
     function test_swapSingleNFTForToken() public {

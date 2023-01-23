@@ -37,11 +37,15 @@ abstract contract Configurable {
         uint128 spotPrice;
         uint256[] _idList;
         uint256 initialTokenBalance;
-        address routerAddress; 
+        address routerAddress;
         address propertyChecker;
     }
-    
-    function setupPairWithPropertyChecker(PairCreationParamsWithPropertyChecker memory params) public payable virtual returns (LSSVMPair);
+
+    function setupPairWithPropertyChecker(PairCreationParamsWithPropertyChecker memory params)
+        public
+        payable
+        virtual
+        returns (LSSVMPair);
 
     function setupCurve() public virtual returns (ICurve);
 
@@ -63,7 +67,10 @@ abstract contract Configurable {
 
     function getParamsForPartialFillTest() public virtual returns (uint128 spotPrice, uint128 delta);
 
-    function getParamsForAdjustingPriceToBuy(LSSVMPair pair, uint256 percentage, bool isIncrease) public virtual returns (uint128 spotPrice, uint128 delta);
+    function getParamsForAdjustingPriceToBuy(LSSVMPair pair, uint256 percentage, bool isIncrease)
+        public
+        virtual
+        returns (uint128 spotPrice, uint128 delta);
 
     receive() external payable {}
 }
