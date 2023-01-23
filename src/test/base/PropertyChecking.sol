@@ -227,7 +227,7 @@ abstract contract PropertyChecking is
         );
     }
 
-    // Tests swapping behavior when the tokenId is in and not in the given merkle proof
+    // Tests swapping behavior when a single tokenId is passsed into the merkle property checker
     function test_merklePropertyCheckerSingleId() public {
         // Create merkle tree
         uint256[2] memory tokenIds = [uint256(1), uint256(2)];
@@ -301,7 +301,7 @@ abstract contract PropertyChecking is
         );
     }
 
-    // Tests swapping behavior when multiple tokenIds are passed
+    // Tests swapping behavior when multiple tokenIds are passed into the merkle property checker
     function test_merklePropertyCheckerMultipleIds() public {
         // Create merkle tree
         uint256[2] memory tokenIds = [uint256(1), uint256(2)];
