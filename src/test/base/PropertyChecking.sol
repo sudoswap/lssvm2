@@ -280,7 +280,7 @@ abstract contract PropertyChecking is
         uint256[] memory specificIdToSell = new uint256[](1);
 
         // A sell for 3 will fail
-        specificIdToSell[0] = 2;
+        specificIdToSell[0] = 3;
         vm.expectRevert("Property check failed");
         pair.swapNFTsForToken(
             specificIdToSell,
