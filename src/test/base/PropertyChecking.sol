@@ -160,6 +160,54 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         );
     }
 
+    // RangePropertyChecker
+    // Tests that if some tokenIds fall out of range, the entire swap will fail
+    function test_propertySwapPartialFailure() public {
+        RangePropertyChecker checker = propertyCheckerFactory.createRangePropertyChecker(0, 10);
+
+        // Deploy a pair with the property checker set
+        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+            factory: factory,
+            nft: test721,
+            bondingCurve: bondingCurve,
+            assetRecipient: payable(address(0)),
+            poolType: LSSVMPair.PoolType.TRADE,
+            delta: delta,
+            fee: 0,
+            spotPrice: spotPrice,
+            _idList: emptyList,
+            initialTokenBalance: tokenAmount,
+            routerAddress: address(0),
+            propertyChecker: address(checker)
+        });
+
+        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+
+        // Mint any extra tokens as needed
+        testERC20 = ERC20(address(new Test20()));
+        IMintable(address(testERC20)).mint(address(pair), 100 ether);
+        test721.setApprovalForAll(address(pair), true);
+        testERC20.approve(address(pair), 10000 ether);
+
+        // Attempt to perform a sell for item #1
+        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+        uint256[] memory tokenIds = new uint256[](3);
+        tokenIds[0] = 1;
+        tokenIds[1] = 10;
+        tokenIds[2] = 11; // This tokenId falls out of the range
+
+        vm.expectRevert("Property check failed");
+
+        pair.swapNFTsForToken(
+            tokenIds,
+            outputAmount,
+            payable(address(this)),
+            false,
+            address(this),
+            "" // No extra params needed
+        );
+    }
+
     // Tests that swapping for an item if the pair has properties set will succeed if property is fulfilled
     function test_propertySwapSucceedsIfInRange() public {
         RangePropertyChecker checker = propertyCheckerFactory.createRangePropertyChecker(0, 10);
@@ -190,10 +238,11 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
 
         // Perform a sell for item #1
         (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
-        uint256[] memory specificIdToSell = new uint256[](1);
-        specificIdToSell[0] = 1;
+        uint256[] memory tokenIds = new uint256[](2);
+        tokenIds[0] = 1;
+        tokenIds[1] = 10;
         pair.swapNFTsForToken(
-            specificIdToSell,
+            tokenIds,
             outputAmount,
             payable(address(this)),
             false,
@@ -219,29 +268,25 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         proofList[0] = proofEncoded;
         bytes memory proofListEncoded = abi.encode(proofList);
 
-        MerklePropertyChecker checker = propertyCheckerFactory
-            .createMerklePropertyChecker(hashes[2]);
+        MerklePropertyChecker checker = propertyCheckerFactory.createMerklePropertyChecker(hashes[2]);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker
-            memory params = PairCreationParamsWithPropertyChecker({
-                factory: factory,
-                nft: test721,
-                bondingCurve: bondingCurve,
-                assetRecipient: payable(address(0)),
-                poolType: LSSVMPair.PoolType.TRADE,
-                delta: delta,
-                fee: 0,
-                spotPrice: spotPrice,
-                _idList: emptyList,
-                initialTokenBalance: tokenAmount,
-                routerAddress: address(0),
-                propertyChecker: address(checker)
-            });
+        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+            factory: factory,
+            nft: test721,
+            bondingCurve: bondingCurve,
+            assetRecipient: payable(address(0)),
+            poolType: LSSVMPair.PoolType.TRADE,
+            delta: delta,
+            fee: 0,
+            spotPrice: spotPrice,
+            _idList: emptyList,
+            initialTokenBalance: tokenAmount,
+            routerAddress: address(0),
+            propertyChecker: address(checker)
+        });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{
-            value: this.modifyInputAmount(tokenAmount)
-        }(params);
+        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -249,30 +294,20 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         test721.setApprovalForAll(address(pair), true);
         testERC20.approve(address(pair), 10000 ether);
 
-        (, , , uint256 outputAmount, ) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
         uint256[] memory specificIdToSell = new uint256[](1);
 
         // A sell for 3 will fail
         specificIdToSell[0] = 3;
         vm.expectRevert("Property check failed");
         pair.swapNFTsForToken(
-            specificIdToSell,
-            outputAmount,
-            payable(address(this)),
-            false,
-            address(this),
-            proofListEncoded
+            specificIdToSell, outputAmount, payable(address(this)), false, address(this), proofListEncoded
         );
 
         // A sell for id 1 will succeed
         specificIdToSell[0] = 1;
         pair.swapNFTsForToken(
-            specificIdToSell,
-            outputAmount,
-            payable(address(this)),
-            false,
-            address(this),
-            proofListEncoded
+            specificIdToSell, outputAmount, payable(address(this)), false, address(this), proofListEncoded
         );
     }
 
@@ -285,29 +320,25 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         hashes[1] = keccak256(abi.encodePacked(tokenIds[1]));
         hashes[2] = keccak256(abi.encodePacked(hashes[1], hashes[0]));
 
-        MerklePropertyChecker checker = propertyCheckerFactory
-            .createMerklePropertyChecker(hashes[2]);
+        MerklePropertyChecker checker = propertyCheckerFactory.createMerklePropertyChecker(hashes[2]);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker
-            memory params = PairCreationParamsWithPropertyChecker({
-                factory: factory,
-                nft: test721,
-                bondingCurve: bondingCurve,
-                assetRecipient: payable(address(0)),
-                poolType: LSSVMPair.PoolType.TRADE,
-                delta: delta,
-                fee: 0,
-                spotPrice: spotPrice,
-                _idList: emptyList,
-                initialTokenBalance: tokenAmount,
-                routerAddress: address(0),
-                propertyChecker: address(checker)
-            });
+        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+            factory: factory,
+            nft: test721,
+            bondingCurve: bondingCurve,
+            assetRecipient: payable(address(0)),
+            poolType: LSSVMPair.PoolType.TRADE,
+            delta: delta,
+            fee: 0,
+            spotPrice: spotPrice,
+            _idList: emptyList,
+            initialTokenBalance: tokenAmount,
+            routerAddress: address(0),
+            propertyChecker: address(checker)
+        });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{
-            value: this.modifyInputAmount(tokenAmount)
-        }(params);
+        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -315,14 +346,14 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         test721.setApprovalForAll(address(pair), true);
         testERC20.approve(address(pair), 10000 ether);
 
-        (, , , uint256 outputAmount, ) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
         uint256[] memory idsToSell = new uint256[](2);
 
         // Create encoded proof list
         bytes32[] memory proof1 = new bytes32[](1);
         proof1[0] = hashes[1];
         bytes memory proof1Encoded = abi.encode(proof1);
-        
+
         // Create encoded merkle proof list
         bytes[] memory proofList = new bytes[](2);
         proofList[0] = proof1Encoded;
@@ -333,12 +364,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         idsToSell[1] = 3;
         vm.expectRevert("Property check failed");
         pair.swapNFTsForToken(
-            idsToSell,
-            outputAmount,
-            payable(address(this)),
-            false,
-            address(this),
-            abi.encode(proofList)
+            idsToSell, outputAmount, payable(address(this)), false, address(this), abi.encode(proofList)
         );
 
         // Create second proof and add it to the proof list
@@ -350,12 +376,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         // A sell for ids [1,2] will succeed because both ids are part of the merkle tree
         idsToSell[1] = 2;
         pair.swapNFTsForToken(
-            idsToSell,
-            outputAmount,
-            payable(address(this)),
-            false,
-            address(this),
-            abi.encode(proofList)
+            idsToSell, outputAmount, payable(address(this)), false, address(this), abi.encode(proofList)
         );
     }
 }

@@ -24,9 +24,7 @@ contract PropertyCheckerFactory {
 
     function createMerklePropertyChecker(bytes32 root) public returns (MerklePropertyChecker) {
         bytes memory data = abi.encodePacked(root);
-        MerklePropertyChecker checker = MerklePropertyChecker(
-            address(merklePropertyCheckerImplementation).clone(data)
-        );
+        MerklePropertyChecker checker = MerklePropertyChecker(address(merklePropertyCheckerImplementation).clone(data));
         emit NewMerklePropertyChecker(address(checker), root);
         return checker;
     }
