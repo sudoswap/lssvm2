@@ -377,12 +377,11 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         require(authorizedAgreement[msg.sender] == address(LSSVMPair(pairAddress).nft()), "Unauthorized caller");
 
         // Check if toggling on or off
-        address eitherZeroOrPairAddress = address(0);
         if (isEnteringAgreement) {
-            eitherZeroOrPairAddress = pairAddress;
+            bpsForPairInAgreement[pairAddress] = Agreement({bps: bps, pairAddress: pairAddress});
+        } else {
+            delete bpsForPairInAgreement[pairAddress];
         }
-
-        bpsForPairInAgreement[pairAddress] = Agreement({bps: bps, pairAddress: eitherZeroOrPairAddress});
     }
 
     /**

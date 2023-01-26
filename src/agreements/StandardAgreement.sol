@@ -103,6 +103,14 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
      * @param prevOwner The owner of the pair calling transferOwnership
      */
     function onOwnershipTransferred(address prevOwner, bytes memory) public payable {
+        ILSSVMPair pair = ILSSVMPair(msg.sender);
+
+        // Only for trade pairs
+        require(pair.poolType() == ILSSVMPair.PoolType.TRADE, "Only TRADE pairs");
+
+        // Prevent high-fee trading pairs
+        require(pair.fee() <= MAX_SETTABLE_FEE, "Fee too high");
+
         // Verify the upfront cost
         require(msg.value == getAgreementCost(), "Insufficient payment");
 
@@ -114,9 +122,6 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
         // Set the modified royalty bps on the factory
         // @dev This also does the isPair check and pair.nft() check
         pairFactory.toggleBpsForPairInAgreement(msg.sender, getAgreementRoyaltyBps(), true);
-
-        // Only for trade pairs
-        require(ILSSVMPair(msg.sender).poolType() == ILSSVMPair.PoolType.TRADE, "Only TRADE pairs");
 
         // Store the original owner, unlock date, and old fee recipient
         pairInfo[msg.sender] = PairInAgreement({
@@ -168,6 +173,9 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
         // Disable the royalty override
         // @dev This also does the isPair check and auth check for this Agreement
         pairFactory.toggleBpsForPairInAgreement(pairAddress, getAgreementRoyaltyBps(), false);
+
+        // Remove pairInfo entry
+        delete pairInfo[pairAddress];
 
         emit AgreementLeftForPair(pairAddress);
     }

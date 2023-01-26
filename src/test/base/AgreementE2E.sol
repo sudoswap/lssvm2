@@ -140,6 +140,7 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         factory.toggleBpsForPairInAgreement(address(pair), newBps, false);
         (isInAgreement, royaltyBps) = factory.agreementForPair(address(pair));
         assertEq(isInAgreement, false);
+        assertEq(royaltyBps, 0);
     }
 
     // An Agreement cannot toggle royalty bps for a pair if the underlying nft collection is different than what
@@ -239,6 +240,23 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         // Changing the fee to under 20% works
         uint96 newFee = 0.2e18;
         newAgreement.changeFee(address(pair), newFee);
+    }
+
+    // A pair cannot enter into an agreement if the trading fee is too high
+    function test_enterAgreementFeeTooHigh() public {
+        address payable agreementFeeRecipient = payable(address(123));
+        uint256 ethCost = 0.1 ether;
+        uint64 secDuration = 1;
+        uint64 feeSplitBps = 2;
+        uint64 newRoyaltyBps = 1000; // 10% in bps
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
+
+        pair.changeFee(2e17 + 1);
+
+        vm.expectRevert("Fee too high");
+        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
     }
 
     // Changing the price up works (because there are tokens)
@@ -373,6 +391,8 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
 
         // Check that the owner is now set back to caller
         assertEq(pair.owner(), address(this));
+        // Check that old pairInfo has been cleared out
+        assertEq(newAgreement.getPrevFeeRecipientForPair(address(pair)), address(0));
         // Prev fee recipient defaulted to the pair, so it should still be the pair
         assertEq(pair.getFeeRecipient(), address(pair));
         (bool isInAgreement,) = factory.agreementForPair(address(pair));
