@@ -18,6 +18,7 @@ import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {NoArbBondingCurve} from "../base/NoArbBondingCurve.sol";
+import {LSSVMPairERC721} from "../../erc721/LSSVMPairERC721.sol";
 
 abstract contract UsingERC20 is Configurable, RouterCaller {
     using SafeTransferLib for ERC20;
@@ -62,8 +63,8 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         IMintable(address(test20)).mint(address(this), 1000 ether);
 
         // initialize the pair
-        LSSVMPair pair = factory.createPairERC20(
-            LSSVMPairFactory.CreateERC20PairParams(
+        LSSVMPair pair = factory.createPairERC721ERC20(
+            LSSVMPairFactory.CreateERC721ERC20PairParams(
                 test20,
                 nft,
                 bondingCurve,
@@ -88,7 +89,7 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         public
         payable
         override
-        returns (LSSVMPair)
+        returns (LSSVMPairERC721 pair)
     {
         // create ERC20 token if not already deployed
         if (address(test20) == address(0)) {
@@ -103,8 +104,8 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         IMintable(address(test20)).mint(address(this), 1000 ether);
 
         // initialize the pair
-        LSSVMPair pair = params.factory.createPairERC20(
-            LSSVMPairFactory.CreateERC20PairParams(
+        pair = params.factory.createPairERC721ERC20(
+            LSSVMPairFactory.CreateERC721ERC20PairParams(
                 test20,
                 params.nft,
                 params.bondingCurve,
@@ -121,8 +122,6 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
 
         // Set approvals for pair
         test20.approve(address(pair), type(uint256).max);
-
-        return pair;
     }
 
     function withdrawTokens(LSSVMPair pair) public override {

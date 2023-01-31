@@ -18,19 +18,8 @@ import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
  * @title An NFT/Token pair where the token is an ERC20
  *     @author boredGenius and 0xmons
  */
-contract LSSVMPairERC20 is LSSVMPair {
+abstract contract LSSVMPairERC20 is LSSVMPair {
     using SafeTransferLib for ERC20;
-
-    uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 101;
-
-    constructor(IRoyaltyRegistry royaltyRegistry) LSSVMPair(royaltyRegistry) {}
-
-    /**
-     * @inheritdoc LSSVMPair
-     */
-    function pairVariant() public pure override returns (ILSSVMPairFactoryLike.PairVariant) {
-        return ILSSVMPairFactoryLike.PairVariant.ERC20;
-    }
 
     /**
      * @notice Returns the ERC20 token associated with the pair
@@ -138,12 +127,6 @@ contract LSSVMPairERC20 is LSSVMPair {
         if (outputAmount != 0) {
             token().safeTransfer(tokenRecipient, outputAmount);
         }
-    }
-
-    /// @inheritdoc LSSVMPair
-    /// @dev see LSSVMPairCloner for params length calculation
-    function _immutableParamsLength() internal pure override returns (uint256) {
-        return IMMUTABLE_PARAMS_LENGTH;
     }
 
     /// @inheritdoc LSSVMPair

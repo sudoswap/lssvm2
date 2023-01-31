@@ -16,11 +16,8 @@ import {Test20} from "../../mocks/Test20.sol";
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {Test721} from "../../mocks/Test721.sol";
 import {Test1155} from "../../mocks/Test1155.sol";
-import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
-
 import {ICurve} from "../../bonding-curves/ICurve.sol";
-import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {TestPairManager} from "../../mocks/TestPairManager.sol";
 import {TestPairManager2} from "../../mocks/TestPairManager2.sol";
@@ -50,15 +47,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         bondingCurve = setupCurve();
         test721 = setup721();
         royaltyRegistry = setupRoyaltyRegistry();
-        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
-        factory = new LSSVMPairFactory(
-            ethTemplate,
-            erc20Template,
-            feeRecipient,
-            protocolFeeMultiplier,
-            address(this)
-        );
+        factory = setupFactory(royaltyRegistry, feeRecipient, protocolFeeMultiplier);
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);
         for (uint256 i = 1; i <= numItems; i++) {

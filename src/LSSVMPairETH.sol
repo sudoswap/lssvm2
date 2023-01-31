@@ -16,20 +16,9 @@ import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
  * @title An NFT/Token pair where the token is ETH
  *     @author boredGenius and 0xmons
  */
-contract LSSVMPairETH is LSSVMPair {
+abstract contract LSSVMPairETH is LSSVMPair {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
-
-    uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 81;
-
-    constructor(IRoyaltyRegistry royaltyRegistry) LSSVMPair(royaltyRegistry) {}
-
-    /**
-     * @inheritdoc LSSVMPair
-     */
-    function pairVariant() public pure override returns (ILSSVMPairFactoryLike.PairVariant) {
-        return ILSSVMPairFactoryLike.PairVariant.ETH;
-    }
 
     /// @inheritdoc LSSVMPair
     function _pullTokenInputAndPayProtocolFee(
@@ -103,12 +92,6 @@ contract LSSVMPairETH is LSSVMPair {
         if (outputAmount != 0) {
             tokenRecipient.safeTransferETH(outputAmount);
         }
-    }
-
-    /// @inheritdoc LSSVMPair
-    /// @dev see LSSVMPairCloner for params length calculation
-    function _immutableParamsLength() internal pure override returns (uint256) {
-        return IMMUTABLE_PARAMS_LENGTH;
     }
 
     /**

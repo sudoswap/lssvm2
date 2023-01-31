@@ -13,13 +13,15 @@ import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Hol
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {Test721} from "../../mocks/Test721.sol";
-import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
-import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {XykCurve} from "../../bonding-curves/XykCurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LSSVMPairCloner} from "../../lib/LSSVMPairCloner.sol";
+import {LSSVMPairERC721ETH} from "../../erc721/LSSVMPairERC721ETH.sol";
 import {TestRoyaltyRegistry} from "../../mocks/TestRoyaltyRegistry.sol";
 import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
+import {LSSVMPairERC1155ETH} from "../../erc1155/LSSVMPairERC1155ETH.sol";
+import {LSSVMPairERC721ERC20} from "../../erc721/LSSVMPairERC721ERC20.sol";
+import {LSSVMPairERC1155ERC20} from "../../erc1155/LSSVMPairERC1155ERC20.sol";
 
 contract XykCurveTest is Test, ERC721Holder {
     using FixedPointMathLib for uint256;
@@ -39,16 +41,7 @@ contract XykCurveTest is Test, ERC721Holder {
         royaltyRegistry = new TestRoyaltyRegistry();
         royaltyRegistry.initialize();
 
-        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
-        factory = new LSSVMPairFactory(
-            ethTemplate,
-            erc20Template,
-            payable(0),
-            0,
-            address(this)
-        );
-
+        factory = setupFactory(payable(address(0)));
         curve = new XykCurve();
         factory.setBondingCurveAllowed(curve, true);
     }
@@ -62,8 +55,24 @@ contract XykCurveTest is Test, ERC721Holder {
             idList[i - 1] = i;
         }
 
-        ethPair = factory.createPairETH{value: value}(
+        ethPair = factory.createPairERC721ETH{value: value}(
             nft, curve, payable(0), LSSVMPair.PoolType.TRADE, uint128(numNfts), 0, uint128(value), address(0), idList
+        );
+    }
+
+    function setupFactory(address payable feeRecipient) public virtual returns (LSSVMPairFactory) {
+        LSSVMPairERC721ETH erc721ETHTemplate = new LSSVMPairERC721ETH(royaltyRegistry);
+        LSSVMPairERC721ERC20 erc721ERC20Template = new LSSVMPairERC721ERC20(royaltyRegistry);
+        LSSVMPairERC1155ETH erc1155ETHTemplate = new LSSVMPairERC1155ETH(royaltyRegistry);
+        LSSVMPairERC1155ERC20 erc1155ERC20Template = new LSSVMPairERC1155ERC20(royaltyRegistry);
+        return new LSSVMPairFactory(
+            erc721ETHTemplate,
+            erc721ERC20Template,
+            erc1155ETHTemplate,
+            erc1155ERC20Template,
+            feeRecipient,
+            0, // Zero protocol fee to make calculations easier
+            address(this)
         );
     }
 

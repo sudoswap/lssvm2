@@ -14,15 +14,13 @@ import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
-import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
+import {IOwnable} from "../interfaces/IOwnable.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
-import {IOwnable} from "../interfaces/IOwnable.sol";
-import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
+import {LSSVMPairERC721} from "../../erc721/LSSVMPairERC721.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ILSSVMPairFactoryLike} from "../../ILSSVMPairFactoryLike.sol";
-
 import {IPropertyChecker} from "../../property-checking/IPropertyChecker.sol";
 import {MerklePropertyChecker} from "../../property-checking/MerklePropertyChecker.sol";
 import {RangePropertyChecker} from "../../property-checking/RangePropertyChecker.sol";
@@ -57,16 +55,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         // Set a royalty override
         royaltyRegistry.setRoyaltyLookupAddress(address(test721), address(test2981));
 
-        // Set up the pair templates and pair factory
-        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
-        factory = new LSSVMPairFactory(
-            ethTemplate,
-            erc20Template,
-            feeRecipient,
-            0, // Zero protocol fee to make calculations easier
-            address(this)
-        );
+        // Set up the pair factory
+        factory = setupFactory(royaltyRegistry, feeRecipient);
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);
 
@@ -100,7 +90,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Attempt to perform a sell for item #1
         (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
@@ -135,7 +125,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -181,7 +171,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -228,7 +218,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -286,7 +276,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -338,7 +328,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPair pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));

@@ -10,8 +10,10 @@ interface ILSSVMPairFactoryLike {
     }
 
     enum PairVariant {
-        ETH,
-        ERC20
+        ERC721_ETH,
+        ERC721_ERC20,
+        ERC1155_ETH,
+        ERC1155_ERC20
     }
 
     function protocolFeeMultiplier() external view returns (uint256);

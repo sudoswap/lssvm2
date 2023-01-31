@@ -11,6 +11,7 @@ import {LSSVMRouter2} from "../../LSSVMRouter2.sol";
 import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
+import {LSSVMPairERC721} from "../../erc721/LSSVMPairERC721.sol";
 
 abstract contract UsingETH is Configurable, RouterCaller {
     function modifyInputAmount(uint256 inputAmount) public pure override returns (uint256) {
@@ -38,7 +39,7 @@ abstract contract UsingETH is Configurable, RouterCaller {
         uint256,
         address
     ) public payable override returns (LSSVMPair) {
-        LSSVMPairETH pair = factory.createPairETH{value: msg.value}(
+        LSSVMPairETH pair = factory.createPairERC721ETH{value: msg.value}(
             nft, bondingCurve, assetRecipient, poolType, delta, fee, spotPrice, address(0), _idList
         );
         return pair;
@@ -48,9 +49,9 @@ abstract contract UsingETH is Configurable, RouterCaller {
         public
         payable
         override
-        returns (LSSVMPair)
+        returns (LSSVMPairERC721 pair)
     {
-        LSSVMPairETH pair = params.factory.createPairETH{value: msg.value}(
+        pair = params.factory.createPairERC721ETH{value: msg.value}(
             params.nft,
             params.bondingCurve,
             params.assetRecipient,
@@ -61,7 +62,6 @@ abstract contract UsingETH is Configurable, RouterCaller {
             params.propertyChecker,
             params._idList
         );
-        return pair;
     }
 
     function withdrawTokens(LSSVMPair pair) public override {

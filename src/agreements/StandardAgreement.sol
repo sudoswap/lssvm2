@@ -158,9 +158,9 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 
         // Split fees (if applicable)
-        if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ETH)) {
+        if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)) {
             Splitter(payable(pair.getFeeRecipient())).withdrawAllETH();
-        } else if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC20)) {
+        } else if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20)) {
             Splitter(payable(pair.getFeeRecipient())).withdrawAllBaseQuoteTokens();
         }
 
@@ -246,9 +246,9 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
 
         // Get token balance of the pair (ETH or ERC20)
         uint256 pairBalance;
-        if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ETH)) {
+        if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)) {
             pairBalance = pairAddress.balance;
-        } else if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC20)) {
+        } else if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20)) {
             pairBalance = pair.token().balanceOf(pairAddress);
         }
 

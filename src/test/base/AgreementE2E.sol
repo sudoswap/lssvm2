@@ -14,11 +14,9 @@ import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
-import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
+import {IOwnable} from "../interfaces/IOwnable.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
-import {IOwnable} from "../interfaces/IOwnable.sol";
-import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ILSSVMPairFactoryLike} from "../../ILSSVMPairFactoryLike.sol";
@@ -60,16 +58,8 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         // Set a royalty override
         royaltyRegistry.setRoyaltyLookupAddress(address(test721), address(test2981));
 
-        // Set up the pair templates and pair factory
-        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
-        factory = new LSSVMPairFactory(
-            ethTemplate,
-            erc20Template,
-            feeRecipient,
-            0, // Zero protocol fee to make calculations easier
-            address(this)
-        );
+        // Set up the pair factory
+        factory = setupFactory(royaltyRegistry, feeRecipient);
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);
         // Mint IDs from 1 to numItems to the caller, to deposit into the pair
@@ -314,7 +304,7 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
 
         // Withdraw tokens from pair
-        pair.withdrawERC721(pair.nft(), idList);
+        pair.withdrawERC721(IERC721(pair.nft()), idList);
 
         // Opt into the Agreement
         pair.transferOwnership(address(newAgreement), "");
@@ -528,7 +518,7 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         assertEq(splitterBalance, 2 * tradeFee);
 
         // Withdraw the tokens
-        if (factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ETH)) {
+        if (factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)) {
             Splitter(splitterAddress).withdrawAllETH();
         } else {
             Splitter(splitterAddress).withdrawAllBaseQuoteTokens();

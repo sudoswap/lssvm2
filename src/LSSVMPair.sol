@@ -5,12 +5,12 @@ import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {LSSVMRouter} from "./LSSVMRouter.sol";
 import {ICurve} from "./bonding-curves/ICurve.sol";
@@ -18,13 +18,20 @@ import {ReentrancyGuard} from "./lib/ReentrancyGuard.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
 import {OwnableWithTransferCallback} from "./lib/OwnableWithTransferCallback.sol";
-import {IPropertyChecker} from "./property-checking/IPropertyChecker.sol";
 
 /// @title The base contract for an NFT/TOKEN AMM pair
 /// @author boredGenius and 0xmons
 /// @notice This implements the core swap logic from NFT to TOKEN
 abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC721Holder, ERC1155Holder {
+    /**
+     * Library usage
+     */
+
     using Address for address;
+
+    /**
+     *  Enums
+     */
 
     enum PoolType {
         TOKEN,
@@ -32,11 +39,23 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         TRADE
     }
 
+    /**
+     * Constants
+     */
+
     // 50%, must <= 1 - MAX_PROTOCOL_FEE (set in LSSVMPairFactory)
     uint256 internal constant MAX_FEE = 0.5e18;
 
+    /**
+     *  Immutable params
+     */
+
     // Manifold royalty registry
     IRoyaltyRegistry public immutable ROYALTY_REGISTRY;
+
+    /**
+     *  Storage variables
+     */
 
     // @dev This is generally used to mean the immediate sell price for the next marginal NFT.
     // However, this should NOT be assumed, as bonding curves may use spotPrice in different ways.
@@ -57,18 +76,27 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     // If set to address(0), will default to owner() for NFT and TOKEN pools
     address payable public assetRecipient;
 
-    // Events
+    /**
+     *  Events
+     */
+
     event SwapNFTInPair(uint256 amountIn, uint256[] ids);
+    event SwapNFTInPair(uint256 amountIn, uint256 numNFTs);
     event SwapNFTOutPair(uint256 amountOut, uint256[] ids);
+    event SwapNFTOutPair(uint256 amountOut, uint256 numNFTs);
     event SpotPriceUpdate(uint128 newSpotPrice);
     event TokenDeposit(uint256 amount);
     event TokenWithdrawal(uint256 amount);
     event NFTWithdrawal(uint256[] ids);
+    event NFTWithdrawal(uint256 numNFTs);
     event DeltaUpdate(uint128 newDelta);
     event FeeUpdate(uint96 newFee);
     event AssetRecipientChange(address a);
 
-    // Parameterized Errors
+    /**
+     *  Errors
+     */
+
     error BondingCurveError(CurveErrorCodes.Error error);
 
     constructor(IRoyaltyRegistry royaltyRegistry) {
@@ -144,40 +172,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         address nftRecipient,
         bool isRouter,
         address routerCaller
-    ) external payable virtual nonReentrant returns (uint256 inputAmount) {
-        // Store locally to remove extra calls
-        ILSSVMPairFactoryLike _factory = factory();
-        ICurve _bondingCurve = bondingCurve();
-
-        // Input validation
-        {
-            PoolType _poolType = poolType();
-            require(_poolType == PoolType.NFT || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require((nftIds.length > 0), "Must ask for > 0 NFTs");
-        }
-
-        // Call bonding curve for pricing information
-        uint256 protocolFee;
-        uint256 tradeFee;
-        (tradeFee, protocolFee, inputAmount) =
-            _calculateBuyInfoAndUpdatePoolParams(nftIds.length, maxExpectedTokenInput, _bondingCurve, _factory);
-
-        _pullTokenInputAndPayProtocolFee(
-            nftIds[0],
-            inputAmount,
-            2 * tradeFee, // We pull twice the trade fee on buys but don't take trade fee on sells if assetRecipient is set
-            isRouter,
-            routerCaller,
-            _factory,
-            protocolFee
-        );
-
-        _sendSpecificNFTsToRecipient(nft(), nftRecipient, nftIds);
-
-        _refundTokenToSender(inputAmount);
-
-        emit SwapNFTOutPair(inputAmount, nftIds);
-    }
+    ) external payable virtual returns (uint256 inputAmount);
 
     /**
      * @notice Sends a set of NFTs to the pair in exchange for token
@@ -198,112 +193,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         address payable tokenRecipient,
         bool isRouter,
         address routerCaller
-    ) external virtual nonReentrant returns (uint256 outputAmount) {
-        {
-            require(propertyChecker() == address(0), "Verify property");
-        }
-
-        // Store locally to remove extra calls
-        ILSSVMPairFactoryLike _factory = factory();
-        ICurve _bondingCurve = bondingCurve();
-
-        // Input validation
-        {
-            PoolType _poolType = poolType();
-            require(_poolType == PoolType.TOKEN || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(nftIds.length > 0, "Must ask for > 0 NFTs");
-        }
-
-        // Call bonding curve for pricing information
-        uint256 protocolFee;
-        uint256 tradeFee;
-        (tradeFee, protocolFee, outputAmount) =
-            _calculateSellInfoAndUpdatePoolParams(nftIds.length, minExpectedTokenOutput, _bondingCurve, _factory);
-
-        // Compute royalties
-        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(nftIds[0], outputAmount);
-
-        // Deduct royalties from outputAmount
-        unchecked {
-            // Safe because we already require outputAmount >= royaltyAmount in _calculateRoyalties()
-            outputAmount -= royaltyAmount;
-        }
-
-        _sendTokenOutput(tokenRecipient, outputAmount);
-
-        _sendTokenOutput(payable(royaltyRecipient), royaltyAmount);
-
-        _payProtocolFeeFromPair(_factory, protocolFee);
-
-        _takeNFTsFromSender(nft(), nftIds, _factory, isRouter, routerCaller);
-
-        emit SwapNFTInPair(outputAmount, nftIds);
-    }
-
-    /**
-     * @notice Sends a set of NFTs to the pair in exchange for token
-     *     @dev To compute the amount of token to that will be received, call bondingCurve.getSellInfo.
-     *     @param nftIds The list of IDs of the NFTs to sell to the pair
-     *     @param minExpectedTokenOutput The minimum acceptable token received by the sender. If the actual
-     *     amount is less than this value, the transaction will be reverted.
-     *     @param tokenRecipient The recipient of the token output
-     *     @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
-     *     ETH pairs.
-     *     @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
-     *     ETH pairs.
-     *     @param propertyCheckerParams Parameters to pass into the pair's underlying property checker
-     *     @return outputAmount The amount of token received
-     */
-    function swapNFTsForToken(
-        uint256[] calldata nftIds,
-        uint256 minExpectedTokenOutput,
-        address payable tokenRecipient,
-        bool isRouter,
-        address routerCaller,
-        bytes calldata propertyCheckerParams
-    ) external virtual nonReentrant returns (uint256 outputAmount) {
-        {
-            require(
-                IPropertyChecker(propertyChecker()).hasProperties(nftIds, propertyCheckerParams),
-                "Property check failed"
-            );
-        }
-
-        // Store locally to remove extra calls
-        ILSSVMPairFactoryLike _factory = factory();
-
-        // Input validation
-        {
-            PoolType _poolType = poolType();
-            require(_poolType == PoolType.TOKEN || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(nftIds.length > 0, "Must ask for > 0 NFTs");
-        }
-
-        // Call bonding curve for pricing information
-        uint256 protocolFee;
-        uint256 tradeFee;
-        (tradeFee, protocolFee, outputAmount) =
-            _calculateSellInfoAndUpdatePoolParams(nftIds.length, minExpectedTokenOutput, bondingCurve(), _factory);
-
-        // Compute royalties
-        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(nftIds[0], outputAmount);
-
-        // Deduct royalties from outputAmount
-        unchecked {
-            // Safe because we already require outputAmount >= royaltyAmount in _calculateRoyalties()
-            outputAmount -= royaltyAmount;
-        }
-
-        _sendTokenOutput(tokenRecipient, outputAmount);
-
-        _sendTokenOutput(payable(royaltyRecipient), royaltyAmount);
-
-        _payProtocolFeeFromPair(_factory, protocolFee);
-
-        _takeNFTsFromSender(nft(), nftIds, _factory, isRouter, routerCaller);
-
-        emit SwapNFTInPair(outputAmount, nftIds);
-    }
+    ) external virtual returns (uint256 outputAmount);
 
     /**
      * View functions
@@ -400,7 +290,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     /**
      * @notice Returns the NFT collection that parameterizes the pair
      */
-    function nft() public pure returns (IERC721 _nft) {
+    function nft() public pure returns (address _nft) {
         uint256 paramsLength = _immutableParamsLength();
         assembly {
             _nft := shr(0x60, calldataload(add(sub(calldatasize(), paramsLength), 40)))
@@ -414,16 +304,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         uint256 paramsLength = _immutableParamsLength();
         assembly {
             _poolType := shr(0xf8, calldataload(add(sub(calldatasize(), paramsLength), 60)))
-        }
-    }
-
-    /**
-     * @notice Returns the property checker address
-     */
-    function propertyChecker() public pure returns (address _propertyChecker) {
-        uint256 paramsLength = _immutableParamsLength();
-        assembly {
-            _propertyChecker := shr(0x60, calldataload(add(sub(calldatasize(), paramsLength), 61)))
         }
     }
 
@@ -521,7 +401,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     amount is less than this value, the transaction will be reverted.
      *     @param _bondingCurve The bonding curve to use for price calculation
      *     @param _factory The factory to use for protocol fee lookup
-     *     @return tradeFee The amount of tokens to send as trade fee
      *     @return protocolFee The amount of tokens to send as protocol fee
      *     @return outputAmount The amount of tokens total tokens receive
      */
@@ -530,14 +409,14 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         uint256 minExpectedTokenOutput,
         ICurve _bondingCurve,
         ILSSVMPairFactoryLike _factory
-    ) internal returns (uint256 tradeFee, uint256 protocolFee, uint256 outputAmount) {
+    ) internal returns (uint256 protocolFee, uint256 outputAmount) {
         CurveErrorCodes.Error error;
         // Save on 2 SLOADs by caching
         uint128 currentSpotPrice = spotPrice;
         uint128 newSpotPrice;
         uint128 currentDelta = delta;
         uint128 newDelta;
-        (error, newSpotPrice, newDelta, outputAmount, tradeFee, protocolFee) =
+        (error, newSpotPrice, newDelta, outputAmount, /*tradeFee*/, protocolFee) =
             _bondingCurve.getSellInfo(currentSpotPrice, currentDelta, numNFTs, fee, _factory.protocolFeeMultiplier());
 
         // Revert if bonding curve had an error
@@ -605,85 +484,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     function _sendTokenOutput(address payable tokenRecipient, uint256 outputAmount) internal virtual;
 
     /**
-     * @notice Sends specific NFTs to a recipient address
-     *     @dev Even though we specify the NFT address here, this internal function is only
-     *     used to send NFTs associated with this specific pool.
-     *     @param _nft The address of the NFT to send
-     *     @param nftRecipient The receiving address for the NFTs
-     *     @param nftIds The specific IDs of NFTs to send
-     */
-    function _sendSpecificNFTsToRecipient(IERC721 _nft, address nftRecipient, uint256[] calldata nftIds)
-        internal
-        virtual
-    {
-        // Send NFTs to recipient
-        uint256 numNFTs = nftIds.length;
-        for (uint256 i; i < numNFTs;) {
-            _nft.safeTransferFrom(address(this), nftRecipient, nftIds[i]);
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * @notice Takes NFTs from the caller and sends them into the pair's asset recipient
-     *     @dev This is used by the LSSVMPair's swapNFTForToken function.
-     *     @param _nft The NFT collection to take from
-     *     @param nftIds The specific NFT IDs to take
-     *     @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
-     *     ETH pairs.
-     *     @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
-     *     ETH pairs.
-     */
-    function _takeNFTsFromSender(
-        IERC721 _nft,
-        uint256[] calldata nftIds,
-        ILSSVMPairFactoryLike _factory,
-        bool isRouter,
-        address routerCaller
-    ) internal virtual {
-        {
-            address _assetRecipient = getAssetRecipient();
-            uint256 numNFTs = nftIds.length;
-
-            if (isRouter) {
-                // Verify if router is allowed
-                LSSVMRouter router = LSSVMRouter(payable(msg.sender));
-                (bool routerAllowed,) = _factory.routerStatus(router);
-                require(routerAllowed, "Not router");
-
-                // Call router to pull NFTs
-                // If more than 1 NFT is being transfered, we can do a balance check instead of an ownership check, as pools are indifferent between NFTs from the same collection
-                if (numNFTs > 1) {
-                    uint256 beforeBalance = _nft.balanceOf(_assetRecipient);
-                    for (uint256 i = 0; i < numNFTs;) {
-                        router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i], pairVariant());
-
-                        unchecked {
-                            ++i;
-                        }
-                    }
-                    require((_nft.balanceOf(_assetRecipient) - beforeBalance) == numNFTs, "NFTs not transferred");
-                } else {
-                    router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[0], pairVariant());
-                    require(_nft.ownerOf(nftIds[0]) == _assetRecipient, "NFT not transferred");
-                }
-            } else {
-                // Pull NFTs directly from sender
-                for (uint256 i; i < numNFTs;) {
-                    _nft.transferFrom(msg.sender, _assetRecipient, nftIds[i]);
-
-                    unchecked {
-                        ++i;
-                    }
-                }
-            }
-        }
-    }
-
-    /**
      * @dev Used internally to grab pair parameters from calldata, see LSSVMPairCloner for technical details
      */
     function _immutableParamsLength() internal pure virtual returns (uint256);
@@ -729,22 +529,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param a The NFT to transfer
      *     @param nftIds The list of IDs of the NFTs to send to the owner
      */
-    function withdrawERC721(IERC721 a, uint256[] calldata nftIds) external virtual onlyOwner {
-        IERC721 _nft = nft();
-        uint256 numNFTs = nftIds.length;
-
-        for (uint256 i; i < numNFTs;) {
-            a.safeTransferFrom(address(this), msg.sender, nftIds[i]);
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        if (a == _nft) {
-            emit NFTWithdrawal(nftIds);
-        }
-    }
+    function withdrawERC721(IERC721 a, uint256[] calldata nftIds) external virtual;
 
     /**
      * @notice Rescues ERC20 tokens from the pair to the owner. Only callable by the owner (onlyOwnable modifier is in the implemented function).
@@ -759,9 +544,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @param ids The NFT ids to transfer
      *     @param amounts The amounts of each id to transfer
      */
-    function withdrawERC1155(IERC1155 a, uint256[] calldata ids, uint256[] calldata amounts) external onlyOwner {
-        a.safeBatchTransferFrom(address(this), msg.sender, ids, amounts, "");
-    }
+    function withdrawERC1155(IERC1155 a, uint256[] calldata ids, uint256[] calldata amounts) external virtual;
 
     /**
      * @notice Updates the selling spot price. Only callable by the owner.

@@ -11,9 +11,7 @@ import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Hol
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
-import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
-import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LinearCurve} from "../../bonding-curves/LinearCurve.sol";
@@ -43,15 +41,7 @@ abstract contract RouterRobustSwap is Test, ERC721Holder, ConfigurableWithRoyalt
         bondingCurve = setupCurve();
         test721 = setup721();
         royaltyRegistry = setupRoyaltyRegistry();
-        LSSVMPairETH ethTemplate = new LSSVMPairETH(royaltyRegistry);
-        LSSVMPairERC20 erc20Template = new LSSVMPairERC20(royaltyRegistry);
-        factory = new LSSVMPairFactory(
-            ethTemplate,
-            erc20Template,
-            feeRecipient,
-            protocolFeeMultiplier,
-            address(this)
-        );
+        factory = setupFactory(royaltyRegistry, feeRecipient);
         router = new LSSVMRouter(factory);
 
         // Set approvals

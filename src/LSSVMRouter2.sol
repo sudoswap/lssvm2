@@ -317,7 +317,7 @@ contract LSSVMRouter2 {
         view
         returns (uint256[] memory idsToBuy)
     {
-        IERC721 nft = pair.nft();
+        IERC721 nft = IERC721(pair.nft());
         uint256[] memory ids = new uint256[](numNFTs);
         uint256 index = 0;
         // Check to see if each potential ID is still owned by the pair, up to numNFTs items
