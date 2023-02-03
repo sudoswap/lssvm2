@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {IStandardAgreement} from "./agreements/IStandardAgreement.sol";
 
 import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -38,6 +40,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     using AddressUpgradeable for address;
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 internal constant MAX_PROTOCOL_FEE = 0.1e18; // 10%, must <= 1 - MAX_FEE
 
@@ -52,8 +55,11 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     mapping(ICurve => bool) public bondingCurveAllowed;
     mapping(address => bool) public override callAllowed;
-    mapping(address => address) public authorizedAgreement;
-    mapping(address => Agreement) public bpsForPairInAgreement;
+
+    // Data structures for agreement logic
+    mapping(address => mapping(address => bool)) public agreementsForCollection;
+    mapping(address => address) public agreementForPair;
+    mapping(address => EnumerableSet.AddressSet) private pairsForAgreement;
 
     struct RouterStatus {
         bool allowed;
@@ -369,19 +375,6 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     }
 
     /**
-     * @notice Returns the Agreement for a pair if it is currently in an Agreement
-     * @param pairAddress The address of the pair to look up
-     * Returns whether or not the pair is in an Agreement, and what its bps should be (if valid)
-     */
-    function agreementForPair(address pairAddress) public view returns (bool isInAgreement, uint96 bps) {
-        Agreement memory agreement = bpsForPairInAgreement[pairAddress];
-        if (agreement.pairAddress == pairAddress) {
-            isInAgreement = true;
-            bps = agreement.bps;
-        }
-    }
-
-    /**
      * @notice Allows receiving ETH in order to receive protocol fees
      */
     receive() external payable {}
@@ -469,40 +462,86 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     }
 
     /**
-     * @notice Sets or removes an authorized overrider to set pool overrides on an owner's behalf
-     *      @param agreement The address to add with Agreement logic
-     *      @param collectionAddress The NFT project that the agreement can administer for
-     *      @param isAllowed True to allow, false to revoke
+     * @notice Returns the Agreement for a pair if it is currently in an Agreement
+     * @param pairAddress The address of the pair to look up
+     * Returns whether or not the pair is in an Agreement, and what its bps should be (if valid)
      */
-    function toggleAgreementForCollection(address agreement, address collectionAddress, bool isAllowed) public {
+    function getAgreementForPair(address pairAddress) public view returns (bool isInAgreement, uint96 bps) {
+        address agreementAddress = agreementForPair[pairAddress];
+        if (agreementAddress == address(0)) {
+            return (false, 0);
+        }
+        return IStandardAgreement(agreementAddress).getRoyaltyInfo(pairAddress);
+    }
+
+    /**
+     * @notice Enables or disables an agreement for a given NFT collection
+     *      @param agreement The address of the Agreement contract
+     *      @param collectionAddress The NFT project that the agreement is toggled for
+     *      @param enable Bool to determine whether to disable or enable the agreement
+     */
+    function toggleAgreementForCollection(address agreement, address collectionAddress, bool enable) public {
         require(authAllowedForToken(collectionAddress, msg.sender), "Unauthorized caller");
-        if (isAllowed) {
-            authorizedAgreement[agreement] = collectionAddress;
+        if (enable) {
+            agreementsForCollection[collectionAddress][agreement] = true;
         } else {
-            delete authorizedAgreement[agreement];
+            delete agreementsForCollection[collectionAddress][agreement];
         }
     }
 
     /**
-     * @notice Sets a separate bps override for a pool, only callable by authorized Agreements
-     *    @param pairAddress The address of the pool to set a different bps for
-     *    @param bps The bps override to set
+     * @notice Enables an Agreement for a given Pair
+     * @notice Only the owner of the Pair can call this function
+     * @notice The Agreement must be enabled for the Pair's collection
+     *      @param agreement The address of the Agreement contract
+     *      @param pairAddress The address of the Pair contract
      */
-    function toggleBpsForPairInAgreement(address pairAddress, uint96 bps, bool isEnteringAgreement) public {
-        // Only pairs are valid targets
+    function enableAgreementForPair(address agreement, address pairAddress) public {
         require(
-            isPair(pairAddress, PairVariant.ERC721_ERC20) || isPair(pairAddress, PairVariant.ERC721_ETH), "Not pair"
+            isPair(pairAddress, PairVariant.ERC721_ERC20) || isPair(pairAddress, PairVariant.ERC721_ETH),
+            "Invalid pair address"
         );
+        LSSVMPair pair = LSSVMPair(pairAddress);
+        require(pair.owner() == msg.sender, "Msg sender is not pair owner");
+        require(agreementsForCollection[address(pair.nft())][agreement], "Agreement not enabled for collection");
+        agreementForPair[pairAddress] = agreement;
+        pairsForAgreement[agreement].add(pairAddress);
+    }
 
-        // Only authorized Agreements for the pair's underlying NFT address can toggle the pair
-        require(authorizedAgreement[msg.sender] == address(LSSVMPair(pairAddress).nft()), "Unauthorized caller");
+    /**
+     * @notice Disables an Agreement for a given Pair
+     * @notice Only the owner of the Pair can call this function
+     * @notice The Agreement must already be enabled for the Pair
+     *      @param agreement The address of the Agreement contract
+     *      @param pairAddress The address of the Pair contract
+     */
+    function disableAgreementForPair(address agreement, address pairAddress) public {
+        require(
+            isPair(pairAddress, PairVariant.ERC721_ERC20) || isPair(pairAddress, PairVariant.ERC721_ETH),
+            "Invalid pair address"
+        );
+        require(agreementForPair[pairAddress] == agreement, "Agreement not enabled for pair");
+        LSSVMPair pair = LSSVMPair(pairAddress);
+        require(pair.owner() == msg.sender, "Msg sender is not pair owner");
+        delete agreementForPair[pairAddress];
+        pairsForAgreement[agreement].remove(pairAddress);
+    }
 
-        // Check if toggling on or off
-        if (isEnteringAgreement) {
-            bpsForPairInAgreement[pairAddress] = Agreement({bps: bps, pairAddress: pairAddress});
-        } else {
-            delete bpsForPairInAgreement[pairAddress];
+    /**
+     * @notice Fetches all the Pair addresses that are registered with the given Agreement
+     *      @param agreement The address of the Agreement contract
+     *      @return A list of addresses of the Pairs that belong to an Agreement
+     */
+    function getAllPairsForAgreement(address agreement) external view returns (address[] memory) {
+        uint256 numPairs = pairsForAgreement[agreement].length();
+        address[] memory pairs = new address[](numPairs);
+        for (uint256 i; i < numPairs;) {
+            pairs[i] = pairsForAgreement[agreement].at(i);
+            unchecked {
+                ++i;
+            }
         }
+        return pairs;
     }
 
     /**

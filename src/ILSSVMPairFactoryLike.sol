@@ -22,9 +22,13 @@ interface ILSSVMPairFactoryLike {
 
     function callAllowed(address target) external view returns (bool);
 
-    function agreementForPair(address pairAddress) external view returns (bool isInAgreement, uint96 bps);
+    function authAllowedForToken(address tokenAddress, address proposedAuthAddress) external view returns (bool);
 
-    function toggleBpsForPairInAgreement(address pairAddress, uint96 bps, bool isEnteringAgreement) external;
+    function getAgreementForPair(address pairAddress) external view returns (bool isInAgreement, uint96 bps);
+
+    function enableAgreementForPair(address agreement, address pairAddress) external;
+
+    function disableAgreementForPair(address agreement, address pairAddress) external;
 
     function routerStatus(LSSVMRouter router) external view returns (bool allowed, bool wasEverAllowed);
 

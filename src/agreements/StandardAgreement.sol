@@ -10,6 +10,7 @@ import {IOwnershipTransferReceiver} from "../lib/IOwnershipTransferReceiver.sol"
 import {OwnableWithTransferCallback} from "../lib/OwnableWithTransferCallback.sol";
 
 import {ILSSVMPair} from "../ILSSVMPair.sol";
+import {LSSVMPair} from "../LSSVMPair.sol";
 import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 import {IStandardAgreement} from "./IStandardAgreement.sol";
 import {Splitter} from "./Splitter.sol";
@@ -89,6 +90,18 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
         return pairInfo[pairAddress].prevFeeRecipient;
     }
 
+    /**
+     * @notice Fetches the royalty info for a pair address
+     * @param pairAddress The address of the pair to look up
+     * @return Returns whether the royalty is enabled and the royalty bps if enabled
+     */
+    function getRoyaltyInfo(address pairAddress) external view returns (bool, uint96) {
+        if (LSSVMPair(pairAddress).owner() == address(this)) {
+            return (true, getAgreementRoyaltyBps());
+        }
+        return (false, 0);
+    }
+
     // Functions intended to be called by the pair or pair owner
 
     /**
@@ -119,9 +132,8 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
             agreementFeeRecipient.safeTransferETH(msg.value);
         }
 
-        // Set the modified royalty bps on the factory
-        // @dev This also does the isPair check and pair.nft() check
-        pairFactory.toggleBpsForPairInAgreement(msg.sender, getAgreementRoyaltyBps(), true);
+        // Enable agreements in factory contract. This also validates that msg.sender is a valid pair.
+        pairFactory.enableAgreementForPair(address(this), msg.sender);
 
         // Store the original owner, unlock date, and old fee recipient
         pairInfo[msg.sender] = PairInAgreement({
@@ -150,12 +162,15 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
         PairInAgreement memory agreementInfo = pairInfo[pairAddress];
 
         // Verify that the current time is past the unlock time
-        require(block.timestamp > agreementInfo.unlockTime, "Time not up");
-
-        // Verify that the caller is the previous owner of the pair
-        require(msg.sender == agreementInfo.prevOwner, "Not prev owner");
+        require(block.timestamp > agreementInfo.unlockTime, "Lockup not over");
 
         ILSSVMPair pair = ILSSVMPair(pairAddress);
+
+        // Verify that the caller is the previous pair owner or admin of the NFT collection
+        require(
+            msg.sender == agreementInfo.prevOwner || pairFactory.authAllowedForToken(address(pair.nft()), msg.sender),
+            "Not prev owner or collection admin"
+        );
 
         // Split fees (if applicable)
         if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)) {
@@ -167,12 +182,11 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
         // Change the fee recipient back
         pair.changeAssetRecipient(payable(agreementInfo.prevFeeRecipient));
 
-        // Change the ownership back
-        OwnableWithTransferCallback(pairAddress).transferOwnership(agreementInfo.prevOwner, "");
-
         // Disable the royalty override
-        // @dev This also does the isPair check and auth check for this Agreement
-        pairFactory.toggleBpsForPairInAgreement(pairAddress, getAgreementRoyaltyBps(), false);
+        pairFactory.disableAgreementForPair(address(this), pairAddress);
+
+        // Transfer ownership back to original pair owner
+        OwnableWithTransferCallback(pairAddress).transferOwnership(agreementInfo.prevOwner, "");
 
         // Remove pairInfo entry
         delete pairInfo[pairAddress];

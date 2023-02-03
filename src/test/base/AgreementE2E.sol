@@ -37,6 +37,8 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
     uint128 spotPrice = 20 ether;
     uint256 tokenAmount = 100 ether;
     uint256 numItems = 3;
+    uint256 agreementFee = 0.1 ether;
+    uint64 agreementLockup = 1 days;
     uint256[] idList;
     ERC2981 test2981;
     IERC721 test721;
@@ -49,6 +51,7 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
     MockPair mockPair;
     RoyaltyEngine royaltyEngine;
     StandardAgreementFactory agreementFactory;
+    StandardAgreement agreement;
 
     function setUp() public {
         bondingCurve = setupCurve();
@@ -96,6 +99,8 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         agreementFactory = new StandardAgreementFactory(
             agreementImplementation
         );
+
+        agreement = agreementFactory.createAgreement(feeRecipient, agreementFee, agreementLockup, 5, 500);
         mockPair = new MockPair();
     }
 
@@ -105,63 +110,134 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
     function test_addAgreementAsAuth() public {
         address agreementAddress = address(69420);
         factory.toggleAgreementForCollection(agreementAddress, address(test721), true);
-        assertEq(factory.authorizedAgreement(agreementAddress), address(test721));
+        assertEq(factory.agreementsForCollection(address(test721), agreementAddress), true);
         factory.toggleAgreementForCollection(agreementAddress, address(test721), false);
-        assertEq(factory.authorizedAgreement(agreementAddress), address(0));
+        assertEq(factory.agreementsForCollection(address(test721), agreementAddress), false);
     }
 
     // An unauthorized caller cannot add/remove an Agreement on the factory
-    function testFail_addAgreementAsNotAuth() public {
+    function test_addAgreementAsNotAuth() public {
         IOwnable(address(test721)).transferOwnership(address(12345));
+        vm.expectRevert("Unauthorized caller");
         factory.toggleAgreementForCollection(address(1), address(test721), true);
-    }
 
-    function testFail_removeAgreementAsNotAuth() public {
-        IOwnable(address(test721)).transferOwnership(address(12345));
+        vm.expectRevert("Unauthorized caller");
         factory.toggleAgreementForCollection(address(1), address(test721), false);
     }
 
-    // An authorized Agreement can set/remove a pair specific royalty bps to be applied
-    function test_setPairSpecificRoyaltyBps() public {
-        factory.toggleAgreementForCollection(address(this), address(test721), true);
-        uint96 newBps = 12345;
-        factory.toggleBpsForPairInAgreement(address(pair), newBps, true);
-        (bool isInAgreement, uint96 royaltyBps) = factory.agreementForPair(address(pair));
+    function test_enableAgreementForPair() public {
+        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
+
+        // This call will trigger the callback to call enableAgreementForPair on the factory
+        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
+        assertEq(factory.agreementForPair(address(pair)), address(agreement));
+        (bool isInAgreement, uint96 royaltyBps) = factory.getAgreementForPair(address(pair));
         assertEq(isInAgreement, true);
-        assertEq(royaltyBps, newBps);
-        factory.toggleBpsForPairInAgreement(address(pair), newBps, false);
-        (isInAgreement, royaltyBps) = factory.agreementForPair(address(pair));
+        assertEq(royaltyBps, 500);
+    }
+
+    function test_enableAgreementForPairIdempotent() public {
+        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
+
+        // First call will be done directly on the factory
+        factory.enableAgreementForPair(address(agreement), address(pair));
+        assertEq(factory.agreementForPair(address(pair)), address(agreement));
+
+        // Second call will also make a call to the factory due to the callback
+        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
+        assertEq(factory.agreementForPair(address(pair)), address(agreement));
+    }
+
+    function test_enableAgreementForPairNotPairOwner() public {
+        factory.toggleAgreementForCollection(address(this), address(test721Other), true);
+        vm.expectRevert("Msg sender is not pair owner");
+        vm.prank(vm.addr(1));
+        factory.enableAgreementForPair(address(this), address(pair));
+    }
+
+    function test_enableAgreementForPairAgreementNotEnabled() public {
+        vm.expectRevert("Agreement not enabled for collection");
+        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
+    }
+
+    function test_enableAgreementForPairAgreementNotPair() public {
+        vm.expectRevert("Invalid pair address");
+        factory.enableAgreementForPair(address(this), address(this));
+    }
+
+    function test_disableAgreementForPair() public {
+        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
+        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
+
+        // Cannot reclaim pair until lockup period has passed
+        vm.expectRevert("Lockup not over");
+        agreement.reclaimPair(address(pair));
+
+        // Move forward in time so lockup period is over
+        vm.warp(block.timestamp + 1 days + 1 seconds);
+
+        agreement.reclaimPair(address(pair));
+        assertEq(factory.agreementForPair(address(pair)), address(0));
+        (bool isInAgreement, uint96 royaltyBps) = factory.getAgreementForPair(address(pair));
         assertEq(isInAgreement, false);
         assertEq(royaltyBps, 0);
     }
 
-    // An Agreement cannot toggle royalty bps for a pair if the underlying nft collection is different than what
-    // the Agreement is authorized for
-    function testFail_setPairSpecificRoyaltyBpsForDiffNFTPair() public {
-        factory.toggleAgreementForCollection(address(this), address(test721Other), true);
-        uint96 newBps = 12345;
-        factory.toggleBpsForPairInAgreement(address(pair), newBps, true);
+    function test_disableAgreementForPairNotPair() public {
+        vm.expectRevert("Invalid pair address");
+        factory.disableAgreementForPair(address(this), address(this));
     }
 
-    // An Agreement cannot set pair specific royalty bps for a non-pair address
-    function testFail_setPairSpecificRoyaltyBpsForNonPool() public {
-        factory.toggleAgreementForCollection(address(this), address(test721), true);
-        uint96 newBps = 12345;
-        factory.toggleBpsForPairInAgreement(address(this), newBps, true);
+    function test_disableAgreementForPairNotEnabled() public {
+        vm.expectRevert("Agreement not enabled for pair");
+        factory.disableAgreementForPair(address(agreement), address(pair));
     }
 
-    // A non-Agreement caller cannot set the pair-specific royalty bps
-    function testFail_setPairSpecificRoyaltyBpsNotAuth() public {
-        uint96 newBps = 12345;
-        factory.toggleBpsForPairInAgreement(address(pair), newBps, true);
+    function test_disableAgreementNotPairOwner() public {
+        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
+        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
+
+        vm.expectRevert("Msg sender is not pair owner");
+        factory.disableAgreementForPair(address(agreement), address(pair));
     }
 
-    // A non-Agreement caller cannot set the pair-specific royalty bps even if it was previously authorized
-    function testFail_setPairSpecificRoyaltyBpsNotAuthEvenAfterPrevAuth() public {
-        factory.toggleAgreementForCollection(address(this), address(test721), true);
-        factory.toggleAgreementForCollection(address(this), address(test721), false);
-        uint96 newBps = 12345;
-        factory.toggleBpsForPairInAgreement(address(pair), newBps, true);
+    function test_getAllPairsForAgreement() public {
+        address[] memory results = factory.getAllPairsForAgreement(address(agreement));
+        assertEq(results.length, 0);
+
+        // Add pair to agreement
+        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
+        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
+
+        results = factory.getAllPairsForAgreement(address(agreement));
+        assertEq(results.length, 1);
+        assertEq(results[0], address(pair));
+
+        // Add another pair to agreement
+        uint256[] memory idList2;
+        LSSVMPair pair2 = this.setupPair{value: modifyInputAmount(tokenAmount)}(
+            factory,
+            test721,
+            bondingCurve,
+            payable(address(0)), // asset recipient
+            LSSVMPair.PoolType.TRADE,
+            delta,
+            0, // 0% for trade fee
+            spotPrice,
+            idList2,
+            tokenAmount,
+            address(0)
+        );
+        pair2.transferOwnership{value: 0.1 ether}(address(agreement), "");
+        results = factory.getAllPairsForAgreement(address(agreement));
+        assertEq(results.length, 2);
+
+        // Remove first pair from agreement
+        vm.warp(block.timestamp + 1 days + 1 seconds);
+        agreement.reclaimPair(address(pair));
+
+        results = factory.getAllPairsForAgreement(address(agreement));
+        assertEq(results.length, 1);
     }
 
     // Standard Agreement + Agreement Factory tests:
@@ -203,7 +279,7 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         assertEq(agreementFeeRecipient.balance, ethCost);
 
         // Check the Agreement has been applied, with the new bps
-        (bool isInAgreement, uint96 pairRoyaltyBps) = factory.agreementForPair(address(pair));
+        (bool isInAgreement, uint96 pairRoyaltyBps) = factory.getAgreementForPair(address(pair));
         assertEq(isInAgreement, true);
         assertEq(pairRoyaltyBps, newRoyaltyBps);
 
@@ -232,6 +308,22 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         // Changing the fee to under 20% works
         uint96 newFee = 0.2e18;
         newAgreement.changeFee(address(pair), newFee);
+    }
+
+    // Even if an agreement is enabled on the factory contract, the standard agreement
+    // requires ownership of the pair to provide a royalty override
+    function test_enterAgreementNotPairOwner() public {
+        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
+        factory.enableAgreementForPair(address(agreement), address(pair));
+        assertEq(factory.agreementForPair(address(pair)), address(agreement));
+
+        (bool isInAgreement, uint96 royaltyBps) = agreement.getRoyaltyInfo(address(pair));
+        assertEq(isInAgreement, false);
+        assertEq(royaltyBps, 0);
+
+        (isInAgreement, royaltyBps) = factory.getAgreementForPair(address(pair));
+        assertEq(isInAgreement, false);
+        assertEq(royaltyBps, 0);
     }
 
     // Verify that the only the first receiver receives royalty payments when there is an agreement active
@@ -425,7 +517,7 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         assertEq(newAgreement.getPrevFeeRecipientForPair(address(pair)), address(0));
         // Prev fee recipient defaulted to the pair, so it should still be the pair
         assertEq(pair.getFeeRecipient(), address(pair));
-        (bool isInAgreement,) = factory.agreementForPair(address(pair));
+        (bool isInAgreement,) = factory.getAgreementForPair(address(pair));
         assertEq(isInAgreement, false);
     }
 

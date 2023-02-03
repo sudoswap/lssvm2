@@ -10,6 +10,8 @@ interface IStandardAgreement {
 
     function getFeeSplitBps() external pure returns (uint64);
 
+    function getRoyaltyInfo(address pairAddress) external view returns (bool, uint96);
+
     function agreementFeeRecipient() external returns (address payable);
 
     function getPrevFeeRecipientForPair(address pairAddress) external returns (address);

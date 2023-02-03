@@ -499,7 +499,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             ROYALTY_ENGINE.getRoyalty(address(nft()), assetId, saleAmount);
         if (recipients.length != 0) {
             // If pair is in an Agreement, use the overridden royalty amount and only use the first receiver
-            (bool isInAgreement, uint96 bps) = factory().agreementForPair(address(this));
+            (bool isInAgreement, uint96 bps) = factory().getAgreementForPair(address(this));
             if (isInAgreement) {
                 royaltyRecipients = new address payable[](1);
                 royaltyRecipients[0] = recipients[0];
@@ -534,7 +534,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             ROYALTY_ENGINE.getRoyaltyView(address(nft()), assetId, saleAmount);
         if (recipients.length != 0) {
             // If pair is in an Agreement, use the overridden royalty amount and only use the first receiver
-            (bool isInAgreement, uint96 bps) = factory().agreementForPair(address(this));
+            (bool isInAgreement, uint96 bps) = factory().getAgreementForPair(address(this));
             if (isInAgreement) {
                 royaltyRecipients = new address payable[](1);
                 royaltyRecipients[0] = recipients[0];
