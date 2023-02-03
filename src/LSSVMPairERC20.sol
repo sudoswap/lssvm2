@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
-
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
@@ -49,12 +47,13 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
 
         // Compute royalties
         uint256 saleAmount = inputAmount - protocolFee;
-        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(assetId, saleAmount);
+        (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal) =
+            _calculateRoyalties(assetId, saleAmount);
 
         // Deduct royalties from sale amount
         unchecked {
-            // Safe because we already require saleAmount >= royaltyAmount in _calculateRoyalties()
-            saleAmount -= royaltyAmount;
+            // Safe because we already require saleAmount >= royaltyTotal in _calculateRoyalties()
+            saleAmount -= royaltyTotal;
         }
 
         // Transfer tokens
@@ -76,8 +75,13 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
             require(_token.balanceOf(_assetRecipient) - beforeBalance == saleAmount, "ERC20 not transferred in");
 
             // Transfer royalties (if it exists)
-            if (royaltyAmount != 0) {
-                router.pairTransferERC20From(_token, routerCaller, royaltyRecipient, royaltyAmount, pairVariant());
+            for (uint256 i; i < royaltyRecipients.length;) {
+                router.pairTransferERC20From(
+                    _token, routerCaller, royaltyRecipients[i], royaltyAmounts[i], pairVariant()
+                );
+                unchecked {
+                    ++i;
+                }
             }
 
             // Take protocol fee (if it exists)
@@ -89,8 +93,11 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
             _token.safeTransferFrom(msg.sender, _assetRecipient, saleAmount);
 
             // Transfer royalties (if it exists)
-            if (royaltyAmount != 0) {
-                _token.safeTransferFrom(msg.sender, royaltyRecipient, royaltyAmount);
+            for (uint256 i; i < royaltyRecipients.length;) {
+                _token.safeTransferFrom(msg.sender, royaltyRecipients[i], royaltyAmounts[i]);
+                unchecked {
+                    ++i;
+                }
             }
 
             // Take protocol fee (if it exists)

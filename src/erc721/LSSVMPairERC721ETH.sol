@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
+import {IRoyaltyEngineV1} from "manifoldxyz/IRoyaltyEngineV1.sol";
 
 import {LSSVMPair} from "../LSSVMPair.sol";
 import {LSSVMPairETH} from "../LSSVMPairETH.sol";
@@ -15,7 +15,7 @@ import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 contract LSSVMPairERC721ETH is LSSVMPairERC721, LSSVMPairETH {
     uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 81;
 
-    constructor(IRoyaltyRegistry royaltyRegistry) LSSVMPair(royaltyRegistry) {}
+    constructor(IRoyaltyEngineV1 royaltyEngine) LSSVMPair(royaltyEngine) {}
 
     /**
      * Public functions

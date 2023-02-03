@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
-
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {Test721} from "../../mocks/Test721.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
@@ -18,15 +17,15 @@ import {LSSVMPairERC721ERC20} from "../../erc721/LSSVMPairERC721ERC20.sol";
 import {LSSVMPairERC1155ERC20} from "../../erc1155/LSSVMPairERC1155ERC20.sol";
 
 abstract contract Configurable {
-    function setupFactory(RoyaltyRegistry royaltyRegistry, address payable feeRecipient)
+    function setupFactory(RoyaltyEngine royaltyEngine, address payable feeRecipient)
         public
         virtual
         returns (LSSVMPairFactory factory)
     {
-        LSSVMPairERC721ETH erc721ETHTemplate = new LSSVMPairERC721ETH(royaltyRegistry);
-        LSSVMPairERC721ERC20 erc721ERC20Template = new LSSVMPairERC721ERC20(royaltyRegistry);
-        LSSVMPairERC1155ETH erc1155ETHTemplate = new LSSVMPairERC1155ETH(royaltyRegistry);
-        LSSVMPairERC1155ERC20 erc1155ERC20Template = new LSSVMPairERC1155ERC20(royaltyRegistry);
+        LSSVMPairERC721ETH erc721ETHTemplate = new LSSVMPairERC721ETH(royaltyEngine);
+        LSSVMPairERC721ERC20 erc721ERC20Template = new LSSVMPairERC721ERC20(royaltyEngine);
+        LSSVMPairERC1155ETH erc1155ETHTemplate = new LSSVMPairERC1155ETH(royaltyEngine);
+        LSSVMPairERC1155ERC20 erc1155ERC20Template = new LSSVMPairERC1155ERC20(royaltyEngine);
         factory = new LSSVMPairFactory(
             erc721ETHTemplate,
             erc721ERC20Template,
@@ -38,15 +37,15 @@ abstract contract Configurable {
         );
     }
 
-    function setupFactory(RoyaltyRegistry royaltyRegistry, address payable feeRecipient, uint256 protocolFeeMultiplier)
+    function setupFactory(RoyaltyEngine royaltyEngine, address payable feeRecipient, uint256 protocolFeeMultiplier)
         public
         virtual
         returns (LSSVMPairFactory factory)
     {
-        LSSVMPairERC721ETH erc721ETHTemplate = new LSSVMPairERC721ETH(royaltyRegistry);
-        LSSVMPairERC721ERC20 erc721ERC20Template = new LSSVMPairERC721ERC20(royaltyRegistry);
-        LSSVMPairERC1155ETH erc1155ETHTemplate = new LSSVMPairERC1155ETH(royaltyRegistry);
-        LSSVMPairERC1155ERC20 erc1155ERC20Template = new LSSVMPairERC1155ERC20(royaltyRegistry);
+        LSSVMPairERC721ETH erc721ETHTemplate = new LSSVMPairERC721ETH(royaltyEngine);
+        LSSVMPairERC721ERC20 erc721ERC20Template = new LSSVMPairERC721ERC20(royaltyEngine);
+        LSSVMPairERC1155ETH erc1155ETHTemplate = new LSSVMPairERC1155ETH(royaltyEngine);
+        LSSVMPairERC1155ERC20 erc1155ERC20Template = new LSSVMPairERC1155ERC20(royaltyEngine);
         factory = new LSSVMPairFactory(
             erc721ETHTemplate,
             erc721ERC20Template,

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
-import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
@@ -11,16 +11,18 @@ import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Hol
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
+import {TestManifold} from "../../mocks/TestManifold.sol";
 
 abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, ConfigurableWithRoyalties, RouterCaller {
     IERC721Mintable test721;
     ERC2981 test2981;
-    RoyaltyRegistry royaltyRegistry;
+    RoyaltyEngine royaltyEngine;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
     LSSVMRouter router;
@@ -33,10 +35,10 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         bondingCurve = setupCurve();
         test721 = setup721();
         test2981 = setup2981();
-        royaltyRegistry = setupRoyaltyRegistry();
-        royaltyRegistry.setRoyaltyLookupAddress(address(test721), address(test2981));
+        royaltyEngine = setupRoyaltyEngine();
+        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test721), address(test2981));
 
-        factory = setupFactory(royaltyRegistry, feeRecipient);
+        factory = setupFactory(royaltyEngine, feeRecipient);
         router = new LSSVMRouter(factory);
         factory.setBondingCurveAllowed(bondingCurve, true);
         factory.setRouterAllowed(router, true);
@@ -108,6 +110,61 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
 
         // check that royalty has been issued
         assertEq(getBalance(ROYALTY_RECEIVER), royaltyAmount);
+    }
+
+    function test_swapSingleNFTForTokenWithNoRoyaltyReceivers() public {
+        // Setup the nft collection to use Manifold's royalty interface
+        address payable[] memory receivers = new address payable[](0);
+        uint256[] memory bps = new uint256[](0);
+        TestManifold testManifold = new TestManifold(receivers, bps);
+        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(
+            address(test721), address(testManifold)
+        );
+
+        // Output amount does not need to be decremented the royalty amount here
+        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = numInitialNFTs + 1;
+        LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
+
+        // check that royalty has been issued only to the first receiver
+        assertEq(getBalance(ROYALTY_RECEIVER), 0);
+    }
+
+    function test_swapSingleNFTForTokenWithMultipleRoyaltyReceivers() public {
+        address secondReceiver = vm.addr(2);
+
+        // Setup the nft collection to use Manifold's multiple royalty receivers
+        address payable[] memory receivers = new address payable[](2);
+        receivers[0] = payable(ROYALTY_RECEIVER);
+        receivers[1] = payable(secondReceiver);
+        uint256[] memory bps = new uint256[](2);
+        bps[0] = 750;
+        bps[1] = 250;
+        TestManifold testManifold = new TestManifold(receivers, bps);
+        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(
+            address(test721), address(testManifold)
+        );
+
+        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+
+        // calculate royalty total (750 + 250) and rm it from the output amount
+        uint256 royaltyAmount1 = calcRoyalty(outputAmount, 750);
+        uint256 royaltyAmount2 = calcRoyalty(outputAmount, 250);
+        outputAmount -= (royaltyAmount1 + royaltyAmount2);
+
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = numInitialNFTs + 1;
+        LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
+
+        // check that royalty has been issued only to the first receiver
+        assertEq(getBalance(ROYALTY_RECEIVER), royaltyAmount1);
+        assertEq(getBalance(secondReceiver), royaltyAmount2);
     }
 
     function testGas_swapSingleNFTForToken5Times() public {

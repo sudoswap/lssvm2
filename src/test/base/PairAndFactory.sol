@@ -3,8 +3,6 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
-import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
-
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -19,6 +17,7 @@ import {Test1155} from "../../mocks/Test1155.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {TestPairManager} from "../../mocks/TestPairManager.sol";
 import {TestPairManager2} from "../../mocks/TestPairManager2.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
@@ -41,13 +40,13 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
     TestPairManager pairManager;
     TestPairManager2 pairManager2;
 
-    RoyaltyRegistry royaltyRegistry;
+    RoyaltyEngine royaltyEngine;
 
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        royaltyRegistry = setupRoyaltyRegistry();
-        factory = setupFactory(royaltyRegistry, feeRecipient, protocolFeeMultiplier);
+        royaltyEngine = setupRoyaltyEngine();
+        factory = setupFactory(royaltyEngine, feeRecipient, protocolFeeMultiplier);
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);
         for (uint256 i = 1; i <= numItems; i++) {

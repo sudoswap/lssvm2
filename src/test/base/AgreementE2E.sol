@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
-import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
@@ -20,6 +20,7 @@ import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ILSSVMPairFactoryLike} from "../../ILSSVMPairFactoryLike.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 
 import {StandardAgreement} from "../../agreements/StandardAgreement.sol";
 import {StandardAgreementFactory} from "../../agreements/StandardAgreementFactory.sol";
@@ -28,6 +29,7 @@ import {Splitter} from "../../agreements/Splitter.sol";
 import {Test20} from "../../mocks/Test20.sol";
 import {Test721} from "../../mocks/Test721.sol";
 import {Test1155} from "../../mocks/Test1155.sol";
+import {TestManifold} from "../../mocks/TestManifold.sol";
 import {MockPair} from "../../mocks/MockPair.sol";
 
 abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
@@ -45,7 +47,7 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
     address payable constant feeRecipient = payable(address(69));
     LSSVMPair pair;
     MockPair mockPair;
-    RoyaltyRegistry royaltyRegistry;
+    RoyaltyEngine royaltyEngine;
     StandardAgreementFactory agreementFactory;
 
     function setUp() public {
@@ -53,13 +55,13 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         test721 = setup721();
         test2981 = setup2981();
         test721Other = new Test721();
-        royaltyRegistry = setupRoyaltyRegistry();
+        royaltyEngine = setupRoyaltyEngine();
 
         // Set a royalty override
-        royaltyRegistry.setRoyaltyLookupAddress(address(test721), address(test2981));
+        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test721), address(test2981));
 
         // Set up the pair factory
-        factory = setupFactory(royaltyRegistry, feeRecipient);
+        factory = setupFactory(royaltyEngine, feeRecipient);
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);
         // Mint IDs from 1 to numItems to the caller, to deposit into the pair
@@ -230,6 +232,44 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         // Changing the fee to under 20% works
         uint96 newFee = 0.2e18;
         newAgreement.changeFee(address(pair), newFee);
+    }
+
+    // Verify that the only the first receiver receives royalty payments when there is an agreement active
+    function test_swapOverrideWithMultipleReceivers() public {
+        address payable agreementFeeRecipient = payable(address(123));
+        uint256 ethCost = 0.1 ether;
+        uint64 secDuration = 1;
+        uint64 feeSplitBps = 2;
+        uint64 newRoyaltyBps = 500; // 5% in bps
+        StandardAgreement newAgreement =
+            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
+        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+
+        // Setup multiple royalty receivers
+        address secondReceiver = vm.addr(2);
+        address payable[] memory receivers = new address payable[](2);
+        receivers[0] = payable(ROYALTY_RECEIVER);
+        receivers[1] = payable(secondReceiver);
+        uint256[] memory bps = new uint256[](2);
+        bps[0] = 750;
+        bps[1] = 200;
+        TestManifold testManifold = new TestManifold(receivers, bps);
+        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(
+            address(test721), address(testManifold)
+        );
+
+        // Perform a buy for item #1
+        (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(1);
+        uint256[] memory specificIdToBuy = new uint256[](1);
+        specificIdToBuy[0] = 1;
+        pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
+            specificIdToBuy, inputAmount, address(this), false, address(this)
+        );
+
+        // Ensure that the payout is 5% not 7.5%
+        assertEq(getBalance(ROYALTY_RECEIVER), calcRoyalty(inputAmount, newRoyaltyBps));
+        assertEq(getBalance(secondReceiver), 0);
     }
 
     // A pair cannot enter into an agreement if the trading fee is too high

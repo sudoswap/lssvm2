@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
-import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
@@ -12,6 +12,7 @@ import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Hol
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
@@ -22,7 +23,7 @@ import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol
 abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, ConfigurableWithRoyalties, RouterCaller {
     IERC721Mintable test721;
     ERC2981 test2981;
-    RoyaltyRegistry royaltyRegistry;
+    RoyaltyEngine royaltyEngine;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
     LSSVMRouter router;
@@ -42,9 +43,9 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         bondingCurve = setupCurve();
         test721 = setup721();
         test2981 = setup2981();
-        royaltyRegistry = setupRoyaltyRegistry();
-        royaltyRegistry.setRoyaltyLookupAddress(address(test721), address(test2981));
-        factory = setupFactory(royaltyRegistry, feeRecipient);
+        royaltyEngine = setupRoyaltyEngine();
+        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test721), address(test2981));
+        factory = setupFactory(royaltyEngine, feeRecipient);
         router = new LSSVMRouter(factory);
 
         // Set approvals

@@ -11,6 +11,7 @@ import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Hol
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
@@ -38,13 +39,13 @@ abstract contract RouterRobustSwapWithAssetRecipient is Test, ERC721Holder, Conf
     uint256 constant protocolFeeMultiplier = 0;
     uint256 constant numInitialNFTs = 10;
 
-    RoyaltyRegistry royaltyRegistry;
+    RoyaltyEngine royaltyEngine;
 
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        royaltyRegistry = setupRoyaltyRegistry();
-        factory = setupFactory(royaltyRegistry, feeRecipient);
+        royaltyEngine = setupRoyaltyEngine();
+        factory = setupFactory(royaltyEngine, feeRecipient);
         router = new LSSVMRouter(factory);
 
         // Set approvals

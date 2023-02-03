@@ -7,6 +7,7 @@ import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 
 import {Test2981} from "../../mocks/Test2981.sol";
 import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {TestRoyaltyRegistry} from "../../mocks/TestRoyaltyRegistry.sol";
 import {Configurable, IERC721, LSSVMPair, ICurve, IERC721Mintable, LSSVMPairFactory} from "./Configurable.sol";
 
@@ -19,14 +20,10 @@ abstract contract ConfigurableWithRoyalties is Configurable, Test {
         return ERC2981(new Test2981(ROYALTY_RECEIVER, BPS));
     }
 
-    // royalty registry address is set as constant in the contract
-    address constant ROYALTY_REGISTRY = 0xaD2184FB5DBcfC05d8f056542fB25b04fa32A95D;
-
-    function setupRoyaltyRegistry() public returns (RoyaltyRegistry royaltyRegistry) {
-        royaltyRegistry = RoyaltyRegistry(new TestRoyaltyRegistry());
-        vm.etch(ROYALTY_REGISTRY, address(royaltyRegistry).code);
-        royaltyRegistry = RoyaltyRegistry(ROYALTY_REGISTRY);
+    function setupRoyaltyEngine() public returns (RoyaltyEngine royaltyEngine) {
+        RoyaltyRegistry royaltyRegistry = new RoyaltyRegistry();
         royaltyRegistry.initialize();
+        royaltyEngine = new RoyaltyEngine(address(royaltyRegistry));
     }
 
     function addRoyalty(uint256 inputAmount) public pure returns (uint256 outputAmount) {

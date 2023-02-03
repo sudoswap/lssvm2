@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
-import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
@@ -14,7 +14,7 @@ import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
-import {IOwnable} from "../interfaces/IOwnable.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
@@ -42,7 +42,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
     ICurve bondingCurve;
     LSSVMPairFactory factory;
     address payable constant feeRecipient = payable(address(69));
-    RoyaltyRegistry royaltyRegistry;
+    RoyaltyEngine royaltyEngine;
     PropertyCheckerFactory propertyCheckerFactory;
 
     function setUp() public {
@@ -50,13 +50,13 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         test721 = setup721();
         test2981 = setup2981();
         test721Other = new Test721();
-        royaltyRegistry = setupRoyaltyRegistry();
+        royaltyEngine = setupRoyaltyEngine();
 
         // Set a royalty override
-        royaltyRegistry.setRoyaltyLookupAddress(address(test721), address(test2981));
+        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test721), address(test2981));
 
         // Set up the pair factory
-        factory = setupFactory(royaltyRegistry, feeRecipient);
+        factory = setupFactory(royaltyEngine, feeRecipient);
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);
 

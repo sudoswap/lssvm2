@@ -8,6 +8,7 @@ import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {Test721} from "../../mocks/Test721.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
@@ -25,13 +26,13 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ConfigurableWithRoyal
     uint256 constant protocolFeeMultiplier = 0;
     uint256 constant MAX_ALLOWABLE_DIFF = 100;
 
-    RoyaltyRegistry royaltyRegistry;
+    RoyaltyEngine royaltyEngine;
 
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
-        royaltyRegistry = setupRoyaltyRegistry();
-        factory = setupFactory(royaltyRegistry, feeRecipient);
+        royaltyEngine = setupRoyaltyEngine();
+        factory = setupFactory(royaltyEngine, feeRecipient);
         test721.setApprovalForAll(address(factory), true);
         factory.setBondingCurveAllowed(bondingCurve, true);
     }

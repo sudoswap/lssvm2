@@ -13,6 +13,7 @@ import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Hol
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {Test721} from "../../mocks/Test721.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {XykCurve} from "../../bonding-curves/XykCurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LSSVMPairCloner} from "../../lib/LSSVMPairCloner.sol";
@@ -33,13 +34,14 @@ contract XykCurveTest is Test, ERC721Holder {
     LSSVMPair ethPair;
     Test721 nft;
 
-    RoyaltyRegistry royaltyRegistry;
+    RoyaltyEngine royaltyEngine;
 
     receive() external payable {}
 
     function setUp() public {
-        royaltyRegistry = new TestRoyaltyRegistry();
+        RoyaltyRegistry royaltyRegistry = new RoyaltyRegistry();
         royaltyRegistry.initialize();
+        royaltyEngine = new RoyaltyEngine(address(royaltyRegistry));
 
         factory = setupFactory(payable(address(0)));
         curve = new XykCurve();
@@ -61,10 +63,10 @@ contract XykCurveTest is Test, ERC721Holder {
     }
 
     function setupFactory(address payable feeRecipient) public virtual returns (LSSVMPairFactory) {
-        LSSVMPairERC721ETH erc721ETHTemplate = new LSSVMPairERC721ETH(royaltyRegistry);
-        LSSVMPairERC721ERC20 erc721ERC20Template = new LSSVMPairERC721ERC20(royaltyRegistry);
-        LSSVMPairERC1155ETH erc1155ETHTemplate = new LSSVMPairERC1155ETH(royaltyRegistry);
-        LSSVMPairERC1155ERC20 erc1155ERC20Template = new LSSVMPairERC1155ERC20(royaltyRegistry);
+        LSSVMPairERC721ETH erc721ETHTemplate = new LSSVMPairERC721ETH(royaltyEngine);
+        LSSVMPairERC721ERC20 erc721ERC20Template = new LSSVMPairERC721ERC20(royaltyEngine);
+        LSSVMPairERC1155ETH erc1155ETHTemplate = new LSSVMPairERC1155ETH(royaltyEngine);
+        LSSVMPairERC1155ERC20 erc1155ERC20Template = new LSSVMPairERC1155ERC20(royaltyEngine);
         return new LSSVMPairFactory(
             erc721ETHTemplate,
             erc721ERC20Template,

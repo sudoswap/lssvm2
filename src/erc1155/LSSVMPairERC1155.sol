@@ -157,17 +157,23 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
             _calculateSellInfoAndUpdatePoolParams(numNFTs[0], minExpectedTokenOutput, _bondingCurve, _factory);
 
         // Compute royalties
-        (address royaltyRecipient, uint256 royaltyAmount) = _calculateRoyalties(nftId(), outputAmount);
+        (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal) =
+            _calculateRoyalties(nftId(), outputAmount);
 
         // Deduct royalties from outputAmount
         unchecked {
-            // Safe because we already require outputAmount >= royaltyAmount in _calculateRoyalties()
-            outputAmount -= royaltyAmount;
+            // Safe because we already require outputAmount >= royaltyTotal in _calculateRoyalties()
+            outputAmount -= royaltyTotal;
         }
 
         _sendTokenOutput(tokenRecipient, outputAmount);
 
-        _sendTokenOutput(payable(royaltyRecipient), royaltyAmount);
+        for (uint256 i; i < royaltyRecipients.length;) {
+            _sendTokenOutput(royaltyRecipients[i], royaltyAmounts[i]);
+            unchecked {
+                ++i;
+            }
+        }
 
         _payProtocolFeeFromPair(_factory, protocolFee);
 

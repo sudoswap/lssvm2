@@ -291,13 +291,13 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         );
         emit NewERC1155Pair(address(pair));
     }
+
     /**
      * @notice Checks if an address is a LSSVMPair. Uses the fact that the pairs are EIP-1167 minimal proxies.
      *     @param potentialPair The address to check
      *     @param variant The pair variant (Pair uses ETH or ERC20)
      *     @return True if the address is the specified pair variant, false otherwise
      */
-
     function isPair(address potentialPair, PairVariant variant) public view override returns (bool) {
         if (variant == PairVariant.ERC721_ETH) {
             return LSSVMPairCloner.isERC721ETHPairClone(address(this), address(erc721ETHTemplate), potentialPair);

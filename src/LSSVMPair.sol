@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.0;
 
-import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
+import {IRoyaltyEngineV1} from "manifoldxyz/IRoyaltyEngineV1.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
@@ -50,8 +50,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *  Immutable params
      */
 
-    // Manifold royalty registry
-    IRoyaltyRegistry public immutable ROYALTY_REGISTRY;
+    // Sudoswap Royalty Engine
+    IRoyaltyEngineV1 public immutable ROYALTY_ENGINE;
 
     /**
      *  Storage variables
@@ -99,8 +99,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
     error BondingCurveError(CurveErrorCodes.Error error);
 
-    constructor(IRoyaltyRegistry royaltyRegistry) {
-        ROYALTY_REGISTRY = royaltyRegistry;
+    constructor(IRoyaltyEngineV1 royaltyEngine) {
+        ROYALTY_ENGINE = royaltyEngine;
     }
 
     /**
@@ -256,12 +256,12 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             bondingCurve().getSellInfo(spotPrice, delta, numNFTs, fee, factory().protocolFeeMultiplier());
 
         // Compute royalties
-        (, uint256 royaltyAmount) = _calculateRoyalties(assetId, outputAmount);
+        (,, uint256 royaltyTotal) = _calculateRoyaltiesView(assetId, outputAmount);
 
         // Deduct royalties from outputAmount
         unchecked {
-            // Safe because we already require outputAmount >= royaltyAmount in _calculateRoyalties()
-            outputAmount -= royaltyAmount;
+            // Safe because we already require outputAmount >= royaltyTotal in _calculateRoyalties()
+            outputAmount -= royaltyTotal;
         }
     }
 
@@ -491,33 +491,70 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     /**
      * Royalty support internal functions
      */
-
     function _calculateRoyalties(uint256 assetId, uint256 saleAmount)
         internal
-        view
-        returns (address royaltyRecipient, uint256 royaltyAmount)
+        returns (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal)
     {
-        // get royalty lookup address from the shared royalty registry
-        address lookupAddress = ROYALTY_REGISTRY.getRoyaltyLookupAddress(address(nft()));
-
-        // calculates royalty payments for ERC2981 compatible lookup addresses
-        if (lookupAddress.isContract()) {
-            // queries the default royalty for the first asset
-            try IERC2981(lookupAddress).royaltyInfo(assetId, saleAmount) returns (
-                address _royaltyRecipient, uint256 _royaltyAmount
-            ) {
-                royaltyRecipient = _royaltyRecipient;
-                royaltyAmount = _royaltyAmount;
-            } catch (bytes memory) {}
-
-            // Look up bps from factory to see if a different value should be provided instead
+        (address payable[] memory recipients, uint256[] memory amounts) =
+            ROYALTY_ENGINE.getRoyalty(address(nft()), assetId, saleAmount);
+        if (recipients.length != 0) {
+            // If pair is in an Agreement, use the overridden royalty amount and only use the first receiver
             (bool isInAgreement, uint96 bps) = factory().agreementForPair(address(this));
             if (isInAgreement) {
-                royaltyAmount = (saleAmount * bps) / 10000;
+                royaltyRecipients = new address payable[](1);
+                royaltyRecipients[0] = recipients[0];
+                royaltyAmounts = new uint256[](1);
+                royaltyAmounts[0] = (saleAmount * bps) / 10000;
+            } else {
+                royaltyRecipients = recipients;
+                royaltyAmounts = amounts;
             }
-            // validate royalty amount
-            require(saleAmount >= royaltyAmount, "Royalty exceeds sale price");
         }
+
+        for (uint256 i; i < royaltyRecipients.length;) {
+            royaltyTotal += royaltyAmounts[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        // validate royalty total
+        require(saleAmount >= royaltyTotal, "Royalty exceeds sale price");
+    }
+
+    /**
+     * @dev Same as _calculateRoyalties, but uses getRoyaltyView to avoid state mutations
+     */
+    function _calculateRoyaltiesView(uint256 assetId, uint256 saleAmount)
+        internal
+        view
+        returns (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal)
+    {
+        (address payable[] memory recipients, uint256[] memory amounts) =
+            ROYALTY_ENGINE.getRoyaltyView(address(nft()), assetId, saleAmount);
+        if (recipients.length != 0) {
+            // If pair is in an Agreement, use the overridden royalty amount and only use the first receiver
+            (bool isInAgreement, uint96 bps) = factory().agreementForPair(address(this));
+            if (isInAgreement) {
+                royaltyRecipients = new address payable[](1);
+                royaltyRecipients[0] = recipients[0];
+                royaltyAmounts = new uint256[](1);
+                royaltyAmounts[0] = (saleAmount * bps) / 10000;
+            } else {
+                royaltyRecipients = recipients;
+                royaltyAmounts = amounts;
+            }
+        }
+
+        for (uint256 i; i < royaltyRecipients.length;) {
+            royaltyTotal += royaltyAmounts[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        // validate royalty total
+        require(saleAmount >= royaltyTotal, "Royalty exceeds sale price");
     }
 
     /**
