@@ -152,7 +152,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         // Call bonding curve for pricing information
         uint256 protocolFee;
         (protocolFee, outputAmount) =
-            _calculateSellInfoAndUpdatePoolParams(nftIds.length, minExpectedTokenOutput, bondingCurve(), _factory);
+            _calculateSellInfoAndUpdatePoolParams(nftIds.length, bondingCurve(), _factory);
 
         // Compute royalties
         (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal) =
@@ -163,6 +163,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
             // Safe because we already require outputAmount >= royaltyTotal in _calculateRoyalties()
             outputAmount -= royaltyTotal;
         }
+
+        require(outputAmount >= minExpectedTokenOutput, "Out too few tokens");
 
         _sendTokenOutput(tokenRecipient, outputAmount);
 

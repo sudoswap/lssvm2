@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {IStandardAgreement} from "./agreements/IStandardAgreement.sol";
 
 import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -20,6 +19,8 @@ import {LSSVMPairERC721ETH} from "./erc721/LSSVMPairERC721ETH.sol";
 import {LSSVMPairERC1155ETH} from "./erc1155/LSSVMPairERC1155ETH.sol";
 import {LSSVMPairERC721ERC20} from "./erc721/LSSVMPairERC721ERC20.sol";
 import {LSSVMPairERC1155ERC20} from "./erc1155/LSSVMPairERC1155ERC20.sol";
+
+import {IStandardAgreement} from "./agreements/IStandardAgreement.sol";
 
 /**
  * Imports for authAllowedForToken (forked from manifold.xyz Royalty Registry)
@@ -297,13 +298,14 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         );
         emit NewERC1155Pair(address(pair));
     }
-
+    
     /**
      * @notice Checks if an address is a LSSVMPair. Uses the fact that the pairs are EIP-1167 minimal proxies.
      *     @param potentialPair The address to check
      *     @param variant The pair variant (Pair uses ETH or ERC20)
      *     @return True if the address is the specified pair variant, false otherwise
      */
+
     function isPair(address potentialPair, PairVariant variant) public view override returns (bool) {
         if (variant == PairVariant.ERC721_ETH) {
             return LSSVMPairCloner.isERC721ETHPairClone(address(this), address(erc721ETHTemplate), potentialPair);

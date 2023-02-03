@@ -299,11 +299,14 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
 
         // Perform a sell for item #1
         (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+        uint256 expectedRoyaltyAmount = calcRoyalty(outputAmount, newRoyaltyBps);
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
-        pair.swapNFTsForToken(specificIdToSell, outputAmount, payable(address(this)), false, address(this));
+        pair.swapNFTsForToken(
+            specificIdToSell, outputAmount - expectedRoyaltyAmount, payable(address(this)), false, address(this)
+        );
         uint256 secondRoyaltyPayment = getBalance(ROYALTY_RECEIVER) - royaltyBalance;
-        assertEq(secondRoyaltyPayment, calcRoyalty(outputAmount, newRoyaltyBps));
+        assertEq(secondRoyaltyPayment, expectedRoyaltyAmount);
 
         // Changing the fee to under 20% works
         uint96 newFee = 0.2e18;

@@ -397,8 +397,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     /**
      * @notice Calculates the amount needed to be sent by the pair for a sell and adjusts spot price or delta if necessary
      *     @param numNFTs The amount of NFTs to send to the the pair
-     *     @param minExpectedTokenOutput The minimum acceptable token received by the sender. If the actual
-     *     amount is less than this value, the transaction will be reverted.
      *     @param _bondingCurve The bonding curve to use for price calculation
      *     @param _factory The factory to use for protocol fee lookup
      *     @return protocolFee The amount of tokens to send as protocol fee
@@ -406,7 +404,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      */
     function _calculateSellInfoAndUpdatePoolParams(
         uint256 numNFTs,
-        uint256 minExpectedTokenOutput,
         ICurve _bondingCurve,
         ILSSVMPairFactoryLike _factory
     ) internal returns (uint256 protocolFee, uint256 outputAmount) {
@@ -423,9 +420,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         if (error != CurveErrorCodes.Error.OK) {
             revert BondingCurveError(error);
         }
-
-        // Revert if output is too little
-        require(outputAmount >= minExpectedTokenOutput, "Out too little tokens");
 
         // Consolidate writes to save gas
         if (currentSpotPrice != newSpotPrice || currentDelta != newDelta) {
@@ -491,6 +485,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     /**
      * Royalty support internal functions
      */
+
     function _calculateRoyalties(uint256 assetId, uint256 saleAmount)
         internal
         returns (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal)
@@ -552,7 +547,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
                 ++i;
             }
         }
-
         // validate royalty total
         require(saleAmount >= royaltyTotal, "Royalty exceeds sale price");
     }

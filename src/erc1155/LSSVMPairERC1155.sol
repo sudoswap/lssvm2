@@ -154,7 +154,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         // Call bonding curve for pricing information
         uint256 protocolFee;
         (protocolFee, outputAmount) =
-            _calculateSellInfoAndUpdatePoolParams(numNFTs[0], minExpectedTokenOutput, _bondingCurve, _factory);
+            _calculateSellInfoAndUpdatePoolParams(numNFTs[0], _bondingCurve, _factory);
 
         // Compute royalties
         (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal) =
@@ -166,6 +166,8 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
             outputAmount -= royaltyTotal;
         }
 
+        require(outputAmount >= minExpectedTokenOutput, "Out too few tokens");
+        
         _sendTokenOutput(tokenRecipient, outputAmount);
 
         for (uint256 i; i < royaltyRecipients.length;) {
