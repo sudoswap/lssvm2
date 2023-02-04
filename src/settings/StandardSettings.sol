@@ -12,62 +12,62 @@ import {OwnableWithTransferCallback} from "../lib/OwnableWithTransferCallback.so
 import {ILSSVMPair} from "../ILSSVMPair.sol";
 import {LSSVMPair} from "../LSSVMPair.sol";
 import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
-import {IStandardAgreement} from "./IStandardAgreement.sol";
+import {ISettings} from "./ISettings.sol";
 import {Splitter} from "./Splitter.sol";
 
-contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCallback, Clone, IStandardAgreement {
+contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCallback, Clone, ISettings {
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for address payable;
 
     uint96 constant MAX_SETTABLE_FEE = 2e17; // Max fee of 20%
 
-    mapping(address => PairInAgreement) public pairInfo;
-    address payable public agreementFeeRecipient;
+    mapping(address => PairInfo) public pairInfos;
+    address payable public settingsFeeRecipient;
 
     Splitter immutable splitterImplementation;
     ILSSVMPairFactoryLike immutable pairFactory;
 
-    event AgreementEnteredForPair(address pairAddress);
-    event AgreementLeftForPair(address pairAddress);
+    event SettingsAddedForPair(address pairAddress);
+    event SettingsRemovedForPair(address pairAddress);
 
     constructor(Splitter _splitterImplementation, ILSSVMPairFactoryLike _pairFactory) {
         splitterImplementation = _splitterImplementation;
         pairFactory = _pairFactory;
     }
 
-    function initialize(address _owner, address payable _agreementFeeRecipient) public {
+    function initialize(address _owner, address payable _settingsFeeRecipient) public {
         require(owner() == address(0), "Initialized");
         __Ownable_init(_owner);
-        agreementFeeRecipient = _agreementFeeRecipient;
+        settingsFeeRecipient = _settingsFeeRecipient;
     }
 
     // Immutable params
 
     /**
-     * @return Returns the upfront cost to enter into the Agreement, in ETH
+     * @return Returns the upfront cost to enter into the Settings, in ETH
      */
-    function getAgreementCost() public pure returns (uint256) {
+    function getSettingsCost() public pure returns (uint256) {
         return _getArgUint256(0);
     }
 
     /**
-     * @return Returns the minimum lock duration of the Agreement, in seconds
+     * @return Returns the minimum lock duration of the Settings, in seconds
      */
     function getLockDuration() public pure returns (uint64) {
         return _getArgUint64(32);
     }
 
     /**
-     * @return Returns the trade fee split for the duration of the Agreement, in bps
+     * @return Returns the trade fee split for the duration of the Settings, in bps
      */
     function getFeeSplitBps() public pure returns (uint64) {
         return _getArgUint64(40);
     }
 
     /**
-     * @return Returns the modified royalty amount for the duration of the Agreement, in bps
+     * @return Returns the modified royalty amount for the duration of the Settings, in bps
      */
-    function getAgreementRoyaltyBps() public pure returns (uint64) {
+    function getSettingsRoyaltyBps() public pure returns (uint64) {
         return _getArgUint64(48);
     }
 
@@ -76,8 +76,8 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
     /**
      * @param newFeeRecipient The address to receive all payments plus trade fees
      */
-    function setAgreementFeeRecipient(address payable newFeeRecipient) public onlyOwner {
-        agreementFeeRecipient = newFeeRecipient;
+    function setSettingsFeeRecipient(address payable newFeeRecipient) public onlyOwner {
+        settingsFeeRecipient = newFeeRecipient;
     }
 
     // View functions
@@ -87,7 +87,7 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
      * @return Returns the previously set fee recipient address for a pair
      */
     function getPrevFeeRecipientForPair(address pairAddress) public view returns (address) {
-        return pairInfo[pairAddress].prevFeeRecipient;
+        return pairInfos[pairAddress].prevFeeRecipient;
     }
 
     /**
@@ -97,7 +97,7 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
      */
     function getRoyaltyInfo(address pairAddress) external view returns (bool, uint96) {
         if (LSSVMPair(pairAddress).owner() == address(this)) {
-            return (true, getAgreementRoyaltyBps());
+            return (true, getSettingsRoyaltyBps());
         }
         return (false, 0);
     }
@@ -125,25 +125,25 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
         require(pair.fee() <= MAX_SETTABLE_FEE, "Fee too high");
 
         // Verify the upfront cost
-        require(msg.value == getAgreementCost(), "Insufficient payment");
+        require(msg.value == getSettingsCost(), "Insufficient payment");
 
         // Transfer the ETH to the fee recipient
         if (msg.value > 0) {
-            agreementFeeRecipient.safeTransferETH(msg.value);
+            settingsFeeRecipient.safeTransferETH(msg.value);
         }
 
-        // Enable agreements in factory contract. This also validates that msg.sender is a valid pair.
-        pairFactory.enableAgreementForPair(address(this), msg.sender);
+        // Enable settings in factory contract. This also validates that msg.sender is a valid pair.
+        pairFactory.enableSettingsForPair(address(this), msg.sender);
 
         // Store the original owner, unlock date, and old fee recipient
-        pairInfo[msg.sender] = PairInAgreement({
+        pairInfos[msg.sender] = PairInfo({
             prevOwner: prevOwner,
             unlockTime: uint96(block.timestamp) + getLockDuration(),
             prevFeeRecipient: ILSSVMPair(msg.sender).getFeeRecipient()
         });
 
         // Deploy the fee splitter clone
-        // param1 = parent Agreement address, i.e. address(this)
+        // param1 = parent Settings address, i.e. address(this)
         // param2 = pair address, i.e. msg.sender
         bytes memory data = abi.encodePacked(address(this), msg.sender);
         address splitterAddress = address(splitterImplementation).clone(data);
@@ -151,7 +151,7 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
         // Set the asset (i.e. fee) recipient to be the splitter clone
         ILSSVMPair(msg.sender).changeAssetRecipient(payable(splitterAddress));
 
-        emit AgreementEnteredForPair(msg.sender);
+        emit SettingsAddedForPair(msg.sender);
     }
 
     /**
@@ -159,16 +159,16 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
      * @param pairAddress The address of the pair to reclaim ownership
      */
     function reclaimPair(address pairAddress) public {
-        PairInAgreement memory agreementInfo = pairInfo[pairAddress];
+        PairInfo memory pairInfo = pairInfos[pairAddress];
 
         // Verify that the current time is past the unlock time
-        require(block.timestamp > agreementInfo.unlockTime, "Lockup not over");
+        require(block.timestamp > pairInfo.unlockTime, "Lockup not over");
 
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 
         // Verify that the caller is the previous pair owner or admin of the NFT collection
         require(
-            msg.sender == agreementInfo.prevOwner || pairFactory.authAllowedForToken(address(pair.nft()), msg.sender),
+            msg.sender == pairInfo.prevOwner || pairFactory.authAllowedForToken(address(pair.nft()), msg.sender),
             "Not prev owner or collection admin"
         );
 
@@ -180,44 +180,44 @@ contract StandardAgreement is IOwnershipTransferReceiver, OwnableWithTransferCal
         }
 
         // Change the fee recipient back
-        pair.changeAssetRecipient(payable(agreementInfo.prevFeeRecipient));
+        pair.changeAssetRecipient(payable(pairInfo.prevFeeRecipient));
 
         // Disable the royalty override
-        pairFactory.disableAgreementForPair(address(this), pairAddress);
+        pairFactory.disableSettingsForPair(address(this), pairAddress);
 
         // Transfer ownership back to original pair owner
-        OwnableWithTransferCallback(pairAddress).transferOwnership(agreementInfo.prevOwner, "");
+        OwnableWithTransferCallback(pairAddress).transferOwnership(pairInfo.prevOwner, "");
 
         // Remove pairInfo entry
-        delete pairInfo[pairAddress];
+        delete pairInfos[pairAddress];
 
-        emit AgreementLeftForPair(pairAddress);
+        emit SettingsRemovedForPair(pairAddress);
     }
 
     /**
-     * @notice Allows a pair owner to adjust fee % even while a pair is in an Agreement
+     * @notice Allows a pair owner to adjust fee % even while a pair has Settings enabled
      * @param pairAddress The address of the pair to change fee
      * @param newFee The new fee to set the pair to, subject to MAX_FEE or less
      */
     function changeFee(address pairAddress, uint96 newFee) public {
-        PairInAgreement memory agreementInfo = pairInfo[pairAddress];
+        PairInfo memory pairInfo = pairInfos[pairAddress];
         // Verify that the caller is the previous owner of the pair
-        require(msg.sender == agreementInfo.prevOwner, "Not prev owner");
+        require(msg.sender == pairInfo.prevOwner, "Not prev owner");
         require(newFee <= MAX_SETTABLE_FEE, "Fee too high");
         ILSSVMPair(pairAddress).changeFee(newFee);
     }
 
     /**
-     * @notice Allows a pair owner to adjust spot price / delta even while a pair is in an Agreement, subject to liquidity considerations
+     * @notice Allows a pair owner to adjust spot price / delta even while a pair is in an Settings, subject to liquidity considerations
      * @param pairAddress The address of the pair to change spot price and delta for
      * @param newSpotPrice The new spot price
      * @param newDelta The new delta
      */
     function changeSpotPriceAndDelta(address pairAddress, uint128 newSpotPrice, uint128 newDelta) public {
-        PairInAgreement memory agreementInfo = pairInfo[pairAddress];
+        PairInfo memory pairInfo = pairInfos[pairAddress];
 
         // Verify that the caller is the previous owner of the pair
-        require(msg.sender == agreementInfo.prevOwner, "Not prev owner");
+        require(msg.sender == pairInfo.prevOwner, "Not prev owner");
 
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 

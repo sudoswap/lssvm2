@@ -493,9 +493,9 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         (address payable[] memory recipients, uint256[] memory amounts) =
             ROYALTY_ENGINE.getRoyalty(address(nft()), assetId, saleAmount);
         if (recipients.length != 0) {
-            // If pair is in an Agreement, use the overridden royalty amount and only use the first receiver
-            (bool isInAgreement, uint96 bps) = factory().getAgreementForPair(address(this));
-            if (isInAgreement) {
+            // If a pair has custom Settings, use the overridden royalty amount and only use the first receiver
+            (bool settingsEnabled, uint96 bps) = factory().getSettingsForPair(address(this));
+            if (settingsEnabled) {
                 royaltyRecipients = new address payable[](1);
                 royaltyRecipients[0] = recipients[0];
                 royaltyAmounts = new uint256[](1);
@@ -528,9 +528,9 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         (address payable[] memory recipients, uint256[] memory amounts) =
             ROYALTY_ENGINE.getRoyaltyView(address(nft()), assetId, saleAmount);
         if (recipients.length != 0) {
-            // If pair is in an Agreement, use the overridden royalty amount and only use the first receiver
-            (bool isInAgreement, uint96 bps) = factory().getAgreementForPair(address(this));
-            if (isInAgreement) {
+            // If a pair has custom Settings, use the overridden royalty amount and only use the first receiver
+            (bool settingsEnabled, uint96 bps) = factory().getSettingsForPair(address(this));
+            if (settingsEnabled) {
                 royaltyRecipients = new address payable[](1);
                 royaltyRecipients[0] = recipients[0];
                 royaltyAmounts = new uint256[](1);

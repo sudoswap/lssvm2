@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {LSSVMRouter} from "./LSSVMRouter.sol";
 
 interface ILSSVMPairFactoryLike {
-    struct Agreement {
+    struct Settings {
         uint96 bps;
         address pairAddress;
     }
@@ -24,11 +24,11 @@ interface ILSSVMPairFactoryLike {
 
     function authAllowedForToken(address tokenAddress, address proposedAuthAddress) external view returns (bool);
 
-    function getAgreementForPair(address pairAddress) external view returns (bool isInAgreement, uint96 bps);
+    function getSettingsForPair(address pairAddress) external view returns (bool settingsEnabled, uint96 bps);
 
-    function enableAgreementForPair(address agreement, address pairAddress) external;
+    function enableSettingsForPair(address settings, address pairAddress) external;
 
-    function disableAgreementForPair(address agreement, address pairAddress) external;
+    function disableSettingsForPair(address settings, address pairAddress) external;
 
     function routerStatus(LSSVMRouter router) external view returns (bool allowed, bool wasEverAllowed);
 

@@ -22,9 +22,9 @@ import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ILSSVMPairFactoryLike} from "../../ILSSVMPairFactoryLike.sol";
 import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 
-import {StandardAgreement} from "../../agreements/StandardAgreement.sol";
-import {StandardAgreementFactory} from "../../agreements/StandardAgreementFactory.sol";
-import {Splitter} from "../../agreements/Splitter.sol";
+import {StandardSettings} from "../../settings/StandardSettings.sol";
+import {StandardSettingsFactory} from "../../settings/StandardSettingsFactory.sol";
+import {Splitter} from "../../settings/Splitter.sol";
 
 import {Test20} from "../../mocks/Test20.sol";
 import {Test721} from "../../mocks/Test721.sol";
@@ -32,13 +32,13 @@ import {Test1155} from "../../mocks/Test1155.sol";
 import {TestManifold} from "../../mocks/TestManifold.sol";
 import {MockPair} from "../../mocks/MockPair.sol";
 
-abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
+abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 20 ether;
     uint256 tokenAmount = 100 ether;
     uint256 numItems = 3;
-    uint256 agreementFee = 0.1 ether;
-    uint64 agreementLockup = 1 days;
+    uint256 settingsFee = 0.1 ether;
+    uint64 settingsLockup = 1 days;
     uint256[] idList;
     ERC2981 test2981;
     IERC721 test721;
@@ -50,8 +50,8 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
     LSSVMPair pair;
     MockPair mockPair;
     RoyaltyEngine royaltyEngine;
-    StandardAgreementFactory agreementFactory;
-    StandardAgreement agreement;
+    StandardSettingsFactory settingsFactory;
+    StandardSettings settings;
 
     function setUp() public {
         bondingCurve = setupCurve();
@@ -90,130 +90,130 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         test721.setApprovalForAll(address(pair), true);
         testERC20.approve(address(pair), 10000 ether);
 
-        // Agreement setup
+        // Settings setup
         Splitter splitterImplementation = new Splitter();
-        StandardAgreement agreementImplementation = new StandardAgreement(
+        StandardSettings settingsImplementation = new StandardSettings(
             splitterImplementation,
             factory
         );
-        agreementFactory = new StandardAgreementFactory(
-            agreementImplementation
+        settingsFactory = new StandardSettingsFactory(
+            settingsImplementation
         );
 
-        agreement = agreementFactory.createAgreement(feeRecipient, agreementFee, agreementLockup, 5, 500);
+        settings = settingsFactory.createSettings(feeRecipient, settingsFee, settingsLockup, 5, 500);
         mockPair = new MockPair();
     }
 
-    // Pair Factory permissions with adding/removing Agreements and toggling override royalty bps for pools
+    // Pair Factory permissions with adding/removing Settings and toggling override royalty bps for pools
 
-    // An authorized caller can correctly add/remove an Agreement on the factory
-    function test_addAgreementAsAuth() public {
-        address agreementAddress = address(69420);
-        factory.toggleAgreementForCollection(agreementAddress, address(test721), true);
-        assertEq(factory.agreementsForCollection(address(test721), agreementAddress), true);
-        factory.toggleAgreementForCollection(agreementAddress, address(test721), false);
-        assertEq(factory.agreementsForCollection(address(test721), agreementAddress), false);
+    // An authorized caller can correctly add/remove an Settings on the factory
+    function test_addSettingsAsAuth() public {
+        address settingsAddress = address(69420);
+        factory.toggleSettingsForCollection(settingsAddress, address(test721), true);
+        assertEq(factory.settingsForCollection(address(test721), settingsAddress), true);
+        factory.toggleSettingsForCollection(settingsAddress, address(test721), false);
+        assertEq(factory.settingsForCollection(address(test721), settingsAddress), false);
     }
 
-    // An unauthorized caller cannot add/remove an Agreement on the factory
-    function test_addAgreementAsNotAuth() public {
+    // An unauthorized caller cannot add/remove an Settings on the factory
+    function test_addSettingsAsNotAuth() public {
         IOwnable(address(test721)).transferOwnership(address(12345));
         vm.expectRevert("Unauthorized caller");
-        factory.toggleAgreementForCollection(address(1), address(test721), true);
+        factory.toggleSettingsForCollection(address(1), address(test721), true);
 
         vm.expectRevert("Unauthorized caller");
-        factory.toggleAgreementForCollection(address(1), address(test721), false);
+        factory.toggleSettingsForCollection(address(1), address(test721), false);
     }
 
-    function test_enableAgreementForPair() public {
-        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
+    function test_enableSettingsForPair() public {
+        factory.toggleSettingsForCollection(address(settings), address(test721), true);
 
-        // This call will trigger the callback to call enableAgreementForPair on the factory
-        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
-        assertEq(factory.agreementForPair(address(pair)), address(agreement));
-        (bool isInAgreement, uint96 royaltyBps) = factory.getAgreementForPair(address(pair));
-        assertEq(isInAgreement, true);
+        // This call will trigger the callback to call enableSettingsForPair on the factory
+        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
+        assertEq(factory.settingsForPair(address(pair)), address(settings));
+        (bool settingsEnabled, uint96 royaltyBps) = factory.getSettingsForPair(address(pair));
+        assertEq(settingsEnabled, true);
         assertEq(royaltyBps, 500);
     }
 
-    function test_enableAgreementForPairIdempotent() public {
-        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
+    function test_enableSettingsForPairIdempotent() public {
+        factory.toggleSettingsForCollection(address(settings), address(test721), true);
 
         // First call will be done directly on the factory
-        factory.enableAgreementForPair(address(agreement), address(pair));
-        assertEq(factory.agreementForPair(address(pair)), address(agreement));
+        factory.enableSettingsForPair(address(settings), address(pair));
+        assertEq(factory.settingsForPair(address(pair)), address(settings));
 
         // Second call will also make a call to the factory due to the callback
-        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
-        assertEq(factory.agreementForPair(address(pair)), address(agreement));
+        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
+        assertEq(factory.settingsForPair(address(pair)), address(settings));
     }
 
-    function test_enableAgreementForPairNotPairOwner() public {
-        factory.toggleAgreementForCollection(address(this), address(test721Other), true);
+    function test_enableSettingsForPairNotPairOwner() public {
+        factory.toggleSettingsForCollection(address(this), address(test721Other), true);
         vm.expectRevert("Msg sender is not pair owner");
         vm.prank(vm.addr(1));
-        factory.enableAgreementForPair(address(this), address(pair));
+        factory.enableSettingsForPair(address(this), address(pair));
     }
 
-    function test_enableAgreementForPairAgreementNotEnabled() public {
-        vm.expectRevert("Agreement not enabled for collection");
-        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
+    function test_enableSettingsForPairSettingsNotEnabled() public {
+        vm.expectRevert("Settings not enabled for collection");
+        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
     }
 
-    function test_enableAgreementForPairAgreementNotPair() public {
+    function test_enableSettingsForPairInvalidPair() public {
         vm.expectRevert("Invalid pair address");
-        factory.enableAgreementForPair(address(this), address(this));
+        factory.enableSettingsForPair(address(this), address(this));
     }
 
-    function test_disableAgreementForPair() public {
-        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
-        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
+    function test_disableSettingsForPair() public {
+        factory.toggleSettingsForCollection(address(settings), address(test721), true);
+        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
 
         // Cannot reclaim pair until lockup period has passed
         vm.expectRevert("Lockup not over");
-        agreement.reclaimPair(address(pair));
+        settings.reclaimPair(address(pair));
 
         // Move forward in time so lockup period is over
         vm.warp(block.timestamp + 1 days + 1 seconds);
 
-        agreement.reclaimPair(address(pair));
-        assertEq(factory.agreementForPair(address(pair)), address(0));
-        (bool isInAgreement, uint96 royaltyBps) = factory.getAgreementForPair(address(pair));
-        assertEq(isInAgreement, false);
+        settings.reclaimPair(address(pair));
+        assertEq(factory.settingsForPair(address(pair)), address(0));
+        (bool settingsEnabled, uint96 royaltyBps) = factory.getSettingsForPair(address(pair));
+        assertEq(settingsEnabled, false);
         assertEq(royaltyBps, 0);
     }
 
-    function test_disableAgreementForPairNotPair() public {
+    function test_disableSettingsForPairNotPair() public {
         vm.expectRevert("Invalid pair address");
-        factory.disableAgreementForPair(address(this), address(this));
+        factory.disableSettingsForPair(address(this), address(this));
     }
 
-    function test_disableAgreementForPairNotEnabled() public {
-        vm.expectRevert("Agreement not enabled for pair");
-        factory.disableAgreementForPair(address(agreement), address(pair));
+    function test_disableSettingsForPairNotEnabled() public {
+        vm.expectRevert("Settings not enabled for pair");
+        factory.disableSettingsForPair(address(settings), address(pair));
     }
 
-    function test_disableAgreementNotPairOwner() public {
-        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
-        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
+    function test_disableSettingsNotPairOwner() public {
+        factory.toggleSettingsForCollection(address(settings), address(test721), true);
+        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
 
         vm.expectRevert("Msg sender is not pair owner");
-        factory.disableAgreementForPair(address(agreement), address(pair));
+        factory.disableSettingsForPair(address(settings), address(pair));
     }
 
-    function test_getAllPairsForAgreement() public {
-        address[] memory results = factory.getAllPairsForAgreement(address(agreement));
+    function test_getAllPairsForSettings() public {
+        address[] memory results = factory.getAllPairsForSettings(address(settings));
         assertEq(results.length, 0);
 
-        // Add pair to agreement
-        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
-        pair.transferOwnership{value: 0.1 ether}(address(agreement), "");
+        // Add pair to settings
+        factory.toggleSettingsForCollection(address(settings), address(test721), true);
+        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
 
-        results = factory.getAllPairsForAgreement(address(agreement));
+        results = factory.getAllPairsForSettings(address(settings));
         assertEq(results.length, 1);
         assertEq(results[0], address(pair));
 
-        // Add another pair to agreement
+        // Add another pair to settings
         uint256[] memory idList2;
         LSSVMPair pair2 = this.setupPair{value: modifyInputAmount(tokenAmount)}(
             factory,
@@ -228,59 +228,59 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
             tokenAmount,
             address(0)
         );
-        pair2.transferOwnership{value: 0.1 ether}(address(agreement), "");
-        results = factory.getAllPairsForAgreement(address(agreement));
+        pair2.transferOwnership{value: 0.1 ether}(address(settings), "");
+        results = factory.getAllPairsForSettings(address(settings));
         assertEq(results.length, 2);
 
-        // Remove first pair from agreement
+        // Remove first pair from settings
         vm.warp(block.timestamp + 1 days + 1 seconds);
-        agreement.reclaimPair(address(pair));
+        settings.reclaimPair(address(pair));
 
-        results = factory.getAllPairsForAgreement(address(agreement));
+        results = factory.getAllPairsForSettings(address(settings));
         assertEq(results.length, 1);
     }
 
-    // Standard Agreement + Agreement Factory tests:
+    // Standard Settings + Settings Factory tests:
 
-    // Creating a Standard Agreement works as expected, values are as expected
-    function test_createAgreementFromFactory() public {
-        address payable agreementFeeRecipient = payable(address(123));
+    // Creating a Standard Settings works as expected, values are as expected
+    function test_createSettingsFromFactory() public {
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 royaltyBps = 3;
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, royaltyBps);
-        assertEq(newAgreement.agreementFeeRecipient(), agreementFeeRecipient);
-        assertEq(newAgreement.getAgreementCost(), ethCost);
-        assertEq(newAgreement.getLockDuration(), secDuration);
-        assertEq(newAgreement.getFeeSplitBps(), feeSplitBps);
-        assertEq(newAgreement.getAgreementRoyaltyBps(), royaltyBps);
-        assertEq(IOwnable(address(newAgreement)).owner(), address(this));
-        newAgreement.setAgreementFeeRecipient(payable(address(this)));
-        assertEq(newAgreement.agreementFeeRecipient(), address(this));
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, royaltyBps);
+        assertEq(newSettings.settingsFeeRecipient(), settingsFeeRecipient);
+        assertEq(newSettings.getSettingsCost(), ethCost);
+        assertEq(newSettings.getLockDuration(), secDuration);
+        assertEq(newSettings.getFeeSplitBps(), feeSplitBps);
+        assertEq(newSettings.getSettingsRoyaltyBps(), royaltyBps);
+        assertEq(IOwnable(address(newSettings)).owner(), address(this));
+        newSettings.setSettingsFeeRecipient(payable(address(this)));
+        assertEq(newSettings.settingsFeeRecipient(), address(this));
     }
 
-    // A pair can enter a Standard Agreement if authorized
-    // Owner can change pair fee within tolerance after entering Agreement
-    // Modified royalty is applied after entering Agreement
-    function test_enterAgreementForPool() public {
-        address payable agreementFeeRecipient = payable(address(123));
+    // A pair can enter a StandardSettings if authorized
+    // Owner can change pair fee within tolerance after enabling Settings
+    // Modified royalty is applied after enabling Settings
+    function test_applySettingsForPool() public {
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
-        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
+        pair.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Check the upfront fee was received
-        assertEq(agreementFeeRecipient.balance, ethCost);
+        assertEq(settingsFeeRecipient.balance, ethCost);
 
-        // Check the Agreement has been applied, with the new bps
-        (bool isInAgreement, uint96 pairRoyaltyBps) = factory.getAgreementForPair(address(pair));
-        assertEq(isInAgreement, true);
+        // Check the Settings has been applied, with the new bps
+        (bool settingsEnabled, uint96 pairRoyaltyBps) = factory.getSettingsForPair(address(pair));
+        assertEq(settingsEnabled, true);
         assertEq(pairRoyaltyBps, newRoyaltyBps);
 
         // Check that the fee address is no longer the pool (i.e. a fee splitter has been deployed)
@@ -310,36 +310,36 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
 
         // Changing the fee to under 20% works
         uint96 newFee = 0.2e18;
-        newAgreement.changeFee(address(pair), newFee);
+        newSettings.changeFee(address(pair), newFee);
     }
 
-    // Even if an agreement is enabled on the factory contract, the standard agreement
+    // Even if an settings is enabled on the factory contract, the standard settings
     // requires ownership of the pair to provide a royalty override
-    function test_enterAgreementNotPairOwner() public {
-        factory.toggleAgreementForCollection(address(agreement), address(test721), true);
-        factory.enableAgreementForPair(address(agreement), address(pair));
-        assertEq(factory.agreementForPair(address(pair)), address(agreement));
+    function test_enterSettingsNotPairOwner() public {
+        factory.toggleSettingsForCollection(address(settings), address(test721), true);
+        factory.enableSettingsForPair(address(settings), address(pair));
+        assertEq(factory.settingsForPair(address(pair)), address(settings));
 
-        (bool isInAgreement, uint96 royaltyBps) = agreement.getRoyaltyInfo(address(pair));
-        assertEq(isInAgreement, false);
+        (bool settingsEnabled, uint96 royaltyBps) = settings.getRoyaltyInfo(address(pair));
+        assertEq(settingsEnabled, false);
         assertEq(royaltyBps, 0);
 
-        (isInAgreement, royaltyBps) = factory.getAgreementForPair(address(pair));
-        assertEq(isInAgreement, false);
+        (settingsEnabled, royaltyBps) = factory.getSettingsForPair(address(pair));
+        assertEq(settingsEnabled, false);
         assertEq(royaltyBps, 0);
     }
 
-    // Verify that the only the first receiver receives royalty payments when there is an agreement active
+    // Verify that the only the first receiver receives royalty payments when there is an settings active
     function test_swapOverrideWithMultipleReceivers() public {
-        address payable agreementFeeRecipient = payable(address(123));
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 500; // 5% in bps
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
-        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
+        pair.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Setup multiple royalty receivers
         address secondReceiver = vm.addr(2);
@@ -367,185 +367,185 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         assertEq(getBalance(secondReceiver), 0);
     }
 
-    // A pair cannot enter into an agreement if the trading fee is too high
-    function test_enterAgreementFeeTooHigh() public {
-        address payable agreementFeeRecipient = payable(address(123));
+    // A pair cannot enter into an settings if the trading fee is too high
+    function test_enterSettingsFeeTooHigh() public {
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
         pair.changeFee(2e17 + 1);
 
         vm.expectRevert("Fee too high");
-        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+        pair.transferOwnership{value: ethCost}(address(newSettings), "");
     }
 
     // Changing the price up works (because there are tokens)
     // Changing the price down works (because there are NFTs)
-    function test_changeParamsAfterEnteringAgreement() public {
-        // Set up sample Agreement
-        address payable agreementFeeRecipient = payable(address(123));
-        StandardAgreement newAgreement = agreementFactory.createAgreement(agreementFeeRecipient, 0, 1, 2, 1000);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
+    function test_changeParamsAfterEnteringSettings() public {
+        // Set up sample Settings
+        address payable settingsFeeRecipient = payable(address(123));
+        StandardSettings newSettings = settingsFactory.createSettings(settingsFeeRecipient, 0, 1, 2, 1000);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
-        // Opt into the Agreement
-        pair.transferOwnership(address(newAgreement), "");
+        // Opt into the Settings
+        pair.transferOwnership(address(newSettings), "");
 
         // Get new params for changing price to buy up
         uint256 percentage = 1.1 * 1e18; // 10%
         (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price up works
-        newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
 
         // Get new params for changing price to buy down
         percentage = 0.9 * 1e18; // 10%
         (newSpotPrice, newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price down works
-        newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
     }
 
     // Changing the price up fails (because there are no tokens)
     function testFail_changeBuyPriceUpNoTokens() public {
-        // Set up sample Agreement
-        address payable agreementFeeRecipient = payable(address(123));
-        StandardAgreement newAgreement = agreementFactory.createAgreement(agreementFeeRecipient, 0, 1, 2, 1000);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
+        // Set up sample Settings
+        address payable settingsFeeRecipient = payable(address(123));
+        StandardSettings newSettings = settingsFactory.createSettings(settingsFeeRecipient, 0, 1, 2, 1000);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
         // Withdraw tokens from pair
         this.withdrawTokens(pair);
 
-        // Opt into the Agreement
-        pair.transferOwnership(address(newAgreement), "");
+        // Opt into the Settings
+        pair.transferOwnership(address(newSettings), "");
 
         // Get new params for changing price to buy up
         uint256 percentage = 1.1 * 1e18; // 10%
         (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price up should fail because there is no more buy pressure
-        newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
     }
 
     // Changing the price down fails (because there are no NFTs)
     function testFail_changeBuyPriceDownNoNFTs() public {
-        // Set up sample Agreement
-        address payable agreementFeeRecipient = payable(address(123));
-        StandardAgreement newAgreement = agreementFactory.createAgreement(agreementFeeRecipient, 0, 1, 2, 1000);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
+        // Set up sample Settings
+        address payable settingsFeeRecipient = payable(address(123));
+        StandardSettings newSettings = settingsFactory.createSettings(settingsFeeRecipient, 0, 1, 2, 1000);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
         // Withdraw tokens from pair
         pair.withdrawERC721(IERC721(pair.nft()), idList);
 
-        // Opt into the Agreement
-        pair.transferOwnership(address(newAgreement), "");
+        // Opt into the Settings
+        pair.transferOwnership(address(newSettings), "");
 
         // Get new params for changing price to buy up
         uint256 percentage = 0.9 * 1e18; // 10%
         (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price down should fail because there is no more nft ivnentory
-        newAgreement.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
     }
 
     function testFail_changeFeeTooHigh() public {
-        address payable agreementFeeRecipient = payable(address(123));
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
-        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
+        pair.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Setting new fee to be above 20%
         uint256 newFee = 0.2e18 + 1;
-        newAgreement.changeFee(address(pair), uint96(newFee));
+        newSettings.changeFee(address(pair), uint96(newFee));
     }
 
-    // A pair cannot enter a Standard Agreement if the Agreement is unauthorized
-    function testFail_enterAgreementForPoolIfAgreementIsNotAuthHasNoEffect() public {
-        address payable agreementFeeRecipient = payable(address(123));
+    // A pair cannot enter a Standard Settings if the Settings are unauthorized
+    function testFail_enterSettingsForPoolIfSettingsAreNotAuthHasNoEffect() public {
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 10000; // 10% in bps
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        pair.transferOwnership{value: ethCost}(address(newSettings), "");
     }
 
-    // A mock pair cannot enter a Standard Agreement
-    function testFail_enterAgreementForMockPool() public {
-        address payable agreementFeeRecipient = payable(address(123));
+    // A mock pair cannot enter a Standard Settings
+    function testFail_enterSettingsForMockPool() public {
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
-        mockPair.transferOwnership{value: ethCost}(address(newAgreement), "");
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
+        mockPair.transferOwnership{value: ethCost}(address(newSettings), "");
     }
 
     // Leaving after the expiry date succeeds
-    function test_leaveAgreementAfterExpiry() public {
-        // Set up basic Agreement
-        address payable agreementFeeRecipient = payable(address(123));
+    function test_removeSettingsAfterExpiry() public {
+        // Set up basic Settings
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0;
         uint64 secDuration = 100;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
-        // Opt into the Agreement
-        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+        // Opt into the Settings
+        pair.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Skip ahead in time
         skip(secDuration + 1);
 
-        // Attempt to leave the Agreement
-        newAgreement.reclaimPair(address(pair));
+        // Attempt to leave the Settings
+        newSettings.reclaimPair(address(pair));
 
         // Check that the owner is now set back to caller
         assertEq(pair.owner(), address(this));
         // Check that old pairInfo has been cleared out
-        assertEq(newAgreement.getPrevFeeRecipientForPair(address(pair)), address(0));
+        assertEq(newSettings.getPrevFeeRecipientForPair(address(pair)), address(0));
         // Prev fee recipient defaulted to the pair, so it should still be the pair
         assertEq(pair.getFeeRecipient(), address(pair));
-        (bool isInAgreement,) = factory.getAgreementForPair(address(pair));
-        assertEq(isInAgreement, false);
+        (bool settingsEnabled,) = factory.getSettingsForPair(address(pair));
+        assertEq(settingsEnabled, false);
     }
 
     // Leaving after the expiry date succeeds
-    function testFail_leaveAgreementAfterExpiryAsDiffCaller() public {
-        // Set up basic Agreement
-        address payable agreementFeeRecipient = payable(address(123));
+    function testFail_leaveSettingsAfterExpiryAsDiffCaller() public {
+        // Set up basic Settings
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0;
         uint64 secDuration = 100;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
-        // Opt into the Agreement
-        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+        // Opt into the Settings
+        pair.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Skip ahead in time
         skip(secDuration + 1);
 
         hoax(address(12321));
 
-        // Attempt to leave the Agreement
-        newAgreement.reclaimPair(address(pair));
+        // Attempt to leave the Settings
+        newSettings.reclaimPair(address(pair));
 
         // Perform a buy for item #1
         (
@@ -582,27 +582,27 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
     }
 
     // Leaving before the expiry date fails
-    function testFail_leaveAgreementBeforeExpiry() public {
-        // Set up basic Agreement
-        address payable agreementFeeRecipient = payable(address(123));
+    function testFail_leaveSettingsBeforeExpiry() public {
+        // Set up basic Settings
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0 ether;
         uint64 secDuration = 100;
         uint64 feeSplitBps = 2;
         uint64 newRoyaltyBps = 1000; // 10% in bps
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
-        // Opt into the Agreement
-        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+        // Opt into the Settings
+        pair.transferOwnership{value: ethCost}(address(newSettings), "");
 
-        // Attempt to leave the Agreement
-        newAgreement.reclaimPair(address(pair));
+        // Attempt to leave the Settings
+        newSettings.reclaimPair(address(pair));
     }
 
     // Splitter tests
 
-    // A pair can enter a Standard Agreement if authorized
+    // A pair can enter a Standard Settings if authorized
     function test_splitterHandlesSplits() public {
         // Set the trade fee recipient address
         address payable pairFeeRecipient = payable(address(1));
@@ -611,21 +611,21 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
         // Set trade fee to be 10%
         pair.changeFee(0.1 ether);
 
-        address payable agreementFeeRecipient = payable(address(123));
+        address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0 ether;
         uint64 secDuration = 1;
         uint64 feeSplitBps = 5000; // 50% split
         uint64 newRoyaltyBps = 0; // 0% in bps
-        StandardAgreement newAgreement =
-            agreementFactory.createAgreement(agreementFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        factory.toggleAgreementForCollection(address(newAgreement), address(test721), true);
-        pair.transferOwnership{value: ethCost}(address(newAgreement), "");
+        StandardSettings newSettings =
+            settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
+        pair.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Check that the fee address is no longer the pool (i.e. a fee splitter has been deployed)
         require(pair.getFeeRecipient() != address(pair), "Splitter not deployed");
 
         // Verify the Splitter has the correct variables
-        assertEq(Splitter(pair.getFeeRecipient()).getParentAgreement(), address(newAgreement), "Incorrect parent");
+        assertEq(Splitter(pair.getFeeRecipient()).getParentSettings(), address(newSettings), "Incorrect parent");
         assertEq(Splitter(pair.getFeeRecipient()).getPairAddressForSplitter(), address(pair), "Incorrect pair");
 
         // Perform a buy for item #1
@@ -659,9 +659,9 @@ abstract contract AgreementE2E is Test, ERC721Holder, ConfigurableWithRoyalties 
             Splitter(splitterAddress).withdrawAllBaseQuoteTokens();
         }
 
-        // Ensure that the Agreement-set fee recipient received the tokens
-        uint256 agreementFeeRecipientBalance = getBalance(agreementFeeRecipient);
-        assertEq(agreementFeeRecipientBalance, tradeFee);
+        // Ensure that the Settings-set fee recipient received the tokens
+        uint256 settingsFeeRecipientBalance = getBalance(settingsFeeRecipient);
+        assertEq(settingsFeeRecipientBalance, tradeFee);
         uint256 tradeFeeRecipientBalance = getBalance(pairFeeRecipient);
         assertEq(tradeFeeRecipientBalance, tradeFee);
 

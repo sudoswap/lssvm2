@@ -20,7 +20,7 @@ import {LSSVMPairERC1155ETH} from "./erc1155/LSSVMPairERC1155ETH.sol";
 import {LSSVMPairERC721ERC20} from "./erc721/LSSVMPairERC721ERC20.sol";
 import {LSSVMPairERC1155ERC20} from "./erc1155/LSSVMPairERC1155ERC20.sol";
 
-import {IStandardAgreement} from "./agreements/IStandardAgreement.sol";
+import {ISettings} from "./settings/ISettings.sol";
 
 /**
  * Imports for authAllowedForToken (forked from manifold.xyz Royalty Registry)
@@ -57,10 +57,10 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     mapping(ICurve => bool) public bondingCurveAllowed;
     mapping(address => bool) public override callAllowed;
 
-    // Data structures for agreement logic
-    mapping(address => mapping(address => bool)) public agreementsForCollection;
-    mapping(address => address) public agreementForPair;
-    mapping(address => EnumerableSet.AddressSet) private pairsForAgreement;
+    // Data structures for settings logic
+    mapping(address => mapping(address => bool)) public settingsForCollection;
+    mapping(address => address) public settingsForPair;
+    mapping(address => EnumerableSet.AddressSet) private pairsForSettings;
 
     struct RouterStatus {
         bool allowed;
@@ -298,7 +298,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         );
         emit NewERC1155Pair(address(pair));
     }
-    
+
     /**
      * @notice Checks if an address is a LSSVMPair. Uses the fact that the pairs are EIP-1167 minimal proxies.
      *     @param potentialPair The address to check
@@ -464,81 +464,81 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     }
 
     /**
-     * @notice Returns the Agreement for a pair if it is currently in an Agreement
+     * @notice Returns the Settings for a pair if it currently has Settings
      * @param pairAddress The address of the pair to look up
-     * Returns whether or not the pair is in an Agreement, and what its bps should be (if valid)
+     * Returns whether or not the pair has custom settings, and what its bps should be (if valid)
      */
-    function getAgreementForPair(address pairAddress) public view returns (bool isInAgreement, uint96 bps) {
-        address agreementAddress = agreementForPair[pairAddress];
-        if (agreementAddress == address(0)) {
+    function getSettingsForPair(address pairAddress) public view returns (bool settingsEnabled, uint96 bps) {
+        address settingsAddress = settingsForPair[pairAddress];
+        if (settingsAddress == address(0)) {
             return (false, 0);
         }
-        return IStandardAgreement(agreementAddress).getRoyaltyInfo(pairAddress);
+        return ISettings(settingsAddress).getRoyaltyInfo(pairAddress);
     }
 
     /**
-     * @notice Enables or disables an agreement for a given NFT collection
-     *      @param agreement The address of the Agreement contract
-     *      @param collectionAddress The NFT project that the agreement is toggled for
-     *      @param enable Bool to determine whether to disable or enable the agreement
+     * @notice Enables or disables an settings for a given NFT collection
+     *      @param settings The address of the Settings contract
+     *      @param collectionAddress The NFT project that the settings is toggled for
+     *      @param enable Bool to determine whether to disable or enable the settings
      */
-    function toggleAgreementForCollection(address agreement, address collectionAddress, bool enable) public {
+    function toggleSettingsForCollection(address settings, address collectionAddress, bool enable) public {
         require(authAllowedForToken(collectionAddress, msg.sender), "Unauthorized caller");
         if (enable) {
-            agreementsForCollection[collectionAddress][agreement] = true;
+            settingsForCollection[collectionAddress][settings] = true;
         } else {
-            delete agreementsForCollection[collectionAddress][agreement];
+            delete settingsForCollection[collectionAddress][settings];
         }
     }
 
     /**
-     * @notice Enables an Agreement for a given Pair
+     * @notice Enables an Settings for a given Pair
      * @notice Only the owner of the Pair can call this function
-     * @notice The Agreement must be enabled for the Pair's collection
-     *      @param agreement The address of the Agreement contract
+     * @notice The Settings must be enabled for the Pair's collection
+     *      @param settings The address of the Settings contract
      *      @param pairAddress The address of the Pair contract
      */
-    function enableAgreementForPair(address agreement, address pairAddress) public {
+    function enableSettingsForPair(address settings, address pairAddress) public {
         require(
             isPair(pairAddress, PairVariant.ERC721_ERC20) || isPair(pairAddress, PairVariant.ERC721_ETH),
             "Invalid pair address"
         );
         LSSVMPair pair = LSSVMPair(pairAddress);
         require(pair.owner() == msg.sender, "Msg sender is not pair owner");
-        require(agreementsForCollection[address(pair.nft())][agreement], "Agreement not enabled for collection");
-        agreementForPair[pairAddress] = agreement;
-        pairsForAgreement[agreement].add(pairAddress);
+        require(settingsForCollection[address(pair.nft())][settings], "Settings not enabled for collection");
+        settingsForPair[pairAddress] = settings;
+        pairsForSettings[settings].add(pairAddress);
     }
 
     /**
-     * @notice Disables an Agreement for a given Pair
+     * @notice Disables an Settings for a given Pair
      * @notice Only the owner of the Pair can call this function
-     * @notice The Agreement must already be enabled for the Pair
-     *      @param agreement The address of the Agreement contract
+     * @notice The Settings must already be enabled for the Pair
+     *      @param settings The address of the Settings contract
      *      @param pairAddress The address of the Pair contract
      */
-    function disableAgreementForPair(address agreement, address pairAddress) public {
+    function disableSettingsForPair(address settings, address pairAddress) public {
         require(
             isPair(pairAddress, PairVariant.ERC721_ERC20) || isPair(pairAddress, PairVariant.ERC721_ETH),
             "Invalid pair address"
         );
-        require(agreementForPair[pairAddress] == agreement, "Agreement not enabled for pair");
+        require(settingsForPair[pairAddress] == settings, "Settings not enabled for pair");
         LSSVMPair pair = LSSVMPair(pairAddress);
         require(pair.owner() == msg.sender, "Msg sender is not pair owner");
-        delete agreementForPair[pairAddress];
-        pairsForAgreement[agreement].remove(pairAddress);
+        delete settingsForPair[pairAddress];
+        pairsForSettings[settings].remove(pairAddress);
     }
 
     /**
-     * @notice Fetches all the Pair addresses that are registered with the given Agreement
-     *      @param agreement The address of the Agreement contract
-     *      @return A list of addresses of the Pairs that belong to an Agreement
+     * @notice Fetches all the Pair addresses that are registered with the given Settings
+     *      @param settings The address of the Settings contract
+     *      @return A list of addresses of the Pairs that belong to an Settings
      */
-    function getAllPairsForAgreement(address agreement) external view returns (address[] memory) {
-        uint256 numPairs = pairsForAgreement[agreement].length();
+    function getAllPairsForSettings(address settings) external view returns (address[] memory) {
+        uint256 numPairs = pairsForSettings[settings].length();
         address[] memory pairs = new address[](numPairs);
         for (uint256 i; i < numPairs;) {
-            pairs[i] = pairsForAgreement[agreement].at(i);
+            pairs[i] = pairsForSettings[settings].at(i);
             unchecked {
                 ++i;
             }

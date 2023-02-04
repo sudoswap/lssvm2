@@ -6,7 +6,7 @@ import {Clone} from "clones-with-immutable-args/Clone.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
-import {IStandardAgreement} from "./IStandardAgreement.sol";
+import {ISettings} from "./ISettings.sol";
 import {ILSSVMPair} from "../ILSSVMPair.sol";
 
 contract Splitter is Clone {
@@ -15,7 +15,7 @@ contract Splitter is Clone {
 
     uint256 constant BASE = 10_000;
 
-    function getParentAgreement() public pure returns (address) {
+    function getParentSettings() public pure returns (address) {
         return _getArgAddress(0);
     }
 
@@ -29,11 +29,11 @@ contract Splitter is Clone {
     }
 
     function withdrawETH(uint256 ethAmount) public {
-        IStandardAgreement parentAgreement = IStandardAgreement(getParentAgreement());
-        uint256 amtToSendToAgreementFeeRecipient = (parentAgreement.getFeeSplitBps() * ethAmount) / BASE;
-        parentAgreement.agreementFeeRecipient().safeTransferETH(amtToSendToAgreementFeeRecipient);
-        uint256 amtToSendToPairFeeRecipient = ethAmount - amtToSendToAgreementFeeRecipient;
-        payable(parentAgreement.getPrevFeeRecipientForPair(getPairAddressForSplitter())).safeTransferETH(
+        ISettings parentSettings = ISettings(getParentSettings());
+        uint256 amtToSendToSettingsFeeRecipient = (parentSettings.getFeeSplitBps() * ethAmount) / BASE;
+        parentSettings.settingsFeeRecipient().safeTransferETH(amtToSendToSettingsFeeRecipient);
+        uint256 amtToSendToPairFeeRecipient = ethAmount - amtToSendToSettingsFeeRecipient;
+        payable(parentSettings.getPrevFeeRecipientForPair(getPairAddressForSplitter())).safeTransferETH(
             amtToSendToPairFeeRecipient
         );
     }
@@ -50,12 +50,12 @@ contract Splitter is Clone {
     }
 
     function withdrawTokens(ERC20 token, uint256 tokenAmount) public {
-        IStandardAgreement parentAgreement = IStandardAgreement(getParentAgreement());
-        uint256 amtToSendToAgreementFeeRecipient = (parentAgreement.getFeeSplitBps() * tokenAmount) / BASE;
-        token.safeTransfer(parentAgreement.agreementFeeRecipient(), amtToSendToAgreementFeeRecipient);
-        uint256 amtToSendToPairFeeRecipient = tokenAmount - amtToSendToAgreementFeeRecipient;
+        ISettings parentSettings = ISettings(getParentSettings());
+        uint256 amtToSendToSettingsFeeRecipient = (parentSettings.getFeeSplitBps() * tokenAmount) / BASE;
+        token.safeTransfer(parentSettings.settingsFeeRecipient(), amtToSendToSettingsFeeRecipient);
+        uint256 amtToSendToPairFeeRecipient = tokenAmount - amtToSendToSettingsFeeRecipient;
         token.safeTransfer(
-            parentAgreement.getPrevFeeRecipientForPair(getPairAddressForSplitter()), amtToSendToPairFeeRecipient
+            parentSettings.getPrevFeeRecipientForPair(getPairAddressForSplitter()), amtToSendToPairFeeRecipient
         );
     }
 
