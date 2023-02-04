@@ -102,6 +102,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
 
         settings = settingsFactory.createSettings(feeRecipient, settingsFee, settingsLockup, 5, 500);
         mockPair = new MockPair();
+        vm.label(address(mockPair), "MockPair");
     }
 
     // Pair Factory permissions with adding/removing Settings and toggling override royalty bps for pools
@@ -157,11 +158,11 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
 
     function test_enableSettingsForPairSettingsNotEnabled() public {
         vm.expectRevert("Settings not enabled for collection");
-        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
+        factory.enableSettingsForPair(address(settings), address(pair));
     }
 
     function test_enableSettingsForPairInvalidPair() public {
-        vm.expectRevert("Invalid pair address");
+        vm.expectRevert(bytes(""));
         factory.enableSettingsForPair(address(this), address(this));
     }
 
@@ -184,7 +185,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
     }
 
     function test_disableSettingsForPairNotPair() public {
-        vm.expectRevert("Invalid pair address");
+        vm.expectRevert(bytes(""));
         factory.disableSettingsForPair(address(this), address(this));
     }
 
@@ -481,7 +482,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
     }
 
     // A mock pair cannot enter a Standard Settings
-    function testFail_enterSettingsForMockPool() public {
+    function test_cannotEnterSettingsForMockPool() public {
         address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0.1 ether;
         uint64 secDuration = 1;
@@ -490,6 +491,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         StandardSettings newSettings =
             settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
+        vm.expectRevert(bytes("Pair verification failed"));
         mockPair.transferOwnership{value: ethCost}(address(newSettings), "");
     }
 
@@ -653,7 +655,10 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         assertEq(splitterBalance, 2 * tradeFee);
 
         // Withdraw the tokens
-        if (factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)) {
+        if (
+            factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)
+                || factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ERC1155_ETH)
+        ) {
             Splitter(splitterAddress).withdrawAllETH();
         } else {
             Splitter(splitterAddress).withdrawAllBaseQuoteTokens();

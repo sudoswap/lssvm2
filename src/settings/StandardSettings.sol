@@ -133,7 +133,10 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         }
 
         // Enable settings in factory contract. This also validates that msg.sender is a valid pair.
-        pairFactory.enableSettingsForPair(address(this), msg.sender);
+        try pairFactory.enableSettingsForPair(address(this), msg.sender) {}
+        catch(bytes memory) {
+          revert("Pair verification failed");
+        }
 
         // Store the original owner, unlock date, and old fee recipient
         pairInfos[msg.sender] = PairInfo({
@@ -173,9 +176,15 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         );
 
         // Split fees (if applicable)
-        if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)) {
+        if (
+            pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)
+                || pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC1155_ETH)
+        ) {
             Splitter(payable(pair.getFeeRecipient())).withdrawAllETH();
-        } else if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20)) {
+        } else if (
+            pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20)
+                || pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC1155_ERC20)
+        ) {
             Splitter(payable(pair.getFeeRecipient())).withdrawAllBaseQuoteTokens();
         }
 
@@ -260,9 +269,15 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
 
         // Get token balance of the pair (ETH or ERC20)
         uint256 pairBalance;
-        if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)) {
+        if (
+            pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)
+                || pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC1155_ETH)
+        ) {
             pairBalance = pairAddress.balance;
-        } else if (pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20)) {
+        } else if (
+            pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20)
+                || pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC1155_ERC20)
+        ) {
             pairBalance = pair.token().balanceOf(pairAddress);
         }
 

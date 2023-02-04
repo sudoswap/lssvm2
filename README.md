@@ -26,14 +26,14 @@ Pools can set another contract to do on-chain verification of desired properties
 
 The protocol provides a generic `IPropertyChecker` interface, and it is agnostic about whether this is done through a bitmap, merkle tree, or any other on-chain property.
 
-### Overrides
-For projects that want to work more closely with pool creators, sudoAMM v2 introduces the Override. 
+### Settings
+For projects that want to work more closely with pool creators, sudoAMM v2 introduces a project-controlled Setting. 
 
-An Override is contract that enforces specific requirements for pools that opt into them. For example, an Override might ask that assets stay locked in the pool for 90 days, collect an upfront fee, as well as a 50/50 split of trading fees. In return for adhering to an Override, projects can configure a separate royalty amount for these pools to encourage more trading.
+A Setting is contract that enforces specific requirements for pools that opt into them. For example, a Setting might ask that assets stay locked in the pool for 90 days, collect an upfront fee, as well as a 50/50 split of trading fees. In return for adhering to a Setting, projects can configure a separate royalty amount for these pools to encourage more trading.
 
-Overrides are an *opt-in* feature that are always configured by a collection's owner. 
+Settings are an *opt-in* feature that are always configured by a collection's owner. 
 
-The sudoAMM v2 repo includes a configurable Override template ready to use out of the box, with choices for direct payment, lock duration, and fee split. Project owners are free to create their own Overrides for more bespoke conditions if they so choose.
+The sudoAMM v2 repo includes a configurable Setting template ready to use out of the box, with choices for direct payment, lock duration, and fee split. Project owners are free to create their own Setting for more bespoke conditions if they so choose.
 
 ### ERC1155 Support
 Pools can now also be made for ERC1155<>ETH or ERC1155<>ERC20 pairs. Pools for ERC1155 assets will specify a specific ID in the ERC1155 collection that they buy or sell. Both ERC1155 and ERC721 pool types now inherit from the base `LSSVMPair` class.

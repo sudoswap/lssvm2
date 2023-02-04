@@ -499,10 +499,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *      @param pairAddress The address of the Pair contract
      */
     function enableSettingsForPair(address settings, address pairAddress) public {
-        require(
-            isPair(pairAddress, PairVariant.ERC721_ERC20) || isPair(pairAddress, PairVariant.ERC721_ETH),
-            "Invalid pair address"
-        );
+        require(isPair(pairAddress, LSSVMPair(pairAddress).pairVariant()), "Invalid pair address");
         LSSVMPair pair = LSSVMPair(pairAddress);
         require(pair.owner() == msg.sender, "Msg sender is not pair owner");
         require(settingsForCollection[address(pair.nft())][settings], "Settings not enabled for collection");
@@ -518,10 +515,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *      @param pairAddress The address of the Pair contract
      */
     function disableSettingsForPair(address settings, address pairAddress) public {
-        require(
-            isPair(pairAddress, PairVariant.ERC721_ERC20) || isPair(pairAddress, PairVariant.ERC721_ETH),
-            "Invalid pair address"
-        );
+        require(isPair(pairAddress, LSSVMPair(pairAddress).pairVariant()), "Invalid pair address");
         require(settingsForPair[pairAddress] == settings, "Settings not enabled for pair");
         LSSVMPair pair = LSSVMPair(pairAddress);
         require(pair.owner() == msg.sender, "Msg sender is not pair owner");
@@ -663,7 +657,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
                 ++i;
             }
         }
-        if (isPair(recipient, PairVariant.ERC721_ETH) || isPair(recipient, PairVariant.ERC721_ERC20)) {
+        if (isPair(recipient, LSSVMPair(recipient).pairVariant())) {
             emit NFTDeposit(recipient, ids);
         }
     }
