@@ -38,6 +38,11 @@ The sudoAMM v2 repo includes a configurable Setting template ready to use out of
 ### ERC1155 Support
 Pools can now also be made for ERC1155<>ETH or ERC1155<>ERC20 pairs. Pools for ERC1155 assets will specify a specific ID in the ERC1155 collection that they buy or sell. Both ERC1155 and ERC721 pool types now inherit from the base `LSSVMPair` class.
 
+### Misc
+- TRADE pools can now set a separate `feeRecipient` to receive swap fees on each swap. Pools can also continue to keep fee balances internally if desired.
+- Improved events for tracking NFTs swapped in or out
+- A new `VeryFastRouter` which allows for handling all swap types (i.e. ERC721<>ETH, ERC721<>ERC20, ERC1155<>ETH, ERC1155<>ERC20), as well as an efficient method for handling **partial fills** when buying/selling multiple items from the same pool.
+
 ## Building/Testing
 
 ```

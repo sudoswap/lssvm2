@@ -196,7 +196,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         // Send NFTs to recipient
         uint256 numNFTs = nftIds.length;
         for (uint256 i; i < numNFTs;) {
-            _nft.safeTransferFrom(address(this), nftRecipient, nftIds[i]);
+            _nft.transferFrom(address(this), nftRecipient, nftIds[i]);
 
             unchecked {
                 ++i;
