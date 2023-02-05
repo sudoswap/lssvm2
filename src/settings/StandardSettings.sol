@@ -164,16 +164,18 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
     function reclaimPair(address pairAddress) public {
         PairInfo memory pairInfo = pairInfos[pairAddress];
 
-        // Verify that the current time is past the unlock time
-        require(block.timestamp > pairInfo.unlockTime, "Lockup not over");
-
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 
         // Verify that the caller is the previous pair owner or admin of the NFT collection
-        require(
-            msg.sender == pairInfo.prevOwner || pairFactory.authAllowedForToken(address(pair.nft()), msg.sender),
-            "Not prev owner or collection admin"
-        );
+        if (msg.sender == pairInfo.prevOwner) {
+          // If previous owner,
+          // Verify that the current time is past the unlock time
+          require(block.timestamp > pairInfo.unlockTime, "Lockup not over");
+        }
+        // Otherwise, if not an authorized address, revert
+        else if (! pairFactory.authAllowedForToken(address(pair.nft()), msg.sender)) {
+          revert("Not prev owner or collection admin");
+        }
 
         // Split fees (if applicable)
         if (
@@ -292,11 +294,11 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
     }
 
     /**
-     * @notice Allows owner to bulk withdraw trade fees from a series of Splitters
+     * @notice Allows owners or pair owners to bulk withdraw trade fees from a series of Splitters
      * @param splitterAddresses List of addresses of Splitters to withdraw from
      * @param isETHPair If the underlying Splitter's pair is an ETH pair or not
      */
-    function bulkWithdrawFees(address[] calldata splitterAddresses, bool[] calldata isETHPair) external onlyOwner {
+    function bulkWithdrawFees(address[] calldata splitterAddresses, bool[] calldata isETHPair) external {
         for (uint256 i; i < splitterAddresses.length;) {
             Splitter splitter = Splitter(payable(splitterAddresses[i]));
             if (isETHPair[i]) {

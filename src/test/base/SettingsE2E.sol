@@ -184,6 +184,28 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         assertEq(royaltyBps, 0);
     }
 
+    function test_reclaimPairBeforeLockupAsOwner() public {
+        factory.toggleSettingsForCollection(address(settings), address(test721), true);
+
+        address newOwner = address(12345);
+        pair.transferOwnership(newOwner, "");
+        
+        // Give the new owner enough funds to opt into the settings
+        vm.deal(newOwner, 10 ether);
+
+        // Pretend to be the new owner
+        vm.prank(newOwner);
+        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
+
+        // Reclaim the pair as the settings owner
+        settings.reclaimPair(address(pair));
+        assertEq(factory.settingsForPair(address(pair)), address(0));
+        (bool settingsEnabled, uint96 royaltyBps) = factory.getSettingsForPair(address(pair));
+        assertEq(settingsEnabled, false);
+        assertEq(royaltyBps, 0);
+        assertEq(pair.owner(), newOwner);
+    }
+
     function test_disableSettingsForPairNotPair() public {
         vm.expectRevert(bytes(""));
         factory.disableSettingsForPair(address(this), address(this));
