@@ -5,6 +5,7 @@ remappings = [
   "manifoldxyz/=lib/royalty-registry-solidity/contracts/",
   "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
   "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+  "create3-factory/=lib/create3-factory/src/",
 ]
 verbosity = 1
 

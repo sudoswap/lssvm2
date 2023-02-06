@@ -189,7 +189,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
 
         address newOwner = address(12345);
         pair.transferOwnership(newOwner, "");
-        
+
         // Give the new owner enough funds to opt into the settings
         vm.deal(newOwner, 10 ether);
 

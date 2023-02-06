@@ -13,7 +13,6 @@ import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
 
 contract VeryFastRouter {
-
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
@@ -40,10 +39,10 @@ contract VeryFastRouter {
     }
 
     struct Order {
-      BuyOrderWithPartialFill[] buyOrders;
-      SellOrder[] sellOrders;
-      address payable tokenRecipient;
-      bool recycleETH;
+        BuyOrderWithPartialFill[] buyOrders;
+        SellOrder[] sellOrders;
+        address payable tokenRecipient;
+        bool recycleETH;
     }
 
     constructor(ILSSVMPairFactoryLike _factory) {
@@ -52,8 +51,12 @@ contract VeryFastRouter {
 
     /* @dev Meant to be used as a client-side utility
      * Given a pair and a number of items to buy, calculate the max price paid for 1 up to numNFTs to buy
-     */ 
-    function getNFTQuoteForBuyOrderWithPartialFill(LSSVMPair pair, uint256 numNFTs) external view returns (uint256[] memory) {
+     */
+    function getNFTQuoteForBuyOrderWithPartialFill(LSSVMPair pair, uint256 numNFTs)
+        external
+        view
+        returns (uint256[] memory)
+    {
         uint256[] memory prices = new uint256[](numNFTs);
         uint128 spotPrice = pair.spotPrice();
         uint128 delta = pair.delta();
@@ -74,8 +77,12 @@ contract VeryFastRouter {
 
     /* @dev Meant to be used as a client-side utility
      * Given a pair and a number of items to buy, calculate the max price paid for 1 up to numNFTs to buy
-     */ 
-    function getNFTQuoteForSellOrderWithPartialFill(LSSVMPair pair, uint256 numNFTs) external view returns (uint256[] memory) {
+     */
+    function getNFTQuoteForSellOrderWithPartialFill(LSSVMPair pair, uint256 numNFTs)
+        external
+        view
+        returns (uint256[] memory)
+    {
         uint256[] memory prices = new uint256[](numNFTs);
         uint128 spotPrice = pair.spotPrice();
         uint128 delta = pair.delta();
@@ -99,29 +106,35 @@ contract VeryFastRouter {
      * Handles selling NFTs for tokens or ETH
      * Handles buying NFTs with tokens or ETH,
      */
-     function swap(Order calldata swapOrder) external payable {
+    function swap(Order calldata swapOrder) external payable {
         uint256 ethAmount = msg.value;
 
         // Go through each sell order
-        for (uint i; i < swapOrder.sellOrders.length; i++) {
+        for (uint256 i; i < swapOrder.sellOrders.length; i++) {
             SellOrder calldata order = swapOrder.sellOrders[i];
             LSSVMPair pair = order.pair;
 
             // If the price seen is what we expect it to be...
             if (pair.spotPrice() == order.expectedSpotPrice) {
-
                 // If the pair is an ETH pair and we opt into recycling ETH, add the output to our total accrued
                 if (order.isETHSell && swapOrder.recycleETH) {
-
                     uint256 outputAmount;
 
                     // Pass in params for property checking if needed
                     // Then do the swap with the same minExpectedTokenOutput amount
                     if (order.doPropertyCheck) {
-                        outputAmount = ILSSVMPairERC721(address(pair)).swapNFTsForToken(order.nftIds, order.minExpectedTokenOutput, payable(address(this)), true, msg.sender, order.propertyCheckParams);
-                    }
-                    else {
-                        outputAmount = pair.swapNFTsForToken(order.nftIds, order.minExpectedTokenOutput, payable(address(this)), true, msg.sender);
+                        outputAmount = ILSSVMPairERC721(address(pair)).swapNFTsForToken(
+                            order.nftIds,
+                            order.minExpectedTokenOutput,
+                            payable(address(this)),
+                            true,
+                            msg.sender,
+                            order.propertyCheckParams
+                        );
+                    } else {
+                        outputAmount = pair.swapNFTsForToken(
+                            order.nftIds, order.minExpectedTokenOutput, payable(address(this)), true, msg.sender
+                        );
                     }
 
                     // Accumulate ETH amount
@@ -132,10 +145,18 @@ contract VeryFastRouter {
                     // Pass in params for property checking if needed
                     // Then do the swap with the same minExpectedTokenOutput amount
                     if (order.doPropertyCheck) {
-                        ILSSVMPairERC721(address(pair)).swapNFTsForToken(order.nftIds, order.minExpectedTokenOutput, swapOrder.tokenRecipient, true, msg.sender, order.propertyCheckParams);
-                    }
-                    else {
-                        pair.swapNFTsForToken(order.nftIds, order.minExpectedTokenOutput, swapOrder.tokenRecipient, true, msg.sender);
+                        ILSSVMPairERC721(address(pair)).swapNFTsForToken(
+                            order.nftIds,
+                            order.minExpectedTokenOutput,
+                            swapOrder.tokenRecipient,
+                            true,
+                            msg.sender,
+                            order.propertyCheckParams
+                        );
+                    } else {
+                        pair.swapNFTsForToken(
+                            order.nftIds, order.minExpectedTokenOutput, swapOrder.tokenRecipient, true, msg.sender
+                        );
                     }
                 }
             }
@@ -148,14 +169,16 @@ contract VeryFastRouter {
         }
 
         // Go through each buy order
-        for (uint i; i < swapOrder.buyOrders.length; i++) {
+        for (uint256 i; i < swapOrder.buyOrders.length; i++) {
             BuyOrderWithPartialFill calldata order = swapOrder.buyOrders[i];
             LSSVMPair pair = order.pair;
 
             // If the spot price seen is what we expect it to be...
             if (pair.spotPrice() == order.expectedSpotPrice) {
                 // Then do a direct swap for all items we want
-                uint256 inputAmount = pair.swapTokenForSpecificNFTs{value: order.ethAmount}(order.nftIds, order.maxInputAmount, swapOrder.tokenRecipient, true, msg.sender);
+                uint256 inputAmount = pair.swapTokenForSpecificNFTs{value: order.ethAmount}(
+                    order.nftIds, order.maxInputAmount, swapOrder.tokenRecipient, true, msg.sender
+                );
 
                 // Deduct ETH amount if it's an ETH swap
                 if (order.ethAmount > 0) {
@@ -164,11 +187,11 @@ contract VeryFastRouter {
             }
             // Otherwise, we need to do some partial fill calculations first
             else {
-                (uint256 numItemsToFill, uint256 priceToFillAt) = _findMaxFillableAmtForBuy(pair, order.nftIds.length, order.maxCostPerNumNFTs, protocolFeeMultiplier);
+                (uint256 numItemsToFill, uint256 priceToFillAt) =
+                    _findMaxFillableAmtForBuy(pair, order.nftIds.length, order.maxCostPerNumNFTs, protocolFeeMultiplier);
 
                 // Continue if we can fill at least 1 item
                 if (numItemsToFill > 0) {
-                    
                     // Set ETH amount to send (is 0 if it's an ERC20 swap)
                     uint256 ethToSendForBuy;
                     if (order.ethAmount > 0) {
@@ -179,22 +202,23 @@ contract VeryFastRouter {
 
                     // If ERC721 swap
                     if (order.isERC721) {
-
                         // Get list of actually valid ids to buy
                         uint256[] memory availableIds = _findAvailableIds(pair, numItemsToFill, order.nftIds);
 
-                        inputAmount = pair.swapTokenForSpecificNFTs{value: ethToSendForBuy}(availableIds, priceToFillAt, swapOrder.tokenRecipient, true, msg.sender);
-
+                        inputAmount = pair.swapTokenForSpecificNFTs{value: ethToSendForBuy}(
+                            availableIds, priceToFillAt, swapOrder.tokenRecipient, true, msg.sender
+                        );
                     }
                     // If ERC1155 swap
                     else {
-                        
-                        // Set the amount to buy 
+                        // Set the amount to buy
                         uint256[] memory erc1155SwapAmount = new uint256[](1);
                         erc1155SwapAmount[0] = numItemsToFill;
 
                         // Do the 1155 swap, with the modified amount to buy
-                        inputAmount = pair.swapTokenForSpecificNFTs{value: ethToSendForBuy}(erc1155SwapAmount, priceToFillAt, swapOrder.tokenRecipient, true, msg.sender);
+                        inputAmount = pair.swapTokenForSpecificNFTs{value: ethToSendForBuy}(
+                            erc1155SwapAmount, priceToFillAt, swapOrder.tokenRecipient, true, msg.sender
+                        );
                     }
 
                     // Deduct ETH amount if it's an ETH swap
@@ -205,7 +229,7 @@ contract VeryFastRouter {
             }
         }
 
-        // Send excess ETH back to token recipient 
+        // Send excess ETH back to token recipient
         if (ethAmount > 0) {
             payable(swapOrder.tokenRecipient).safeTransferETH(ethAmount);
         }
@@ -225,9 +249,13 @@ contract VeryFastRouter {
      *   @param maxCostPerNumNFTs The user's specified maximum price to pay for filling a number of NFTs
      *   @dev Note that maxPricesPerNumNFTs is 0-indexed
      */
-     function _findMaxFillableAmtForBuy(LSSVMPair pair, uint256 maxNumNFTs, uint256[] memory maxCostPerNumNFTs, uint256 protocolFeeMultiplier) internal view returns (uint256 numItemsToFill, uint256 priceToFillAt) {
-
-         // Set start and end indices
+    function _findMaxFillableAmtForBuy(
+        LSSVMPair pair,
+        uint256 maxNumNFTs,
+        uint256[] memory maxCostPerNumNFTs,
+        uint256 protocolFeeMultiplier
+    ) internal view returns (uint256 numItemsToFill, uint256 priceToFillAt) {
+        // Set start and end indices
         uint256 start = 1;
         uint256 end = maxNumNFTs;
 
@@ -238,34 +266,41 @@ contract VeryFastRouter {
 
         // Perform binary search
         while (start <= end) {
-
             // uint256 numItems = (start + end)/2; (but we hard-code it below to avoid stack too deep)
 
             // We check the price to buy index + 1
-            (CurveErrorCodes.Error error,
-            /* newSpotPrice */,
-            /* newDelta */,
-            uint256 currentCost,
-            /* tradeFee */,
-            /* protocolFee */
-            ) = pair.bondingCurve().getBuyInfo(spotPrice, delta, (start + end)/2, feeMultiplier, protocolFeeMultiplier);
+            (
+                CurveErrorCodes.Error error,
+                /* newSpotPrice */
+                ,
+                /* newDelta */
+                ,
+                uint256 currentCost,
+                /* tradeFee */
+                ,
+                /* protocolFee */
+            ) = pair.bondingCurve().getBuyInfo(
+                spotPrice, delta, (start + end) / 2, feeMultiplier, protocolFeeMultiplier
+            );
 
             // If the bonding curve has a math error, or
-            // If the current price is too expensive relative to our max cost, 
+            // If the current price is too expensive relative to our max cost,
             // then we recurse on the left half (i.e. less items)
-            if (error != CurveErrorCodes.Error.OK || currentCost > maxCostPerNumNFTs[(start + end)/2 - 1 /* this is the max cost we are willing to pay, zero-indexed */]) {
-                end = (start + end)/2 - 1;
+            if (
+                error != CurveErrorCodes.Error.OK || currentCost > maxCostPerNumNFTs[(start + end) / 2 - 1] /* this is the max cost we are willing to pay, zero-indexed */
+            ) {
+                end = (start + end) / 2 - 1;
             }
             // Otherwise, we recurse on the right half (i.e. more items)
             else {
-                start = (start + end)/2 + 1;
-                numItemsToFill = (start + end)/2;
+                start = (start + end) / 2 + 1;
+                numItemsToFill = (start + end) / 2;
                 priceToFillAt = currentCost;
             }
         }
-     }
+    }
 
-     /**
+    /**
      *   @dev Performs a binary search to find the largest value where maxOutputPerNumNFTs is still less than
      *   the pair's bonding curve's getSellInfo() value.
      *   @param pair The pair to calculate partial fill values for
@@ -273,8 +308,12 @@ contract VeryFastRouter {
      *   @param maxOutputPerNumNFTs The user's specified maximum price to pay for filling a number of NFTs
      *   @dev Note that maxOutputPerNumNFTs is 0-indexed
      */
-     function _findMaxFillableAmtForSell(LSSVMPair pair, uint256 maxNumNFTs, uint256[] memory maxOutputPerNumNFTs, uint256 protocolFeeMultiplier) internal view returns (uint256 numItemsToFill, uint256 priceToFillAt) {
-
+    function _findMaxFillableAmtForSell(
+        LSSVMPair pair,
+        uint256 maxNumNFTs,
+        uint256[] memory maxOutputPerNumNFTs,
+        uint256 protocolFeeMultiplier
+    ) internal view returns (uint256 numItemsToFill, uint256 priceToFillAt) {
         // Set start and end indices
         uint256 start = 1;
         uint256 end = maxNumNFTs;
@@ -288,9 +327,9 @@ contract VeryFastRouter {
         uint256 tokenBalance;
 
         // TODO: implement
-     }
+    }
 
-     /**
+    /**
      *   @dev Checks ownership of all desired NFT IDs to see which ones are still fillable
      *   @param pair The pair to check for ownership
      *   @param maxIdsNeeded The maximum amount of NFTs we want, guaranteed to be up to potentialIds.length, but could be less
@@ -309,7 +348,7 @@ contract VeryFastRouter {
         // Go through each potential ID, and check to see if it's still owned by the pair
         // If it is, record the ID
         // Return early if we found all the IDs we need
-        for (uint i; i < maxIdsNeeded; i++) {
+        for (uint256 i; i < maxIdsNeeded; i++) {
             if (nft.ownerOf(potentialIds[i]) == address(pair)) {
                 idsThatExist[numIdsFound] = potentialIds[i];
                 numIdsFound += 1;
@@ -321,11 +360,11 @@ contract VeryFastRouter {
         // Otherwise, we didn't find enough IDs, so we need to return a subset
         if (numIdsFound < maxIdsNeeded) {
             uint256[] memory allIdsFound = new uint256[](numIdsFound);
-            for (uint i; i < numIdsFound; i++) {
+            for (uint256 i; i < numIdsFound; i++) {
                 allIdsFound[i] = idsThatExist[i];
             }
             return allIdsFound;
-        } 
+        }
     }
 
     /**

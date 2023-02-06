@@ -134,8 +134,8 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
 
         // Enable settings in factory contract. This also validates that msg.sender is a valid pair.
         try pairFactory.enableSettingsForPair(address(this), msg.sender) {}
-        catch(bytes memory) {
-          revert("Pair verification failed");
+        catch (bytes memory) {
+            revert("Pair verification failed");
         }
 
         // Store the original owner, unlock date, and old fee recipient
@@ -168,13 +168,12 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
 
         // Verify that the caller is the previous pair owner or admin of the NFT collection
         if (msg.sender == pairInfo.prevOwner) {
-          // If previous owner,
-          // Verify that the current time is past the unlock time
-          require(block.timestamp > pairInfo.unlockTime, "Lockup not over");
+            // If previous owner, verify that the current time is past the unlock time
+            require(block.timestamp > pairInfo.unlockTime, "Lockup not over");
         }
         // Otherwise, if not an authorized address, revert
-        else if (! pairFactory.authAllowedForToken(address(pair.nft()), msg.sender)) {
-          revert("Not prev owner or collection admin");
+        else if (!pairFactory.authAllowedForToken(address(pair.nft()), msg.sender)) {
+            revert("Not prev owner or collection admin");
         }
 
         // Split fees (if applicable)
