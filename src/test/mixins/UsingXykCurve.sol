@@ -18,10 +18,9 @@ abstract contract UsingXykCurve is Configurable {
 
     function modifyDelta(uint64 delta, uint8 numItems) public pure override returns (uint64) {
         if (numItems >= delta) {
-          return uint64(numItems) + 1;
-        }
-        else {
-          return delta;
+            return uint64(numItems) + 1;
+        } else {
+            return delta;
         }
     }
 

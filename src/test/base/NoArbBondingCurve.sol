@@ -177,7 +177,8 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
 
         // buy back the NFTs just sold to the pair
         {
-            (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice, pair.delta(), numItems, 0, protocolFeeMultiplier);
+            (,,, uint256 inputAmount,,) =
+                bondingCurve.getBuyInfo(spotPrice, pair.delta(), numItems, 0, protocolFeeMultiplier);
             pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
                 numNFTs, inputAmount, address(this), false, address(0)
             );
@@ -270,7 +271,6 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
      * @dev Ensures buying NFTs & selling them back results in no profit.
      */
     function test_bondingCurveBuySellNoProfitERC1155(uint56 spotPrice, uint64 delta, uint8 numItems) public payable {
-
         vm.assume((numItems > 0) && (numItems < 255));
 
         // modify spotPrice to be appropriate for the bonding curve

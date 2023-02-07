@@ -70,57 +70,6 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
     }
 
     /**
-     * @notice Sends token to the pair in exchange for any `numNFTs` NFTs
-     *     @dev To compute the amount of token to send, call bondingCurve.getBuyInfo.
-     *     This swap function is meant for users who are ID agnostic
-     *     @param numNFTs The number of NFTs to purchase
-     *     @param maxExpectedTokenInput The maximum acceptable cost from the sender. If the actual
-     *     amount is greater than this value, the transaction will be reverted.
-     *     @param nftRecipient The recipient of the NFTs
-     *     @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
-     *     ETH pairs.
-     *     @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
-     *     ETH pairs.
-     *     @return inputAmount The amount of token used for purchase
-     */
-    function swapTokenForAnyNFTs(
-        uint256 numNFTs,
-        uint256 maxExpectedTokenInput,
-        address nftRecipient,
-        bool isRouter,
-        address routerCaller
-    ) external payable virtual nonReentrant returns (uint256 inputAmount) {
-        // Store locally to remove extra calls
-        ILSSVMPairFactoryLike _factory = factory();
-        ICurve _bondingCurve = bondingCurve();
-        IERC1155 _nft = IERC1155(nft());
-
-        // Input validation
-        {
-            PoolType _poolType = poolType();
-            require(_poolType == PoolType.NFT || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(
-                (numNFTs > 0) && (numNFTs <= _nft.balanceOf(address(this), nftId())),
-                "Ask for > 0 and <= balanceOf NFTs"
-            );
-        }
-
-        // Call bonding curve for pricing information
-        uint256 tradeFee;
-        uint256 protocolFee;
-        (tradeFee, protocolFee, inputAmount) =
-            _calculateBuyInfoAndUpdatePoolParams(numNFTs, maxExpectedTokenInput, _bondingCurve, _factory);
-
-        _pullTokenInputAndPayProtocolFee(nftId(), inputAmount, tradeFee, isRouter, routerCaller, _factory, protocolFee);
-
-        _sendAnyNFTsToRecipient(_nft, nftRecipient, numNFTs);
-
-        _refundTokenToSender(inputAmount);
-
-        emit SwapNFTOutPair(inputAmount, numNFTs);
-    }
-
-    /**
      * @notice Sends a set of NFTs to the pair in exchange for token
      *     @dev To compute the amount of token to that will be received, call bondingCurve.getSellInfo.
      *     @param numNFTs The number of NFTs to swap
@@ -285,7 +234,6 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
                 if (ids[i] == _nftId) {
                     numPairNFTsWithdrawn += amounts[i];
                 }
-
                 unchecked {
                     ++i;
                 }

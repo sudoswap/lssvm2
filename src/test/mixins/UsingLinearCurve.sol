@@ -15,7 +15,7 @@ abstract contract UsingLinearCurve is Configurable {
         return delta;
     }
 
-    function modifyDelta(uint64 delta, uint8 ) public pure override returns (uint64) {
+    function modifyDelta(uint64 delta, uint8) public pure override returns (uint64) {
         return delta;
     }
 

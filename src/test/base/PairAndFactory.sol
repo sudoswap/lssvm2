@@ -25,6 +25,8 @@ import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
 abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, ConfigurableWithRoyalties {
+    event NFTWithdrawal(uint256 numNFTs);
+
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 1 ether;
     uint256 tokenAmount = 10 ether;
@@ -263,14 +265,19 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
     }
 
     function test_rescueTokensERC1155() public {
-        test1155.mint(address(pair1155), 1, 2);
+        uint256 id = 0;
+        test1155.mint(address(pair1155), id, 2);
+        assertEq(test1155.balanceOf(address(this), id), 0);
 
-        uint256[] memory id = new uint256[](1);
-        id[0] = 1;
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = id;
         uint256[] memory amount = new uint256[](1);
         amount[0] = 2;
 
-        pair1155.withdrawERC1155(test1155, id, amount);
+        vm.expectEmit(true, true, true, true);
+        emit NFTWithdrawal(2);
+        pair1155.withdrawERC1155(test1155, ids, amount);
+        assertEq(test1155.balanceOf(address(this), id), 2);
         pair1155.withdrawERC20(testERC20, 1 ether);
     }
 

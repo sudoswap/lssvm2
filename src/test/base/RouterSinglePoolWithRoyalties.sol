@@ -61,6 +61,7 @@ abstract contract RouterSinglePoolWithRoyalties is
         test721.setApprovalForAll(address(factory), true);
         test721.setApprovalForAll(address(router), true);
         test1155.setApprovalForAll(address(factory), true);
+        test1155.setApprovalForAll(address(router), true);
 
         // Setup pair parameters
         uint128 delta = 0 ether;
@@ -108,6 +109,7 @@ abstract contract RouterSinglePoolWithRoyalties is
         for (uint256 i = numInitialNFTs + 1; i <= 2 * numInitialNFTs; i++) {
             test721.mint(address(this), i);
         }
+        test1155.mint(address(this), startingId, numInitialNFTs);
     }
 
     function test_swapTokenForSingleSpecificNFT_ERC721() public {
@@ -185,7 +187,7 @@ abstract contract RouterSinglePoolWithRoyalties is
         assertEq(getBalance(ROYALTY_RECEIVER), 0);
     }
 
-    function test_swapSingleNFTForTokenWithMultipleRoyaltyReceivers() public {
+    function test_swapSingleNFTForTokenWithMultipleRoyaltyReceivers_ERC721() public {
         address secondReceiver = vm.addr(2);
 
         // Setup the nft collection to use Manifold's multiple royalty receivers
@@ -211,6 +213,39 @@ abstract contract RouterSinglePoolWithRoyalties is
         nftIds[0] = numInitialNFTs + 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
+        router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
+
+        // check that royalty has been issued only to the first receiver
+        assertEq(getBalance(ROYALTY_RECEIVER), royaltyAmount1);
+        assertEq(getBalance(secondReceiver), royaltyAmount2);
+    }
+
+    function test_swapSingleNFTForTokenWithMultipleRoyaltyReceivers_ERC1155() public {
+        address secondReceiver = vm.addr(2);
+
+        // Setup the nft collection to use Manifold's multiple royalty receivers
+        address payable[] memory receivers = new address payable[](2);
+        receivers[0] = payable(ROYALTY_RECEIVER);
+        receivers[1] = payable(secondReceiver);
+        uint256[] memory bps = new uint256[](2);
+        bps[0] = 750;
+        bps[1] = 250;
+        TestManifold testManifold = new TestManifold(receivers, bps);
+        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(
+            address(test1155), address(testManifold)
+        );
+
+        (,,, uint256 outputAmount,) = pair1155.getSellNFTQuote(1);
+
+        // calculate royalty total (750 + 250) and rm it from the output amount
+        uint256 royaltyAmount1 = calcRoyalty(outputAmount, 750);
+        uint256 royaltyAmount2 = calcRoyalty(outputAmount, 250);
+        outputAmount -= (royaltyAmount1 + royaltyAmount2);
+
+        uint256[] memory numNFTs = new uint256[](1);
+        numNFTs[0] = 1;
+        LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair1155, nftIds: numNFTs});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
 
         // check that royalty has been issued only to the first receiver
