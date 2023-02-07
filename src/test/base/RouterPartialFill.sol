@@ -57,7 +57,7 @@ abstract contract RouterPartialFill is Test, ERC721Holder, ConfigurableWithRoyal
         uint256[] memory empty = new uint256[](0);
         (uint128 spotPrice, uint128 delta) = getParamsForPartialFillTest();
         SPOT_PRICE = spotPrice;
-        pair = this.setupPair{value: 10 ether}(
+        pair = this.setupPairERC721{value: 10 ether}(
             factory,
             test721,
             bondingCurve,

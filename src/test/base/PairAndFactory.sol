@@ -21,22 +21,25 @@ import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {TestPairManager} from "../../mocks/TestPairManager.sol";
 import {TestPairManager2} from "../../mocks/TestPairManager2.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
-abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyalties, ERC1155Holder {
+abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, ConfigurableWithRoyalties {
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 1 ether;
     uint256 tokenAmount = 10 ether;
     uint256 numItems = 2;
+    uint256 startingId;
     uint256[] idList;
     IERC721 test721;
-    Test1155 test1155;
+    IERC1155Mintable test1155;
     ERC20 testERC20;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
     address payable constant feeRecipient = payable(address(69));
     uint256 constant protocolFeeMultiplier = 3e15;
     LSSVMPair pair;
+    LSSVMPair pair1155;
     TestPairManager pairManager;
     TestPairManager2 pairManager2;
 
@@ -45,16 +48,20 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
+        test1155 = setup1155();
         royaltyEngine = setupRoyaltyEngine();
         factory = setupFactory(royaltyEngine, feeRecipient, protocolFeeMultiplier);
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);
+        test1155.setApprovalForAll(address(factory), true);
+
         for (uint256 i = 1; i <= numItems; i++) {
             IERC721Mintable(address(test721)).mint(address(this), i);
             idList.push(i);
         }
+        test1155.mint(address(this), startingId, numItems);
 
-        pair = this.setupPair{value: modifyInputAmount(tokenAmount)}(
+        pair = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
             factory,
             test721,
             bondingCurve,
@@ -67,16 +74,34 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
             tokenAmount,
             address(0)
         );
-        test1155 = new Test1155();
+
+        pair1155 = this.setupPairERC1155{value: modifyInputAmount(tokenAmount)}(
+            CreateERC1155PairParams(
+                factory,
+                test1155,
+                bondingCurve,
+                payable(address(0)),
+                LSSVMPair.PoolType.TRADE,
+                delta,
+                0,
+                spotPrice,
+                startingId,
+                numItems,
+                tokenAmount,
+                address(0)
+            )
+        );
+
         testERC20 = ERC20(address(new Test20()));
         IMintable(address(testERC20)).mint(address(pair), 1 ether);
+        IMintable(address(testERC20)).mint(address(pair1155), 1 ether);
         pairManager = new TestPairManager();
         pairManager2 = new TestPairManager2();
     }
 
     function testGas_basicDeploy() public {
         uint256[] memory empty;
-        this.setupPair{value: modifyInputAmount(tokenAmount)}(
+        this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
             factory,
             test721,
             bondingCurve,
@@ -95,23 +120,10 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
      * Test LSSVMPair owner functions
      */
 
-    function test_defaultAssetRecipientForPool() public {
+    function test_defaultAssetRecipientForPoolERC721() public {
         uint256[] memory empty;
-        LSSVMPair tradePool = this.setupPair{value: modifyInputAmount(tokenAmount)}(
-            factory,
-            test721,
-            bondingCurve,
-            payable(address(0)),
-            LSSVMPair.PoolType.TRADE,
-            delta,
-            0,
-            spotPrice,
-            empty,
-            tokenAmount,
-            address(0)
-        );
-        assertEq(tradePool.getAssetRecipient(), address(tradePool));
-        LSSVMPair nftPool = this.setupPair{value: modifyInputAmount(tokenAmount)}(
+        assertEq(pair.getAssetRecipient(), address(pair)); // TRADE pools will always recieve the asset themselves
+        LSSVMPair nftPool = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
             factory,
             test721,
             bondingCurve,
@@ -125,7 +137,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
             address(0)
         );
         assertEq(nftPool.getAssetRecipient(), nftPool.owner());
-        LSSVMPair tokenPool = this.setupPair{value: modifyInputAmount(tokenAmount)}(
+        LSSVMPair tokenPool = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
             factory,
             test721,
             bondingCurve,
@@ -141,63 +153,136 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         assertEq(tokenPool.getAssetRecipient(), tokenPool.owner());
     }
 
-    function test_defaultFeeRecipient() public {
-        uint256[] memory empty;
-        LSSVMPair tradePool = this.setupPair{value: modifyInputAmount(tokenAmount)}(
-            factory,
-            test721,
-            bondingCurve,
-            payable(address(0)),
-            LSSVMPair.PoolType.TRADE,
-            delta,
-            0,
-            spotPrice,
-            empty,
-            tokenAmount,
-            address(0)
+    function test_defaultAssetRecipientForPoolERC1155() public {
+        assertEq(pair1155.getAssetRecipient(), address(pair1155)); // TRADE pools will always recieve the asset themselves
+        LSSVMPair nftPool = this.setupPairERC1155(
+            CreateERC1155PairParams(
+                factory,
+                test1155,
+                bondingCurve,
+                payable(address(0)),
+                LSSVMPair.PoolType.NFT,
+                delta,
+                0,
+                spotPrice,
+                0,
+                0,
+                modifyInputAmount(tokenAmount),
+                address(0)
+            )
         );
-        assertEq(tradePool.getFeeRecipient(), address(tradePool));
+        assertEq(nftPool.getAssetRecipient(), nftPool.owner());
+        LSSVMPair tokenPool = this.setupPairERC1155(
+            CreateERC1155PairParams(
+                factory,
+                test1155,
+                bondingCurve,
+                payable(address(0)),
+                LSSVMPair.PoolType.TOKEN,
+                delta,
+                0,
+                spotPrice,
+                0,
+                0,
+                modifyInputAmount(tokenAmount),
+                address(0)
+            )
+        );
+        assertEq(tokenPool.getAssetRecipient(), tokenPool.owner());
     }
 
-    function test_transferOwnership() public {
+    function test_defaultFeeRecipientERC721() public {
+        assertEq(pair.getFeeRecipient(), address(pair));
+    }
+
+    function test_defaultFeeRecipientERC1155() public {
+        assertEq(pair1155.getFeeRecipient(), address(pair1155));
+    }
+
+    function test_transferOwnershipERC721() public {
         pair.transferOwnership(payable(address(2)), "");
         assertEq(pair.owner(), address(2));
     }
 
-    function test_transferOwnershipToNonCallbackContract() public {
+    function test_transferOwnershipERC1155() public {
+        pair1155.transferOwnership(payable(address(2)), "");
+        assertEq(pair1155.owner(), address(2));
+    }
+
+    function test_transferOwnershipToNonCallbackContractERC721() public {
         pair.transferOwnership(payable(address(pair)), "");
         assertEq(pair.owner(), address(pair));
     }
 
-    function test_transferOwnershipCallback() public {
+    function test_transferOwnershipToNonCallbackContractERC1155() public {
+        pair1155.transferOwnership(payable(address(pair1155)), "");
+        assertEq(pair1155.owner(), address(pair1155));
+    }
+
+    function test_transferOwnershipCallbackERC721() public {
         pair.transferOwnership(address(pairManager), "");
         assertEq(pairManager.prevOwner(), address(this));
     }
 
-    function test_transferCallbackWithArgs() public {
+    function test_transferOwnershipCallbackERC1155() public {
+        pair1155.transferOwnership(address(pairManager), "");
+        assertEq(pairManager.prevOwner(), address(this));
+    }
+
+    function test_transferCallbackWithArgsERC721() public {
         pair.transferOwnership(address(pairManager2), abi.encode(42));
         assertEq(pairManager2.value(), 42);
     }
 
-    function testGas_transferNoCallback() public {
+    function test_transferCallbackWithArgsERC1155() public {
+        pair1155.transferOwnership(address(pairManager2), abi.encode(42));
+        assertEq(pairManager2.value(), 42);
+    }
+
+    function testGas_transferNoCallbackERC721() public {
         pair.transferOwnership(address(pair), "");
     }
 
-    function testFail_transferOwnership() public {
+    function testGas_transferNoCallbackERC1155() public {
+        pair1155.transferOwnership(address(pair1155), "");
+    }
+
+    function testFail_transferOwnershipERC721() public {
         pair.transferOwnership(address(1000), "");
         pair.transferOwnership(payable(address(2)), "");
     }
 
-    function test_rescueTokens() public {
+    function testFail_transferOwnershipERC1155() public {
+        pair1155.transferOwnership(address(1000), "");
+        pair1155.transferOwnership(payable(address(2)), "");
+    }
+
+    function test_rescueTokensERC721() public {
         pair.withdrawERC721(test721, idList);
         pair.withdrawERC20(testERC20, 1 ether);
     }
 
-    function testFail_tradePoolChangeFeePastMax() public {
+    function test_rescueTokensERC1155() public {
+        test1155.mint(address(pair1155), 1, 2);
+
+        uint256[] memory id = new uint256[](1);
+        id[0] = 1;
+        uint256[] memory amount = new uint256[](1);
+        amount[0] = 2;
+
+        pair1155.withdrawERC1155(test1155, id, amount);
+        pair1155.withdrawERC20(testERC20, 1 ether);
+    }
+
+    function testFail_tradePoolChangeFeePastMaxERC721() public {
         pair.changeFee(100 ether);
     }
 
-    function test_verifyPoolParams() public {
+    function testFail_tradePoolChangeFeePastMaxERC1155() public {
+        pair1155.changeFee(100 ether);
+    }
+
+    function test_verifyPoolParamsERC721() public {
         // verify pair variables
         assertEq(address(pair.nft()), address(test721));
         assertEq(address(pair.bondingCurve()), address(bondingCurve));
@@ -214,7 +299,24 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         assertEq(test721.ownerOf(1), address(pair));
     }
 
-    function test_modifyPairParams() public {
+    function test_verifyPoolParamsERC1155() public {
+        // verify pair variables
+        assertEq(address(pair1155.nft()), address(test1155));
+        assertEq(address(pair1155.bondingCurve()), address(bondingCurve));
+        assertEq(uint256(pair1155.poolType()), uint256(LSSVMPair.PoolType.TRADE));
+        assertEq(pair1155.delta(), delta);
+        assertEq(pair1155.spotPrice(), spotPrice);
+        assertEq(pair1155.owner(), address(this));
+        assertEq(pair1155.fee(), 0);
+        assertEq(pair1155.assetRecipient(), address(0));
+        assertEq(pair1155.getAssetRecipient(), address(pair1155));
+        assertEq(getBalance(address(pair1155)), tokenAmount);
+
+        // verify NFT ownership
+        assertEq(test1155.balanceOf(address(pair1155), startingId), numItems);
+    }
+
+    function test_modifyPairParamsERC721() public {
         // changing spot works as expected
         pair.changeSpotPrice(2 ether);
         assertEq(pair.spotPrice(), 2 ether);
@@ -228,7 +330,21 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         assertEq(pair.fee(), 0.2 ether);
     }
 
-    function test_multicallModifyPairParams() public {
+    function test_modifyPairParamsERC1155() public {
+        // changing spot works as expected
+        pair1155.changeSpotPrice(2 ether);
+        assertEq(pair1155.spotPrice(), 2 ether);
+
+        // changing delta works as expected
+        pair1155.changeDelta(2.2 ether);
+        assertEq(pair1155.delta(), 2.2 ether);
+
+        // // changing fee works as expected
+        pair1155.changeFee(0.2 ether);
+        assertEq(pair1155.fee(), 0.2 ether);
+    }
+
+    function test_multicallModifyPairParamsERC721() public {
         bytes[] memory calls = new bytes[](3);
         calls[0] = abi.encodeCall(pair.changeSpotPrice, (1 ether));
         calls[1] = abi.encodeCall(pair.changeDelta, (2 ether));
@@ -239,11 +355,29 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         assertEq(pair.fee(), 0.3 ether);
     }
 
-    function testFail_multicallChangeOwnership() public {
+    function test_multicallModifyPairParamsERC1155() public {
+        bytes[] memory calls = new bytes[](3);
+        calls[0] = abi.encodeCall(pair1155.changeSpotPrice, (1 ether));
+        calls[1] = abi.encodeCall(pair1155.changeDelta, (2 ether));
+        calls[2] = abi.encodeCall(pair1155.changeFee, (0.3 ether));
+        pair1155.multicall(calls, true);
+        assertEq(pair1155.spotPrice(), 1 ether);
+        assertEq(pair1155.delta(), 2 ether);
+        assertEq(pair1155.fee(), 0.3 ether);
+    }
+
+    function testFail_multicallChangeOwnershipERC721() public {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeCall(pair.transferOwnership, (address(69), ""));
         calls[1] = abi.encodeCall(pair.changeDelta, (2 ether));
         pair.multicall(calls, true);
+    }
+
+    function testFail_multicallChangeOwnershipERC1155() public {
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(pair1155.transferOwnership, (address(69), ""));
+        calls[1] = abi.encodeCall(pair1155.changeDelta, (2 ether));
+        pair1155.multicall(calls, true);
     }
 
     function test_withdraw() public {
@@ -261,6 +395,11 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         pair.call(payable(address(test721)), data);
     }
 
+    function testFail_callMint1155() public {
+        bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 1000);
+        pair1155.call(payable(address(test1155)), data);
+    }
+
     function test_callMint721() public {
         // arbitrary call (just call mint on Test721) works as expected
 
@@ -274,6 +413,17 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         assertEq(test721.ownerOf(1000), address(this));
     }
 
+    function test_callMint1155() public {
+        // add to whitelist
+        factory.setCallAllowed(payable(address(test1155)), true);
+
+        bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 0, 2, "");
+        pair1155.call(payable(address(test1155)), data);
+
+        // verify NFT ownership
+        assertEq(test1155.balanceOf(address(this), 0), 2);
+    }
+
     function test_withdraw1155() public {
         test1155.mint(address(pair), 1, 2);
         uint256[] memory ids = new uint256[](1);
@@ -285,40 +435,77 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         assertEq(IERC1155(address(test1155)).balanceOf(address(this), 1), 2);
     }
 
+    function test_withdraw721() public {
+        IERC721Mintable(address(test721)).mint(address(pair1155), 0);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 0;
+        pair1155.withdrawERC721(IERC721(address(test721)), ids);
+        assertEq(test721.ownerOf(0), address(this));
+    }
+
     /**
      * Test failure conditions
      */
 
-    function testFail_rescueTokensNotOwner() public {
+    function testFail_rescueTokensNotOwnerERC721() public {
         pair.transferOwnership(address(1000), "");
         pair.withdrawERC721(test721, idList);
         pair.withdrawERC20(testERC20, 1 ether);
     }
 
-    function testFail_changeFeeAboveMax() public {
+    function testFail_rescueTokensNotOwnerERC1155() public {
+        pair1155.transferOwnership(address(1000), "");
+        pair1155.withdrawERC721(test721, idList);
+        pair1155.withdrawERC20(testERC20, 1 ether);
+    }
+
+    function testFail_changeFeeAboveMaxERC721() public {
         pair.changeFee(100 ether);
     }
 
-    function testFail_changeSpotNotOwner() public {
+    function testFail_changeFeeAboveMax1155() public {
+        pair1155.changeFee(100 ether);
+    }
+
+    function testFail_changeSpotNotOwnerERC721() public {
         pair.transferOwnership(address(1000), "");
         pair.changeSpotPrice(2 ether);
     }
 
-    function testFail_changeDeltaNotOwner() public {
+    function testFail_changeSpotNotOwnerERC1155() public {
+        pair1155.transferOwnership(address(1000), "");
+        pair1155.changeSpotPrice(2 ether);
+    }
+
+    function testFail_changeDeltaNotOwnerERC721() public {
         pair.transferOwnership(address(1000), "");
         pair.changeDelta(2.2 ether);
     }
 
-    function testFail_changeFeeNotOwner() public {
+    function testFail_changeDeltaNotOwnerERC1155() public {
+        pair1155.transferOwnership(address(1000), "");
+        pair1155.changeDelta(2.2 ether);
+    }
+
+    function testFail_changeFeeNotOwnerERC721() public {
         pair.transferOwnership(address(1000), "");
         pair.changeFee(0.2 ether);
     }
 
-    function testFail_reInitPool() public {
+    function testFail_changeFeeNotOwnerERC1155() public {
+        pair1155.transferOwnership(address(1000), "");
+        pair1155.changeFee(0.2 ether);
+    }
+
+    function testFail_reInitPoolERC721() public {
         pair.initialize(address(0), payable(address(0)), 0, 0, 0);
     }
 
-    function testFail_swapForNFTNotInPool() public {
+    function testFail_reInitPoolERC1155() public {
+        pair.initialize(address(0), payable(address(0)), 0, 0, 0);
+    }
+
+    function testFail_swapForNFTNotInPoolERC721() public {
         (, uint128 newSpotPrice,, uint256 inputAmount,,) =
             bondingCurve.getBuyInfo(spotPrice, delta, numItems + 1, 0, protocolFeeMultiplier);
 
@@ -326,6 +513,19 @@ abstract contract PairAndFactory is Test, ERC721Holder, ConfigurableWithRoyaltie
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = 69;
         pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            nftIds, inputAmount, address(this), false, address(0)
+        );
+        spotPrice = uint56(newSpotPrice);
+    }
+
+    function testFail_swapForNFTNotInPoolERC1155() public {
+        (, uint128 newSpotPrice,, uint256 inputAmount,,) =
+            bondingCurve.getBuyInfo(spotPrice, delta, numItems + 1, 0, protocolFeeMultiplier);
+
+        // buy specific NFT not in pool
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = 69420;
+        pair1155.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             nftIds, inputAmount, address(this), false, address(0)
         );
         spotPrice = uint56(newSpotPrice);

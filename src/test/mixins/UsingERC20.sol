@@ -6,6 +6,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {Test20} from "../../mocks/Test20.sol";
@@ -17,8 +18,8 @@ import {IMintable} from "../interfaces/IMintable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
-import {NoArbBondingCurve} from "../base/NoArbBondingCurve.sol";
 import {LSSVMPairERC721} from "../../erc721/LSSVMPairERC721.sol";
+import {LSSVMPairERC1155} from "../../erc1155/LSSVMPairERC1155.sol";
 
 abstract contract UsingERC20 is Configurable, RouterCaller {
     using SafeTransferLib for ERC20;
@@ -37,7 +38,7 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         test20.safeTransfer(address(pair), amount);
     }
 
-    function setupPair(
+    function setupPairERC721(
         LSSVMPairFactory factory,
         IERC721 nft,
         ICurve bondingCurve,
@@ -85,7 +86,43 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         return pair;
     }
 
-    function setupPairWithPropertyChecker(PairCreationParamsWithPropertyChecker memory params)
+    function setupPairERC1155(CreateERC1155PairParams memory params) public payable override returns (LSSVMPair) {
+        // create ERC20 token if not already deployed
+        if (address(test20) == address(0)) {
+            test20 = new Test20();
+        }
+
+        // set approvals for factory and router
+        test20.approve(address(params.factory), type(uint256).max);
+        test20.approve(params.routerAddress, type(uint256).max);
+
+        // mint enough tokens to caller
+        IMintable(address(test20)).mint(address(this), 1e18 ether);
+
+        // initialize the pair
+        LSSVMPair pair = params.factory.createPairERC1155ERC20(
+            LSSVMPairFactory.CreateERC1155ERC20PairParams(
+                test20,
+                params.nft,
+                params.bondingCurve,
+                params.assetRecipient,
+                params.poolType,
+                params.delta,
+                params.fee,
+                params.spotPrice,
+                params.nftId,
+                params.initialNFTBalance,
+                params.initialTokenBalance
+            )
+        );
+
+        // Set approvals for pair
+        test20.approve(address(pair), type(uint256).max);
+
+        return pair;
+    }
+
+    function setupPairWithPropertyCheckerERC721(PairCreationParamsWithPropertyCheckerERC721 memory params)
         public
         payable
         override

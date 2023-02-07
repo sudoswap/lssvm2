@@ -14,15 +14,22 @@ abstract contract UsingExponentialCurve is Configurable {
     }
 
     function modifyDelta(uint64 delta) public pure override returns (uint64) {
-        uint64 ZERO_SHIFT_AMOUNT = 10000000;
         if (delta <= FixedPointMathLib.WAD) {
-            // Zero out last few decimals
-            delta = delta / ZERO_SHIFT_AMOUNT;
-            delta = delta * ZERO_SHIFT_AMOUNT;
             // Ensure minimum multiplier of 0.001 wad
-            return uint64(1001 * (FixedPointMathLib.WAD + delta) / 1000);
-        } else if (delta >= 2 * FixedPointMathLib.WAD) {
-            return uint64(2 * FixedPointMathLib.WAD);
+            return uint64(1001 * (FixedPointMathLib.WAD) / 1000);
+        } else if (delta >= 11 * FixedPointMathLib.WAD / 10) {
+            return uint64(11 * FixedPointMathLib.WAD / 10);
+        } else {
+            return delta;
+        }
+    }
+
+    function modifyDelta(uint64 delta, uint8) public pure override returns (uint64) {
+        if (delta <= FixedPointMathLib.WAD) {
+            // Ensure minimum multiplier of 0.001 wad
+            return uint64(1001 * (FixedPointMathLib.WAD) / 1000);
+        } else if (delta >= 11 * FixedPointMathLib.WAD / 10) {
+            return uint64(11 * FixedPointMathLib.WAD / 10);
         } else {
             return delta;
         }

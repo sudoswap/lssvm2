@@ -10,5 +10,8 @@ todo.txt
 /broadcast/*/31337/
 /broadcast/**/dry-run/
 
+# Line coverage
+lcov.info
+
 # Dotenv file
 .env

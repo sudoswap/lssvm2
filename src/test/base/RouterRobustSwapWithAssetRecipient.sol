@@ -61,7 +61,7 @@ abstract contract RouterRobustSwapWithAssetRecipient is Test, ERC721Holder, Conf
 
         uint256[] memory sellIDList1 = new uint256[](1);
         sellIDList1[0] = 1;
-        sellPair1 = this.setupPair{value: modifyInputAmount(1 ether)}(
+        sellPair1 = this.setupPairERC721{value: modifyInputAmount(1 ether)}(
             factory,
             test721,
             bondingCurve,
@@ -77,7 +77,7 @@ abstract contract RouterRobustSwapWithAssetRecipient is Test, ERC721Holder, Conf
 
         uint256[] memory sellIDList2 = new uint256[](1);
         sellIDList2[0] = 2;
-        sellPair2 = this.setupPair{value: modifyInputAmount(1 ether)}(
+        sellPair2 = this.setupPairERC721{value: modifyInputAmount(1 ether)}(
             factory,
             test721,
             bondingCurve,
@@ -93,7 +93,7 @@ abstract contract RouterRobustSwapWithAssetRecipient is Test, ERC721Holder, Conf
 
         uint256[] memory buyIDList1 = new uint256[](1);
         buyIDList1[0] = 3;
-        buyPair1 = this.setupPair{value: modifyInputAmount(1 ether)}(
+        buyPair1 = this.setupPairERC721{value: modifyInputAmount(1 ether)}(
             factory,
             test721,
             bondingCurve,
@@ -109,7 +109,7 @@ abstract contract RouterRobustSwapWithAssetRecipient is Test, ERC721Holder, Conf
 
         uint256[] memory buyIDList2 = new uint256[](1);
         buyIDList2[0] = 4;
-        buyPair2 = this.setupPair{value: modifyInputAmount(1 ether)}(
+        buyPair2 = this.setupPairERC721{value: modifyInputAmount(1 ether)}(
             factory,
             test721,
             bondingCurve,

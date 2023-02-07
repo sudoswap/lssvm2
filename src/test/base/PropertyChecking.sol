@@ -7,9 +7,10 @@ import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
+import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
@@ -71,11 +72,11 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
     }
 
     // Tests that swapping for an item if the pair has properties set will fail if property data is not passed in
-    function test_normalSwapFailsIfPropertyCheckerSet() public {
+    function test_normalSwapFailsIfPropertyCheckerSetERC721() public {
         RangePropertyChecker checker = propertyCheckerFactory.createRangePropertyChecker(0, 0);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+        PairCreationParamsWithPropertyCheckerERC721 memory params = PairCreationParamsWithPropertyCheckerERC721({
             factory: factory,
             nft: test721,
             bondingCurve: bondingCurve,
@@ -90,7 +91,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair =
+            this.setupPairWithPropertyCheckerERC721{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Attempt to perform a sell for item #1
         (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
@@ -106,11 +108,11 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
 
     // RangePropertyChecker
     // Tests that swapping for an item if the pair has properties set will fail if property is not fulfilled
-    function test_propertySwapFailsIfOutOfRange() public {
+    function test_propertySwapFailsIfOutOfRangeERC721() public {
         RangePropertyChecker checker = propertyCheckerFactory.createRangePropertyChecker(0, 0);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+        PairCreationParamsWithPropertyCheckerERC721 memory params = PairCreationParamsWithPropertyCheckerERC721({
             factory: factory,
             nft: test721,
             bondingCurve: bondingCurve,
@@ -125,7 +127,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair =
+            this.setupPairWithPropertyCheckerERC721{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -152,11 +155,11 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
 
     // RangePropertyChecker
     // Tests that if some tokenIds fall out of range, the entire swap will fail
-    function test_propertySwapPartialFailure() public {
+    function test_propertySwapPartialFailureERC721() public {
         RangePropertyChecker checker = propertyCheckerFactory.createRangePropertyChecker(0, 10);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+        PairCreationParamsWithPropertyCheckerERC721 memory params = PairCreationParamsWithPropertyCheckerERC721({
             factory: factory,
             nft: test721,
             bondingCurve: bondingCurve,
@@ -171,7 +174,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair =
+            this.setupPairWithPropertyCheckerERC721{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -199,11 +203,11 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
     }
 
     // Tests that swapping for an item if the pair has properties set will succeed if property is fulfilled
-    function test_propertySwapSucceedsIfInRange() public {
+    function test_propertySwapSucceedsIfInRangeERC721() public {
         RangePropertyChecker checker = propertyCheckerFactory.createRangePropertyChecker(0, 10);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+        PairCreationParamsWithPropertyCheckerERC721 memory params = PairCreationParamsWithPropertyCheckerERC721({
             factory: factory,
             nft: test721,
             bondingCurve: bondingCurve,
@@ -218,7 +222,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair =
+            this.setupPairWithPropertyCheckerERC721{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -242,7 +247,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
     }
 
     // Tests swapping behavior when a single tokenId is passsed into the merkle property checker
-    function test_merklePropertyCheckerSingleId() public {
+    function test_merklePropertyCheckerSingleIdERC721() public {
         // Create merkle tree
         uint256[2] memory tokenIds = [uint256(1), uint256(2)];
         bytes32[] memory hashes = new bytes32[](3);
@@ -261,7 +266,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         MerklePropertyChecker checker = propertyCheckerFactory.createMerklePropertyChecker(hashes[2]);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+        PairCreationParamsWithPropertyCheckerERC721 memory params = PairCreationParamsWithPropertyCheckerERC721({
             factory: factory,
             nft: test721,
             bondingCurve: bondingCurve,
@@ -276,7 +281,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair =
+            this.setupPairWithPropertyCheckerERC721{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));
@@ -302,7 +308,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
     }
 
     // Tests swapping behavior when multiple tokenIds are passed into the merkle property checker
-    function test_merklePropertyCheckerMultipleIds() public {
+    function test_merklePropertyCheckerMultipleIdsERC721() public {
         // Create merkle tree
         uint256[2] memory tokenIds = [uint256(1), uint256(2)];
         bytes32[] memory hashes = new bytes32[](3);
@@ -313,7 +319,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         MerklePropertyChecker checker = propertyCheckerFactory.createMerklePropertyChecker(hashes[2]);
 
         // Deploy a pair with the property checker set
-        PairCreationParamsWithPropertyChecker memory params = PairCreationParamsWithPropertyChecker({
+        PairCreationParamsWithPropertyCheckerERC721 memory params = PairCreationParamsWithPropertyCheckerERC721({
             factory: factory,
             nft: test721,
             bondingCurve: bondingCurve,
@@ -328,7 +334,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             propertyChecker: address(checker)
         });
 
-        LSSVMPairERC721 pair = this.setupPairWithPropertyChecker{value: this.modifyInputAmount(tokenAmount)}(params);
+        LSSVMPairERC721 pair =
+            this.setupPairWithPropertyCheckerERC721{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Mint any extra tokens as needed
         testERC20 = ERC20(address(new Test20()));

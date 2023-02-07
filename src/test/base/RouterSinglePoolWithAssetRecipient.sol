@@ -61,7 +61,7 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
 
         // Create a sell pool with a spot price of 1 eth, 10 NFTs, and no price increases
         // All stuff gets sent to assetRecipient
-        sellPair = this.setupPair{value: modifyInputAmount(10 ether)}(
+        sellPair = this.setupPairERC721{value: modifyInputAmount(10 ether)}(
             factory,
             test721,
             bondingCurve,
@@ -77,7 +77,7 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
 
         // Create a buy pool with a spot price of 1 eth, 10 NFTs, and no price increases
         // All stuff gets sent to assetRecipient
-        buyPair = this.setupPair{value: modifyInputAmount(10 ether)}(
+        buyPair = this.setupPairERC721{value: modifyInputAmount(10 ether)}(
             factory,
             test721,
             bondingCurve,

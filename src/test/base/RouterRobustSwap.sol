@@ -58,7 +58,7 @@ abstract contract RouterRobustSwap is Test, ERC721Holder, ConfigurableWithRoyalt
         // pair 1 has spot price of 0.1 TOKEN, then pair 2 has 0.2 TOKEN, and pair 3 has 0.3 TOKEN
         // Send 10 NFTs to each pair
         // (0-9), (10-19), (20-29)
-        pair1 = this.setupPair{value: modifyInputAmount(10 ether)}(
+        pair1 = this.setupPairERC721{value: modifyInputAmount(10 ether)}(
             factory,
             test721,
             bondingCurve,
@@ -77,7 +77,7 @@ abstract contract RouterRobustSwap is Test, ERC721Holder, ConfigurableWithRoyalt
             nftIndex++;
         }
 
-        pair2 = this.setupPair{value: modifyInputAmount(10 ether)}(
+        pair2 = this.setupPairERC721{value: modifyInputAmount(10 ether)}(
             factory,
             test721,
             bondingCurve,
@@ -96,7 +96,7 @@ abstract contract RouterRobustSwap is Test, ERC721Holder, ConfigurableWithRoyalt
             nftIndex++;
         }
 
-        pair3 = this.setupPair{value: modifyInputAmount(10 ether)}(
+        pair3 = this.setupPairERC721{value: modifyInputAmount(10 ether)}(
             factory,
             test721,
             bondingCurve,

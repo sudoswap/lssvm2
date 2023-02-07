@@ -391,7 +391,11 @@ contract VeryFastRouter {
         require(factory.isPair(msg.sender, variant), "Not pair");
 
         // verify caller is an ERC20 pair
-        require(variant == ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20, "Not ERC20 pair");
+        require(
+            variant == ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20
+                || variant == ILSSVMPairFactoryLike.PairVariant.ERC1155_ERC20,
+            "Not ERC20 pair"
+        );
 
         // transfer tokens to pair
         token.safeTransferFrom(from, to, amount);

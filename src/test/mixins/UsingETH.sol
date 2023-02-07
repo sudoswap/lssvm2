@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {Configurable} from "./Configurable.sol";
@@ -12,6 +13,7 @@ import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {LSSVMPairERC721} from "../../erc721/LSSVMPairERC721.sol";
+import {LSSVMPairERC1155} from "../../erc1155/LSSVMPairERC1155.sol";
 
 abstract contract UsingETH is Configurable, RouterCaller {
     function modifyInputAmount(uint256 inputAmount) public pure override returns (uint256) {
@@ -26,7 +28,7 @@ abstract contract UsingETH is Configurable, RouterCaller {
         payable(address(pair)).transfer(amount);
     }
 
-    function setupPair(
+    function setupPairERC721(
         LSSVMPairFactory factory,
         IERC721 nft,
         ICurve bondingCurve,
@@ -45,7 +47,22 @@ abstract contract UsingETH is Configurable, RouterCaller {
         return pair;
     }
 
-    function setupPairWithPropertyChecker(PairCreationParamsWithPropertyChecker memory params)
+    function setupPairERC1155(CreateERC1155PairParams memory params) public payable override returns (LSSVMPair) {
+        LSSVMPairETH pair = params.factory.createPairERC1155ETH{value: msg.value}(
+            params.nft,
+            params.bondingCurve,
+            params.assetRecipient,
+            params.poolType,
+            params.delta,
+            params.fee,
+            params.spotPrice,
+            params.nftId,
+            params.initialNFTBalance
+        );
+        return pair;
+    }
+
+    function setupPairWithPropertyCheckerERC721(PairCreationParamsWithPropertyCheckerERC721 memory params)
         public
         payable
         override

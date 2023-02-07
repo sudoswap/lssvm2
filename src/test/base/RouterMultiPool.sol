@@ -57,7 +57,7 @@ abstract contract RouterMultiPool is Test, ERC721Holder, ConfigurableWithRoyalti
         for (uint256 i = 1; i <= 5; i++) {
             uint256[] memory idList = new uint256[](1);
             idList[0] = i;
-            pairs[i] = this.setupPair{value: modifyInputAmount(i * 1 ether)}(
+            pairs[i] = this.setupPairERC721{value: modifyInputAmount(i * 1 ether)}(
                 factory,
                 test721,
                 bondingCurve,

@@ -72,7 +72,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
             IERC721Mintable(address(test721)).mint(address(this), i);
             idList.push(i);
         }
-        pair = this.setupPair{value: modifyInputAmount(tokenAmount)}(
+        pair = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
             factory,
             test721,
             bondingCurve,
@@ -238,7 +238,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
 
         // Add another pair to settings
         uint256[] memory idList2;
-        LSSVMPair pair2 = this.setupPair{value: modifyInputAmount(tokenAmount)}(
+        LSSVMPair pair2 = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
             factory,
             test721,
             bondingCurve,

@@ -22,11 +22,11 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
     /**
      * @notice Returns the ERC20 token associated with the pair
      *     @dev See LSSVMPairCloner for an explanation on how this works
+     *     @dev The last 20 bytes of the immutable data contain the ERC20 token address
      */
     function token() public pure returns (ERC20 _token) {
-        uint256 paramsLength = _immutableParamsLength();
         assembly {
-            _token := shr(0x60, calldataload(add(sub(calldatasize(), paramsLength), 81)))
+            _token := shr(0x60, calldataload(sub(calldatasize(), 20)))
         }
     }
 

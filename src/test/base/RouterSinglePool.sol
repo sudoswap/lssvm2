@@ -53,7 +53,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         }
 
         // Create a pair with a spot price of 1 eth, 10 NFTs, and no price increases
-        pair = this.setupPair{value: modifyInputAmount(10 ether)}(
+        pair = this.setupPairERC721{value: modifyInputAmount(10 ether)}(
             factory,
             test721,
             bondingCurve,

@@ -8,6 +8,7 @@ import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
@@ -16,17 +17,28 @@ import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 import {TestManifold} from "../../mocks/TestManifold.sol";
 
-abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, ConfigurableWithRoyalties, RouterCaller {
+abstract contract RouterSinglePoolWithRoyalties is
+    Test,
+    ERC721Holder,
+    ERC1155Holder,
+    ConfigurableWithRoyalties,
+    RouterCaller
+{
+    uint256 tokenAmount = 10 ether;
+    uint256 startingId;
     IERC721Mintable test721;
+    IERC1155Mintable test1155;
     ERC2981 test2981;
     RoyaltyEngine royaltyEngine;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
     LSSVMRouter router;
-    LSSVMPair pair;
+    LSSVMPair pair721;
+    LSSVMPair pair1155;
     address payable constant feeRecipient = payable(address(69));
     uint256 constant protocolFeeMultiplier = 3e15;
     uint256 constant numInitialNFTs = 10;
@@ -34,9 +46,11 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
+        test1155 = setup1155();
         test2981 = setup2981();
         royaltyEngine = setupRoyaltyEngine();
         IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test721), address(test2981));
+        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test1155), address(test2981));
 
         factory = setupFactory(royaltyEngine, feeRecipient);
         router = new LSSVMRouter(factory);
@@ -46,6 +60,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         // set NFT approvals
         test721.setApprovalForAll(address(factory), true);
         test721.setApprovalForAll(address(router), true);
+        test1155.setApprovalForAll(address(factory), true);
 
         // Setup pair parameters
         uint128 delta = 0 ether;
@@ -55,9 +70,10 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
             test721.mint(address(this), i);
             idList[i - 1] = i;
         }
+        test1155.mint(address(this), startingId, numInitialNFTs);
 
         // Create a pair with a spot price of 1 eth, 10 NFTs, and no price increases
-        pair = this.setupPair{value: modifyInputAmount(10 ether)}(
+        pair721 = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
             factory,
             test721,
             bondingCurve,
@@ -67,8 +83,25 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
             0,
             spotPrice,
             idList,
-            10 ether,
+            tokenAmount,
             address(router)
+        );
+
+        pair1155 = this.setupPairERC1155{value: modifyInputAmount(tokenAmount)}(
+            CreateERC1155PairParams(
+                factory,
+                test1155,
+                bondingCurve,
+                payable(address(0)),
+                LSSVMPair.PoolType.TRADE,
+                modifyDelta(uint64(delta)),
+                0,
+                spotPrice,
+                startingId,
+                numInitialNFTs,
+                tokenAmount,
+                address(0)
+            )
         );
 
         // mint extra NFTs to this contract (i.e. to be held by the caller)
@@ -77,12 +110,30 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         }
     }
 
-    function test_swapTokenForSingleSpecificNFT() public {
+    function test_swapTokenForSingleSpecificNFT_ERC721() public {
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
-        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
-        (,,, uint256 inputAmount, uint256 protocolFee) = pair.getBuyNFTQuote(1);
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
+        (,,, uint256 inputAmount, uint256 protocolFee) = pair721.getBuyNFTQuote(1);
+
+        // calculate royalty
+        uint256 royaltyAmount = calcRoyalty(inputAmount - protocolFee);
+
+        this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
+        );
+
+        // check that royalty has been issued
+        assertEq(getBalance(ROYALTY_RECEIVER), royaltyAmount);
+    }
+
+    function test_swapTokenForSingleNFT_ERC1155() public {
+        uint256[] memory numNFTs = new uint256[](1);
+        numNFTs[0] = 1;
+        LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair1155, nftIds: numNFTs});
+        (,,, uint256 inputAmount, uint256 protocolFee) = pair1155.getBuyNFTQuote(1);
 
         // calculate royalty
         uint256 royaltyAmount = calcRoyalty(inputAmount - protocolFee);
@@ -96,7 +147,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
     }
 
     function test_swapSingleNFTForToken() public {
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,) = pair721.getSellNFTQuote(1);
 
         // calculate royalty and rm it from the output amount
         uint256 royaltyAmount = calcRoyalty(outputAmount);
@@ -105,7 +156,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = numInitialNFTs + 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
-        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
 
         // check that royalty has been issued
@@ -122,12 +173,12 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         );
 
         // Output amount does not need to be decremented the royalty amount here
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,) = pair721.getSellNFTQuote(1);
 
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = numInitialNFTs + 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
-        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
 
         // check that royalty has been issued only to the first receiver
@@ -149,7 +200,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
             address(test721), address(testManifold)
         );
 
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,) = pair721.getSellNFTQuote(1);
 
         // calculate royalty total (750 + 250) and rm it from the output amount
         uint256 royaltyAmount1 = calcRoyalty(outputAmount, 750);
@@ -159,7 +210,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = numInitialNFTs + 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
-        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
 
         // check that royalty has been issued only to the first receiver
@@ -170,7 +221,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
     function testGas_swapSingleNFTForToken5Times() public {
         uint256 totalRoyaltyAmount;
         for (uint256 i = 1; i <= 5; i++) {
-            (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+            (,,, uint256 outputAmount,) = pair721.getSellNFTQuote(1);
 
             // calculate royalty and rm it from the output amount
             uint256 royaltyAmount = calcRoyalty(outputAmount);
@@ -180,7 +231,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
             uint256[] memory nftIds = new uint256[](1);
             nftIds[0] = numInitialNFTs + i;
             LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
-            swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+            swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
             router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
         }
         // check that royalty has been issued
@@ -193,7 +244,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         uint256[] memory sellNFTIds = new uint256[](1);
         sellNFTIds[0] = numInitialNFTs + 1;
         LSSVMRouter.PairSwapSpecific[] memory nftToTokenSwapList = new LSSVMRouter.PairSwapSpecific[](1);
-        nftToTokenSwapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: sellNFTIds});
+        nftToTokenSwapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: sellNFTIds});
 
         (,,, uint256 salePrice,) = nftToTokenSwapList[0].pair.getSellNFTQuote(sellNFTIds.length);
         totalRoyaltyAmount += calcRoyalty(salePrice);
@@ -202,7 +253,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         uint256[] memory buyNFTIds = new uint256[](1);
         buyNFTIds[0] = 1;
         LSSVMRouter.PairSwapSpecific[] memory tokenToNFTSwapList = new LSSVMRouter.PairSwapSpecific[](1);
-        tokenToNFTSwapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: buyNFTIds});
+        tokenToNFTSwapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: buyNFTIds});
 
         (,,, uint256 buyPrice,) = tokenToNFTSwapList[0].pair.getBuyNFTQuote(buyNFTIds.length);
         totalRoyaltyAmount += calcRoyalty(buyPrice);
@@ -242,9 +293,9 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         nftIds[2] = 3;
         nftIds[3] = 4;
         nftIds[4] = 5;
-        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
         uint256 startBalance = test721.balanceOf(address(this));
-        (,,, uint256 inputAmount, uint256 protocolFee) = pair.getBuyNFTQuote(5);
+        (,,, uint256 inputAmount, uint256 protocolFee) = pair721.getBuyNFTQuote(5);
 
         // calculate royalty
         uint256 royaltyAmount = calcRoyalty(inputAmount - protocolFee);
@@ -260,7 +311,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
     }
 
     function test_swap5NFTsForToken() public {
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(5);
+        (,,, uint256 outputAmount,) = pair721.getSellNFTQuote(5);
 
         // calculate royalty and rm it from the output amount
         uint256 royaltyAmount = calcRoyalty(outputAmount);
@@ -271,7 +322,7 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
             nftIds[i] = numInitialNFTs + i + 1;
         }
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
-        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
 
         // check that royalty has been issued
@@ -282,8 +333,8 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
-        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
-        (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(1);
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
+        (,,, uint256 inputAmount,) = pair721.getBuyNFTQuote(1);
 
         inputAmount = inputAmount - 1 wei;
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
@@ -295,9 +346,9 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = numInitialNFTs + 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
-        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
         uint256 sellAmount;
-        (,,, sellAmount,) = pair.getSellNFTQuote(1);
+        (,,, sellAmount,) = pair721.getSellNFTQuote(1);
         sellAmount = subRoyalty(sellAmount);
 
         sellAmount = sellAmount + 1 wei;
@@ -307,9 +358,9 @@ abstract contract RouterSinglePoolWithRoyalties is Test, ERC721Holder, Configura
     function testFail_swapSingleNFTForTokenWithEmptyList() public {
         uint256[] memory nftIds = new uint256[](0);
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
-        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
         uint256 sellAmount;
-        (,,, sellAmount,) = pair.getSellNFTQuote(1);
+        (,,, sellAmount,) = pair721.getSellNFTQuote(1);
         sellAmount = subRoyalty(sellAmount);
 
         sellAmount = sellAmount + 1 wei;
