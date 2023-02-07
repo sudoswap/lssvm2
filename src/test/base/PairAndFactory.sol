@@ -24,6 +24,8 @@ import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
+error Ownable_NotOwner();
+
 abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, ConfigurableWithRoyalties {
     event NFTWithdrawal(uint256 numNFTs);
 
@@ -373,17 +375,19 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         assertEq(pair1155.fee(), 0.3 ether);
     }
 
-    function testFail_multicallChangeOwnershipERC721() public {
+    function test_multicallChangeOwnershipERC721() public {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeCall(pair.transferOwnership, (address(69), ""));
         calls[1] = abi.encodeCall(pair.changeDelta, (2 ether));
+        vm.expectRevert(Ownable_NotOwner.selector);
         pair.multicall(calls, true);
     }
 
-    function testFail_multicallChangeOwnershipERC1155() public {
+    function test_multicallChangeOwnershipERC1155() public {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeCall(pair1155.transferOwnership, (address(69), ""));
         calls[1] = abi.encodeCall(pair1155.changeDelta, (2 ether));
+        vm.expectRevert(Ownable_NotOwner.selector);
         pair1155.multicall(calls, true);
     }
 

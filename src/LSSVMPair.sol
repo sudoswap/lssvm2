@@ -646,6 +646,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
     /**
      * @notice Allows owner to batch multiple calls, forked from: https://github.com/boringcrypto/BoringSolidity/blob/master/contracts/BoringBatchable.sol
+     *     @notice The revert handling is forked from: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/c239e1af8d1a1296577108dd6989a17b57434f8e/contracts/utils/Address.sol#L201
      *     @dev Intended for withdrawing/altering pool pricing in one tx, only callable by owner, cannot change owner
      *     @param calls The calldata for each call to make
      *     @param revertOnFail Whether or not to revert the entire tx if any of the calls fail
@@ -654,7 +655,9 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         for (uint256 i; i < calls.length;) {
             (bool success, bytes memory result) = address(this).delegatecall(calls[i]);
             if (!success && revertOnFail) {
-                revert(_getRevertMsg(result));
+                assembly {
+                    revert(add(0x20, result), mload(result))
+                }
             }
 
             unchecked {
@@ -664,20 +667,5 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
         // Prevent multicall from malicious frontend sneaking in ownership change
         require(owner() == msg.sender, "Ownership cannot be changed in multicall");
-    }
-
-    /**
-     * @param _returnData The data returned from a multicall result
-     *   @dev Used to grab the revert string from the underlying call
-     */
-    function _getRevertMsg(bytes memory _returnData) internal pure returns (string memory) {
-        // If the _res length is less than 68, then the transaction failed silently (without a revert message)
-        if (_returnData.length < 68) return "Transaction reverted silently";
-
-        assembly {
-            // Slice the sighash.
-            _returnData := add(_returnData, 0x04)
-        }
-        return abi.decode(_returnData, (string)); // All that remains is the revert string
     }
 }
