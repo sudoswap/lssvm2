@@ -25,6 +25,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
     LSSVMPair pair;
     address payable constant feeRecipient = payable(address(69));
     address payable constant tradeFeeRecipient = payable(address(420));
+    address payable assetRecipient = payable(vm.addr(555));
     uint256 constant protocolFeeMultiplier = 3e15;
     uint256 constant numInitialNFTs = 10;
 
@@ -57,7 +58,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
             factory,
             test721,
             bondingCurve,
-            payable(address(0)),
+            assetRecipient,
             LSSVMPair.PoolType.TRADE,
             modifyDelta(uint64(delta)),
             0,

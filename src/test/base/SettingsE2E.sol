@@ -78,7 +78,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
             bondingCurve,
             payable(address(0)), // asset recipient
             LSSVMPair.PoolType.TRADE,
-            delta,
+            modifyDelta(uint64(delta)),
             0, // 0% for trade fee
             spotPrice,
             idList,
@@ -135,6 +135,11 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         (bool settingsEnabled, uint96 royaltyBps) = factory.getSettingsForPair(address(pair));
         assertEq(settingsEnabled, true);
         assertEq(royaltyBps, 500);
+
+        // Make sure the sell quote has the overridden royalty rate
+        (,,, uint256 sellPrice,,) = pair.bondingCurve().getSellInfo(spotPrice, modifyDelta(uint64(delta)), 1, 0, 0);
+        (,,, uint256 outputAmount,) = pair.getSellNFTQuoteWithRoyalties(1, 1);
+        assertEq(outputAmount, sellPrice - calcRoyalty(sellPrice, 500));
     }
 
     function test_enableSettingsForPairIdempotent() public {
