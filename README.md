@@ -49,3 +49,9 @@ Pools can now also be made for ERC1155<>ETH or ERC1155<>ERC20 pairs. Pools for E
 forge install
 forge test
 ```
+
+To generate coverage report locally: 
+```
+forge coverage --report lcov && genhtml lcov.info -o report --branch
+open report/index.html
+```
