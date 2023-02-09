@@ -9,6 +9,7 @@ import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import {LSSVMPair} from "./LSSVMPair.sol";
 import {ILSSVMPairERC721} from "./erc721/ILSSVMPairERC721.sol";
+import {LSSVMPairERC1155} from "./erc1155/LSSVMPairERC1155.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
 
@@ -61,7 +62,7 @@ contract VeryFastRouter {
         uint128 spotPrice = pair.spotPrice();
         uint128 delta = pair.delta();
         uint256 fee = pair.fee();
-        for (uint256 i; i < numNFTs; i++) {
+        for (uint256 i; i < numNFTs; ++i) {
             uint256 price;
             (, spotPrice, delta, price,,) =
                 pair.bondingCurve().getBuyInfo(spotPrice, delta, 1, fee, pair.factory().protocolFeeMultiplier());
@@ -69,7 +70,7 @@ contract VeryFastRouter {
         }
         uint256[] memory totalPrices = new uint256[](numNFTs);
         totalPrices[0] = prices[prices.length - 1];
-        for (uint256 i = 1; i < numNFTs; i++) {
+        for (uint256 i = 1; i < numNFTs; ++i) {
             totalPrices[i] = totalPrices[i - 1] + prices[prices.length - 1 - i];
         }
         return totalPrices;
@@ -87,7 +88,7 @@ contract VeryFastRouter {
         uint128 spotPrice = pair.spotPrice();
         uint128 delta = pair.delta();
         uint256 fee = pair.fee();
-        for (uint256 i; i < numNFTs; i++) {
+        for (uint256 i; i < numNFTs; ++i) {
             uint256 price;
             (, spotPrice, delta, price,,) =
                 pair.bondingCurve().getSellInfo(spotPrice, delta, 1, fee, pair.factory().protocolFeeMultiplier());
@@ -95,7 +96,7 @@ contract VeryFastRouter {
         }
         uint256[] memory totalPrices = new uint256[](numNFTs);
         totalPrices[0] = prices[prices.length - 1];
-        for (uint256 i = 1; i < numNFTs; i++) {
+        for (uint256 i = 1; i < numNFTs; ++i) {
             totalPrices[i] = totalPrices[i - 1] + prices[prices.length - 1 - i];
         }
         return totalPrices;
@@ -110,7 +111,7 @@ contract VeryFastRouter {
         uint256 ethAmount = msg.value;
 
         // Go through each sell order
-        for (uint256 i; i < swapOrder.sellOrders.length; i++) {
+        for (uint256 i; i < swapOrder.sellOrders.length; ++i) {
             SellOrder calldata order = swapOrder.sellOrders[i];
             LSSVMPair pair = order.pair;
 
@@ -169,7 +170,7 @@ contract VeryFastRouter {
         }
 
         // Go through each buy order
-        for (uint256 i; i < swapOrder.buyOrders.length; i++) {
+        for (uint256 i; i < swapOrder.buyOrders.length; ++i) {
             BuyOrderWithPartialFill calldata order = swapOrder.buyOrders[i];
             LSSVMPair pair = order.pair;
 
@@ -211,7 +212,13 @@ contract VeryFastRouter {
                     }
                     // If ERC1155 swap
                     else {
-                        // Set the amount to buy
+                        // The amount to buy is the min(numItemsToFill, erc1155.balanceOf(pair))
+                        {
+                            address pairAddress = address(pair);
+                            uint256 availableNFTs =
+                                IERC1155(pair.nft()).balanceOf(pairAddress, LSSVMPairERC1155(pairAddress).nftId());
+                            numItemsToFill = numItemsToFill < availableNFTs ? numItemsToFill : availableNFTs;
+                        }
                         uint256[] memory erc1155SwapAmount = new uint256[](1);
                         erc1155SwapAmount[0] = numItemsToFill;
 
@@ -348,7 +355,7 @@ contract VeryFastRouter {
         // Go through each potential ID, and check to see if it's still owned by the pair
         // If it is, record the ID
         // Return early if we found all the IDs we need
-        for (uint256 i; i < maxIdsNeeded; i++) {
+        for (uint256 i; i < maxIdsNeeded; ++i) {
             if (nft.ownerOf(potentialIds[i]) == address(pair)) {
                 idsThatExist[numIdsFound] = potentialIds[i];
                 numIdsFound += 1;
@@ -360,7 +367,7 @@ contract VeryFastRouter {
         // Otherwise, we didn't find enough IDs, so we need to return a subset
         if (numIdsFound < maxIdsNeeded) {
             uint256[] memory allIdsFound = new uint256[](numIdsFound);
-            for (uint256 i; i < numIdsFound; i++) {
+            for (uint256 i; i < numIdsFound; ++i) {
                 allIdsFound[i] = idsThatExist[i];
             }
             return allIdsFound;
