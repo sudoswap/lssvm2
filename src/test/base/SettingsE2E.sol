@@ -138,7 +138,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
 
         // Make sure the sell quote has the overridden royalty rate
         (,,, uint256 sellPrice,,) = pair.bondingCurve().getSellInfo(spotPrice, modifyDelta(uint64(delta)), 1, 0, 0);
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuoteWithRoyalties(1, 1);
+        (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(1, 1);
         assertEq(outputAmount, sellPrice - calcRoyalty(sellPrice, 500));
     }
 
@@ -326,13 +326,10 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         assertEq(royaltyBalance, calcRoyalty(inputAmount, newRoyaltyBps));
 
         // Perform a sell for item #1
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
-        uint256 expectedRoyaltyAmount = calcRoyalty(outputAmount, newRoyaltyBps);
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
-        pair.swapNFTsForToken(
-            specificIdToSell, outputAmount - expectedRoyaltyAmount, payable(address(this)), false, address(this)
-        );
+        (,,, uint256 outputAmount,, uint256 expectedRoyaltyAmount) = pair.getSellNFTQuote(specificIdToSell[0], 1);
+        pair.swapNFTsForToken(specificIdToSell, outputAmount, payable(address(this)), false, address(this));
         uint256 secondRoyaltyPayment = getBalance(ROYALTY_RECEIVER) - royaltyBalance;
         assertEq(secondRoyaltyPayment, expectedRoyaltyAmount);
 
@@ -428,14 +425,14 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price up works
-        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta, 1);
 
         // Get new params for changing price to buy down
         percentage = 0.9 * 1e18; // 10%
         (newSpotPrice, newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price down works
-        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta, 1);
     }
 
     // Changing the price up fails (because there are no tokens)
@@ -456,7 +453,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price up should fail because there is no more buy pressure
-        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta, 1);
     }
 
     // Changing the price down fails (because there are no NFTs)
@@ -477,7 +474,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
 
         // Changing price down should fail because there is no more nft ivnentory
-        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta);
+        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta, 1);
     }
 
     function testFail_changeFeeTooHigh() public {

@@ -111,18 +111,13 @@ abstract contract RouterMultiPoolWithRoyalties is Test, ERC721Holder, Configurab
         uint256 totalOutputAmount = 0;
         uint256 totalRoyaltyAmount = 0;
         for (uint256 i = 0; i < 5; i++) {
-            uint256 outputAmount;
-            (,,, outputAmount,) = pairs[i + 1].getSellNFTQuote(1);
-
-            // calculate royalty and rm it from the output amount
-            uint256 royaltyAmount = calcRoyalty(outputAmount);
-            outputAmount -= royaltyAmount;
-            totalRoyaltyAmount += royaltyAmount;
-
-            totalOutputAmount += outputAmount;
             uint256[] memory nftIds = new uint256[](1);
             // Set it to be an ID we own
             nftIds[0] = i + 6;
+
+            (,,, uint256 outputAmount,, uint256 royaltyAmount) = pairs[i + 1].getSellNFTQuote(nftIds[0], 1);
+            totalRoyaltyAmount += royaltyAmount;
+            totalOutputAmount += outputAmount;
             swapList[i] = LSSVMRouter.PairSwapSpecific({pair: pairs[i + 1], nftIds: nftIds});
         }
         uint256 startBalance = test721.balanceOf(address(this));

@@ -95,7 +95,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             this.setupPairWithPropertyCheckerERC721{value: this.modifyInputAmount(tokenAmount)}(params);
 
         // Attempt to perform a sell for item #1
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(1, 1);
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
 
@@ -137,7 +137,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         testERC20.approve(address(pair), 10000 ether);
 
         // Attempt to perform a sell for item #1
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(1, 1);
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
 
@@ -184,7 +184,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         testERC20.approve(address(pair), 10000 ether);
 
         // Attempt to perform a sell for item #1
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(1, 1);
         uint256[] memory tokenIds = new uint256[](3);
         tokenIds[0] = 1;
         tokenIds[1] = 10;
@@ -232,7 +232,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         testERC20.approve(address(pair), 10000 ether);
 
         // Perform a sell for item #1
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuoteWithRoyalties(1, 2);
+        (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(1, 2);
         uint256[] memory tokenIds = new uint256[](2);
         tokenIds[0] = 1;
         tokenIds[1] = 10;
@@ -290,7 +290,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         test721.setApprovalForAll(address(pair), true);
         testERC20.approve(address(pair), 10000 ether);
 
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuoteWithRoyalties(1, 1);
+        (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(1, 1);
         uint256[] memory specificIdToSell = new uint256[](1);
 
         // A sell for 3 will fail
@@ -343,7 +343,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         test721.setApprovalForAll(address(pair), true);
         testERC20.approve(address(pair), 10000 ether);
 
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuoteWithRoyalties(1, 2);
+        (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(1, 2);
         uint256[] memory idsToSell = new uint256[](2);
 
         // Create encoded proof list

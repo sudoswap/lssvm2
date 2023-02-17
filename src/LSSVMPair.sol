@@ -220,29 +220,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     }
 
     /**
-     * @dev Used as read function to query the bonding curve for sell pricing info
-     *     @param numNFTs The number of NFTs to sell to the pair
-     */
-    function getSellNFTQuote(uint256 numNFTs)
-        external
-        view
-        returns (
-            CurveErrorCodes.Error error,
-            uint256 newSpotPrice,
-            uint256 newDelta,
-            uint256 outputAmount,
-            uint256 protocolFee
-        )
-    {
-        (error, newSpotPrice, newDelta, outputAmount, /* tradeFee */, protocolFee) =
-            bondingCurve().getSellInfo(spotPrice, delta, numNFTs, fee, factory().protocolFeeMultiplier());
-    }
-
-    /**
      * @dev Used as read function to query the bonding curve for sell pricing info including royalties
      *     @param numNFTs The number of NFTs to sell to the pair
      */
-    function getSellNFTQuoteWithRoyalties(uint256 assetId, uint256 numNFTs)
+    function getSellNFTQuote(uint256 assetId, uint256 numNFTs)
         external
         view
         returns (
@@ -250,19 +231,22 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             uint256 newSpotPrice,
             uint256 newDelta,
             uint256 outputAmount,
-            uint256 protocolFee
+            uint256 protocolFee,
+            uint256 royaltyAmount
         )
     {
         (error, newSpotPrice, newDelta, outputAmount, /* tradeFee */, protocolFee) =
             bondingCurve().getSellInfo(spotPrice, delta, numNFTs, fee, factory().protocolFeeMultiplier());
 
-        // Compute royalties
-        (,, uint256 royaltyTotal) = _calculateRoyaltiesView(assetId, outputAmount);
+        if (numNFTs != 0) {
+            // Compute royalties
+            (,, royaltyAmount) = _calculateRoyaltiesView(assetId, outputAmount);
 
-        // Deduct royalties from outputAmount
-        unchecked {
-            // Safe because we already require outputAmount >= royaltyTotal in _calculateRoyalties()
-            outputAmount -= royaltyTotal;
+            // Deduct royalties from outputAmount
+            unchecked {
+                // Safe because we already require outputAmount >= royaltyAmount in _calculateRoyalties()
+                outputAmount -= royaltyAmount;
+            }
         }
     }
 

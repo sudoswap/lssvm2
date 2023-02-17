@@ -41,7 +41,7 @@ interface ILSSVMPair {
             uint256 protocolFee
         );
 
-    function getSellNFTQuote(uint256 numNFTs)
+    function getSellNFTQuote(uint256 assetId, uint256 numNFTs)
         external
         view
         returns (
@@ -49,7 +49,8 @@ interface ILSSVMPair {
             uint256 newSpotPrice,
             uint256 newDelta,
             uint256 outputAmount,
-            uint256 protocolFee
+            uint256 protocolFee,
+            uint256 royaltyAmount
         );
 
     function bondingCurve() external view returns (ICurve);

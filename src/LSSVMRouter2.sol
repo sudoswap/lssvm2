@@ -278,7 +278,7 @@ contract LSSVMRouter2 {
         while (start <= end) {
             // Get price of mid number of items
             uint256 mid = start + (end - start + 1) / 2;
-            (,,, uint256 currentPrice,) = pair.getSellNFTQuote(mid + 1);
+            (,,, uint256 currentPrice,,) = pair.getSellNFTQuote(0, mid + 1);
             // If it costs more than there is ETH balance for, then recurse on the left half
             if (currentPrice > pairBalance) {
                 if (mid == 1) {

@@ -291,7 +291,14 @@ contract LSSVMRouter {
             // Locally scoped to avoid stack too deep error
             {
                 CurveErrorCodes.Error error;
-                (error,,, pairOutput,) = swapList[i].swapInfo.pair.getSellNFTQuote(swapList[i].swapInfo.nftIds.length);
+                uint256[] memory nftIds = swapList[i].swapInfo.nftIds;
+                if (nftIds.length == 0) {
+                    unchecked {
+                        ++i;
+                    }
+                    continue;
+                }
+                (error,,, pairOutput,,) = swapList[i].swapInfo.pair.getSellNFTQuote(nftIds[0], nftIds.length);
                 if (error != CurveErrorCodes.Error.OK) {
                     unchecked {
                         ++i;
@@ -371,8 +378,9 @@ contract LSSVMRouter {
                 // Locally scoped to avoid stack too deep error
                 {
                     CurveErrorCodes.Error error;
-                    (error,,, pairOutput,) = params.nftToTokenTrades[i].swapInfo.pair.getSellNFTQuote(
-                        params.nftToTokenTrades[i].swapInfo.nftIds.length
+                    uint256 assetId = params.nftToTokenTrades[i].swapInfo.nftIds[0];
+                    (error,,, pairOutput,,) = params.nftToTokenTrades[i].swapInfo.pair.getSellNFTQuote(
+                        assetId, params.nftToTokenTrades[i].swapInfo.nftIds.length
                     );
                     if (error != CurveErrorCodes.Error.OK) {
                         unchecked {
@@ -447,8 +455,9 @@ contract LSSVMRouter {
                 // Locally scoped to avoid stack too deep error
                 {
                     CurveErrorCodes.Error error;
-                    (error,,, pairOutput,) = params.nftToTokenTrades[i].swapInfo.pair.getSellNFTQuote(
-                        params.nftToTokenTrades[i].swapInfo.nftIds.length
+                    uint256 assetId = params.nftToTokenTrades[i].swapInfo.nftIds[0];
+                    (error,,, pairOutput,,) = params.nftToTokenTrades[i].swapInfo.pair.getSellNFTQuote(
+                        assetId, params.nftToTokenTrades[i].swapInfo.nftIds.length
                     );
                     if (error != CurveErrorCodes.Error.OK) {
                         unchecked {

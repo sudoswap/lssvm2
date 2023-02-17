@@ -133,8 +133,8 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 numItemsToSell = 2;
 
         // act
-        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue,) =
-            ethPair.getSellNFTQuote(numItemsToSell);
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue,,) =
+            ethPair.getSellNFTQuote(1, numItemsToSell);
 
         // assert
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
@@ -167,7 +167,7 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 expectedOutputValue = (numItemsToSell * value) / (numNfts + numItemsToSell);
 
         // act
-        (CurveErrorCodes.Error error,,, uint256 outputValue,) = ethPair.getSellNFTQuote(numItemsToSell);
+        (CurveErrorCodes.Error error,,, uint256 outputValue,,) = ethPair.getSellNFTQuote(1, numItemsToSell);
 
         // assert
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
@@ -201,7 +201,7 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 expectedProtocolFee = (2 * ((numItemsToSell * value) / (numNfts + numItemsToSell))) / 100;
 
         // act
-        (CurveErrorCodes.Error error,,,, uint256 protocolFee) = ethPair.getSellNFTQuote(numItemsToSell);
+        (CurveErrorCodes.Error error,,,, uint256 protocolFee,) = ethPair.getSellNFTQuote(1, numItemsToSell);
 
         // assert
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
@@ -254,7 +254,7 @@ contract XykCurveTest is Test, ERC721Holder {
         ethPair.changeFee((1 * 1e18) / 100); // 1%
 
         uint256 numItemsToSell = 2;
-        (CurveErrorCodes.Error error,,, uint256 outputValue,) = ethPair.getSellNFTQuote(numItemsToSell);
+        (CurveErrorCodes.Error error,,, uint256 outputValue,,) = ethPair.getSellNFTQuote(1, numItemsToSell);
 
         uint256[] memory idList = new uint256[](numItemsToSell);
         for (uint256 i = 1; i <= numItemsToSell; i++) {

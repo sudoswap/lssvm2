@@ -110,9 +110,9 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
     }
 
     function test_swapSingleNFTForToken() public {
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = numInitialNFTs + 1;
+        (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(nftIds[0], 1);
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
@@ -120,9 +120,9 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
 
     function testGas_swapSingleNFTForToken5Times() public {
         for (uint256 i = 1; i <= 5; i++) {
-            (,,, uint256 outputAmount,) = pair.getSellNFTQuote(1);
             uint256[] memory nftIds = new uint256[](1);
             nftIds[0] = numInitialNFTs + i;
+            (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(nftIds[0], 1);
             LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
             swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
             router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
@@ -178,11 +178,11 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
     }
 
     function test_swap5NFTsForToken() public {
-        (,,, uint256 outputAmount,) = pair.getSellNFTQuote(5);
         uint256[] memory nftIds = new uint256[](5);
         for (uint256 i = 0; i < 5; i++) {
             nftIds[i] = numInitialNFTs + i + 1;
         }
+        (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(nftIds[0], 5);
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
@@ -207,7 +207,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 sellAmount;
-        (,,, sellAmount,) = pair.getSellNFTQuote(1);
+        (,,, sellAmount,,) = pair.getSellNFTQuote(nftIds[0], 1);
         sellAmount = sellAmount + 1 wei;
         router.swapNFTsForToken(swapList, sellAmount, payable(address(this)), block.timestamp);
     }
@@ -217,7 +217,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 sellAmount;
-        (,,, sellAmount,) = pair.getSellNFTQuote(1);
+        (,,, sellAmount,,) = pair.getSellNFTQuote(nftIds[0], 1);
         sellAmount = sellAmount + 1 wei;
         router.swapNFTsForToken(swapList, sellAmount, payable(address(this)), block.timestamp);
     }

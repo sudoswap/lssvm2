@@ -111,10 +111,10 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
     }
 
     function test_swapSingleNFTForToken() public {
-        (,,, uint256 outputAmount,) = buyPair.getSellNFTQuote(1);
         uint256 beforeBuyPairNFTBalance = test721.balanceOf(address(buyPair));
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = numInitialNFTs * 2 + 1;
+        (,,, uint256 outputAmount,,) = buyPair.getSellNFTQuote(nftIds[0], 1);
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: buyPair, nftIds: nftIds});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
@@ -178,12 +178,12 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
     }
 
     function test_swap5NFTsForToken() public {
-        (,,, uint256 outputAmount,) = buyPair.getSellNFTQuote(5);
         uint256 beforeBuyPairNFTBalance = test721.balanceOf(address(buyPair));
         uint256[] memory nftIds = new uint256[](5);
         for (uint256 i = 0; i < 5; i++) {
             nftIds[i] = 2 * numInitialNFTs + i + 1;
         }
+        (,,, uint256 outputAmount,,) = buyPair.getSellNFTQuote(nftIds[0], 5);
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: buyPair, nftIds: nftIds});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
@@ -201,7 +201,7 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
         nftIds[0] = numInitialNFTs * 2 + 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: buyPair, nftIds: nftIds});
-        (,,, uint256 outputAmount,) = buyPair.getSellNFTQuote(1);
+        (,,, uint256 outputAmount,,) = buyPair.getSellNFTQuote(nftIds[0], 1);
         uint256 output = router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
         // User gets 90% of the tokens (which is output) and the other 10% goes to the factory
         assertEq(getBalance(address(factory)), output / 9);

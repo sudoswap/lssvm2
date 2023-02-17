@@ -198,16 +198,9 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         nftIds3[0] = 34;
         nftIds3[1] = 35;
 
-        (,,, uint256 pair2OutputAmount,) = pair2.getSellNFTQuote(2);
-        (,,, uint256 pair3OutputAmount,) = pair3.getSellNFTQuote(2);
-
-        // calculate royalty and rm it from the input amount
-        uint256 royaltyAmount = calcRoyalty(pair2OutputAmount);
-        pair2OutputAmount -= royaltyAmount;
-        totalRoyaltyAmount += royaltyAmount;
-        royaltyAmount = calcRoyalty(pair3OutputAmount);
-        pair3OutputAmount -= royaltyAmount;
-        totalRoyaltyAmount += royaltyAmount;
+        (,,, uint256 pair2OutputAmount,, uint256 royaltyAmount2) = pair2.getSellNFTQuote(nftIds2[0], 2);
+        (,,, uint256 pair3OutputAmount,, uint256 royaltyAmount3) = pair3.getSellNFTQuote(nftIds3[0], 2);
+        totalRoyaltyAmount += (royaltyAmount2 + royaltyAmount3);
 
         LSSVMRouter.RobustPairSwapSpecificForToken[] memory swapList = new LSSVMRouter.RobustPairSwapSpecificForToken[](
                 3
@@ -254,12 +247,7 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
 
         uint256[] memory nftIds3 = new uint256[](0);
 
-        (,,, uint256 pair2OutputAmount,) = pair2.getSellNFTQuote(2);
-
-        // calculate royalty and rm it from the output amount
-        uint256 royaltyAmount = calcRoyalty(pair2OutputAmount);
-        pair2OutputAmount -= royaltyAmount;
-
+        (,,, uint256 pair2OutputAmount,, uint256 royaltyAmount) = pair2.getSellNFTQuote(nftIds2[0], 2);
         LSSVMRouter.RobustPairSwapSpecificForToken[] memory swapList = new LSSVMRouter.RobustPairSwapSpecificForToken[](
                 3
             );
@@ -277,11 +265,7 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         });
 
         uint256 beforeNFTBalance = test721.balanceOf(address(this));
-
-        // Expect to have the last two swapPairs succeed, and the first one silently fail
-        // with 10% protocol fee:
         uint256 remainingValue = router.robustSwapNFTsForToken(swapList, payable(address(this)), block.timestamp);
-
         uint256 afterNFTBalance = test721.balanceOf(address(this));
 
         assertEq((beforeNFTBalance - afterNFTBalance), 2, "Incorrect NFT swap");
@@ -301,14 +285,6 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         assertEq(test721.ownerOf(33), address(this));
 
         (,,, uint256 pair1InputAmount, uint256 pair1ProtocolFee) = pair1.getBuyNFTQuote(2);
-        (,,, uint256 pair2OutputAmount,) = pair2.getSellNFTQuote(2);
-
-        // calculate royalty and modify input and output amounts
-        uint256 royaltyAmount = calcRoyalty(pair1InputAmount - pair1ProtocolFee);
-        totalRoyaltyAmount += royaltyAmount;
-        royaltyAmount = calcRoyalty(pair2OutputAmount);
-        pair2OutputAmount -= royaltyAmount;
-        totalRoyaltyAmount += royaltyAmount;
 
         uint256[] memory nftIds1 = new uint256[](2);
         nftIds1[0] = 0;
@@ -325,6 +301,7 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         uint256[] memory nftIds2 = new uint256[](2);
         nftIds2[0] = 32;
         nftIds2[1] = 33;
+        (,,, uint256 pair2OutputAmount,, uint256 royaltyAmount2) = pair2.getSellNFTQuote(nftIds2[0], 2);
         LSSVMRouter.RobustPairSwapSpecificForToken[] memory nftToTokenSwapList =
         new LSSVMRouter.RobustPairSwapSpecificForToken[](
                 1
@@ -333,6 +310,11 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
             swapInfo: LSSVMRouter.PairSwapSpecific({pair: pair2, nftIds: nftIds2}),
             minOutput: pair2OutputAmount
         });
+
+        // calculate royalty and modify input and output amounts
+        uint256 royaltyAmount = calcRoyalty(pair1InputAmount - pair1ProtocolFee);
+        totalRoyaltyAmount += royaltyAmount;
+        totalRoyaltyAmount += royaltyAmount2;
 
         // Do the swap
         uint256 inputAmount = pair1InputAmount;

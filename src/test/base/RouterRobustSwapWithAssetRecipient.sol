@@ -150,12 +150,12 @@ abstract contract RouterRobustSwapWithAssetRecipient is Test, ERC721Holder, Conf
 
     // Swapping NFTs to tokens with buyPair1 works, but buyPair2 silently fails due to slippage
     function test_robustSwapNFTsForToken() public {
-        uint256 buyPair1Price;
-        (,,, buyPair1Price,) = buyPair1.getSellNFTQuote(1);
         uint256[] memory nftIds1 = new uint256[](1);
         nftIds1[0] = 5;
         uint256[] memory nftIds2 = new uint256[](1);
         nftIds2[0] = 6;
+        uint256 buyPair1Price;
+        (,,, buyPair1Price,,) = buyPair1.getSellNFTQuote(nftIds1[0], 1);
         LSSVMRouter.RobustPairSwapSpecificForToken[] memory swapList = new LSSVMRouter.RobustPairSwapSpecificForToken[](
                 2
             );

@@ -223,7 +223,9 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
      * @param newSpotPrice The new spot price
      * @param newDelta The new delta
      */
-    function changeSpotPriceAndDelta(address pairAddress, uint128 newSpotPrice, uint128 newDelta) public {
+    function changeSpotPriceAndDelta(address pairAddress, uint128 newSpotPrice, uint128 newDelta, uint256 assetId)
+        public
+    {
         PairInfo memory pairInfo = pairInfos[pairAddress];
 
         // Verify that the caller is the previous owner of the pair
@@ -254,7 +256,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         }
 
         // Get current price to buy from pair
-        (,,, uint256 priceToSellToPair,) = pair.getSellNFTQuote(1);
+        (,,, uint256 priceToSellToPair,,) = pair.getSellNFTQuote(assetId, 1);
 
         // Get new price to sell to pair
         (
