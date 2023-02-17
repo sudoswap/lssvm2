@@ -17,6 +17,7 @@ import {ICurve} from "./bonding-curves/ICurve.sol";
 import {ReentrancyGuard} from "./lib/ReentrancyGuard.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
+import {IOwnershipTransferReceiver} from "./lib/IOwnershipTransferReceiver.sol";
 import {OwnableWithTransferCallback} from "./lib/OwnableWithTransferCallback.sol";
 
 /// @title The base contract for an NFT/TOKEN AMM pair
@@ -640,6 +641,11 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     function call(address payable target, bytes calldata data) external onlyOwner {
         ILSSVMPairFactoryLike _factory = factory();
         require(_factory.callAllowed(target), "Target must be whitelisted");
+
+        // ensure the call isn't calling a banned function
+        bytes4 sig = bytes4(data[:4]);
+        require(sig != IOwnershipTransferReceiver.onOwnershipTransferred.selector, "Banned function");
+
         (bool result,) = target.call{value: 0}(data);
         require(result, "Call failed");
     }

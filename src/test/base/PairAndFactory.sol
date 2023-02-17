@@ -23,6 +23,7 @@ import {TestPairManager2} from "../../mocks/TestPairManager2.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
+import {IOwnershipTransferReceiver} from "../../lib/IOwnershipTransferReceiver.sol";
 
 error Ownable_NotOwner();
 
@@ -409,6 +410,15 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
     function testFail_callMint1155() public {
         bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 1000);
         pair1155.call(payable(address(test1155)), data);
+    }
+
+    function test_callBannedFunction() public {
+        factory.setCallAllowed(payable(address(pairManager)), true);
+
+        bytes memory data =
+            abi.encodeWithSelector(IOwnershipTransferReceiver.onOwnershipTransferred.selector, address(this), "");
+        vm.expectRevert("Banned function");
+        pair.call(payable(address(pairManager)), data);
     }
 
     function test_callMint721() public {
