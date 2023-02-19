@@ -23,7 +23,7 @@ contract Splitter is Clone {
         return _getArgAddress(20);
     }
 
-    function withdrawAllETHInSplitter() public {
+    function withdrawAllETH() public {
         uint256 ethBalance = address(this).balance;
         withdrawETH(ethBalance);
     }

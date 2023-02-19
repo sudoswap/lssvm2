@@ -683,7 +683,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
             factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)
                 || factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ERC1155_ETH)
         ) {
-            Splitter(splitterAddress).withdrawAllETHInSplitter();
+            Splitter(splitterAddress).withdrawAllETH();
         } else {
             Splitter(splitterAddress).withdrawAllBaseQuoteTokens();
         }

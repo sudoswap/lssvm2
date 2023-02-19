@@ -181,7 +181,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
             pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)
                 || pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC1155_ETH)
         ) {
-            Splitter(payable(pair.getFeeRecipient())).withdrawAllETHInSplitter();
+            Splitter(payable(pair.getFeeRecipient())).withdrawAllETH();
         } else if (
             pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20)
                 || pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC1155_ERC20)
@@ -303,7 +303,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         for (uint256 i; i < splitterAddresses.length;) {
             Splitter splitter = Splitter(payable(splitterAddresses[i]));
             if (isETHPair[i]) {
-                splitter.withdrawAllETHInSplitter();
+                splitter.withdrawAllETH();
             } else {
                 splitter.withdrawAllBaseQuoteTokens();
             }
