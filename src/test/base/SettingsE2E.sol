@@ -9,6 +9,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
@@ -19,6 +20,7 @@ import {IMintable} from "../interfaces/IMintable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
+import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
 import {ILSSVMPairFactoryLike} from "../../ILSSVMPairFactoryLike.sol";
 import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 
@@ -32,7 +34,7 @@ import {Test1155} from "../../mocks/Test1155.sol";
 import {TestManifold} from "../../mocks/TestManifold.sol";
 import {MockPair} from "../../mocks/MockPair.sol";
 
-abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
+abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, ConfigurableWithRoyalties {
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 20 ether;
     uint256 tokenAmount = 100 ether;
@@ -43,11 +45,13 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
     ERC2981 test2981;
     IERC721 test721;
     IERC721 test721Other;
+    IERC1155Mintable test1155;
     ERC20 testERC20;
     ICurve bondingCurve;
     LSSVMPairFactory factory;
     address payable constant feeRecipient = payable(address(69));
-    LSSVMPair pair;
+    LSSVMPair pair721;
+    LSSVMPair pair1155;
     MockPair mockPair;
     RoyaltyEngine royaltyEngine;
     StandardSettingsFactory settingsFactory;
@@ -56,6 +60,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
+        test1155 = setup1155();
         test2981 = setup2981();
         test721Other = new Test721();
         royaltyEngine = setupRoyaltyEngine();
@@ -67,12 +72,14 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         factory = setupFactory(royaltyEngine, feeRecipient);
         factory.setBondingCurveAllowed(bondingCurve, true);
         test721.setApprovalForAll(address(factory), true);
+        test1155.setApprovalForAll(address(factory), true);
+
         // Mint IDs from 1 to numItems to the caller, to deposit into the pair
         for (uint256 i = 1; i <= numItems; i++) {
             IERC721Mintable(address(test721)).mint(address(this), i);
             idList.push(i);
         }
-        pair = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
+        pair721 = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
             factory,
             test721,
             bondingCurve,
@@ -86,9 +93,28 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
             address(0)
         );
         testERC20 = ERC20(address(new Test20()));
-        IMintable(address(testERC20)).mint(address(pair), 1 ether);
-        test721.setApprovalForAll(address(pair), true);
-        testERC20.approve(address(pair), 10000 ether);
+        IMintable(address(testERC20)).mint(address(pair721), 1 ether);
+        test721.setApprovalForAll(address(pair721), true);
+        testERC20.approve(address(pair721), 10000 ether);
+
+        test1155.mint(address(this), 88, 5);
+        pair1155 = this.setupPairERC1155{value: modifyInputAmount(tokenAmount)}(
+            CreateERC1155PairParams(
+                factory,
+                test1155,
+                bondingCurve,
+                payable(address(0)),
+                LSSVMPair.PoolType.TRADE,
+                modifyDelta(uint64(delta)),
+                0,
+                spotPrice,
+                88,
+                5,
+                tokenAmount,
+                address(0)
+            )
+        );
+        test1155.setApprovalForAll(address(pair1155), true);
 
         // Settings setup
         Splitter splitterImplementation = new Splitter();
@@ -130,15 +156,15 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         factory.toggleSettingsForCollection(address(settings), address(test721), true);
 
         // This call will trigger the callback to call enableSettingsForPair on the factory
-        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
-        assertEq(factory.settingsForPair(address(pair)), address(settings));
-        (bool settingsEnabled, uint96 royaltyBps) = factory.getSettingsForPair(address(pair));
+        pair721.transferOwnership{value: 0.1 ether}(address(settings), "");
+        assertEq(factory.settingsForPair(address(pair721)), address(settings));
+        (bool settingsEnabled, uint96 royaltyBps) = factory.getSettingsForPair(address(pair721));
         assertEq(settingsEnabled, true);
         assertEq(royaltyBps, 500);
 
         // Make sure the sell quote has the overridden royalty rate
-        (,,, uint256 sellPrice,,) = pair.bondingCurve().getSellInfo(spotPrice, modifyDelta(uint64(delta)), 1, 0, 0);
-        (,,, uint256 outputAmount,,) = pair.getSellNFTQuote(1, 1);
+        (,,, uint256 sellPrice,,) = pair721.bondingCurve().getSellInfo(spotPrice, modifyDelta(uint64(delta)), 1, 0, 0);
+        (,,, uint256 outputAmount,,) = pair721.getSellNFTQuote(1, 1);
         assertEq(outputAmount, sellPrice - calcRoyalty(sellPrice, 500));
     }
 
@@ -146,24 +172,24 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         factory.toggleSettingsForCollection(address(settings), address(test721), true);
 
         // First call will be done directly on the factory
-        factory.enableSettingsForPair(address(settings), address(pair));
-        assertEq(factory.settingsForPair(address(pair)), address(settings));
+        factory.enableSettingsForPair(address(settings), address(pair721));
+        assertEq(factory.settingsForPair(address(pair721)), address(settings));
 
         // Second call will also make a call to the factory due to the callback
-        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
-        assertEq(factory.settingsForPair(address(pair)), address(settings));
+        pair721.transferOwnership{value: 0.1 ether}(address(settings), "");
+        assertEq(factory.settingsForPair(address(pair721)), address(settings));
     }
 
     function test_enableSettingsForPairNotPairOwner() public {
         factory.toggleSettingsForCollection(address(this), address(test721Other), true);
         vm.expectRevert("Msg sender is not pair owner");
         vm.prank(vm.addr(1));
-        factory.enableSettingsForPair(address(this), address(pair));
+        factory.enableSettingsForPair(address(this), address(pair721));
     }
 
     function test_enableSettingsForPairSettingsNotEnabled() public {
         vm.expectRevert("Settings not enabled for collection");
-        factory.enableSettingsForPair(address(settings), address(pair));
+        factory.enableSettingsForPair(address(settings), address(pair721));
     }
 
     function test_enableSettingsForPairInvalidPair() public {
@@ -173,18 +199,18 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
 
     function test_disableSettingsForPair() public {
         factory.toggleSettingsForCollection(address(settings), address(test721), true);
-        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
+        pair721.transferOwnership{value: 0.1 ether}(address(settings), "");
 
         // Cannot reclaim pair until lockup period has passed
         vm.expectRevert("Lockup not over");
-        settings.reclaimPair(address(pair));
+        settings.reclaimPair(address(pair721));
 
         // Move forward in time so lockup period is over
         vm.warp(block.timestamp + 1 days + 1 seconds);
 
-        settings.reclaimPair(address(pair));
-        assertEq(factory.settingsForPair(address(pair)), address(0));
-        (bool settingsEnabled, uint96 royaltyBps) = factory.getSettingsForPair(address(pair));
+        settings.reclaimPair(address(pair721));
+        assertEq(factory.settingsForPair(address(pair721)), address(0));
+        (bool settingsEnabled, uint96 royaltyBps) = factory.getSettingsForPair(address(pair721));
         assertEq(settingsEnabled, false);
         assertEq(royaltyBps, 0);
     }
@@ -193,22 +219,22 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         factory.toggleSettingsForCollection(address(settings), address(test721), true);
 
         address newOwner = address(12345);
-        pair.transferOwnership(newOwner, "");
+        pair721.transferOwnership(newOwner, "");
 
         // Give the new owner enough funds to opt into the settings
         vm.deal(newOwner, 10 ether);
 
         // Pretend to be the new owner
         vm.prank(newOwner);
-        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
+        pair721.transferOwnership{value: 0.1 ether}(address(settings), "");
 
         // Reclaim the pair as the settings owner
-        settings.reclaimPair(address(pair));
-        assertEq(factory.settingsForPair(address(pair)), address(0));
-        (bool settingsEnabled, uint96 royaltyBps) = factory.getSettingsForPair(address(pair));
+        settings.reclaimPair(address(pair721));
+        assertEq(factory.settingsForPair(address(pair721)), address(0));
+        (bool settingsEnabled, uint96 royaltyBps) = factory.getSettingsForPair(address(pair721));
         assertEq(settingsEnabled, false);
         assertEq(royaltyBps, 0);
-        assertEq(pair.owner(), newOwner);
+        assertEq(pair721.owner(), newOwner);
     }
 
     function test_disableSettingsForPairNotPair() public {
@@ -218,15 +244,15 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
 
     function test_disableSettingsForPairNotEnabled() public {
         vm.expectRevert("Settings not enabled for pair");
-        factory.disableSettingsForPair(address(settings), address(pair));
+        factory.disableSettingsForPair(address(settings), address(pair721));
     }
 
     function test_disableSettingsNotPairOwner() public {
         factory.toggleSettingsForCollection(address(settings), address(test721), true);
-        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
+        pair721.transferOwnership{value: 0.1 ether}(address(settings), "");
 
         vm.expectRevert("Msg sender is not pair owner");
-        factory.disableSettingsForPair(address(settings), address(pair));
+        factory.disableSettingsForPair(address(settings), address(pair721));
     }
 
     function test_getAllPairsForSettings() public {
@@ -235,11 +261,11 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
 
         // Add pair to settings
         factory.toggleSettingsForCollection(address(settings), address(test721), true);
-        pair.transferOwnership{value: 0.1 ether}(address(settings), "");
+        pair721.transferOwnership{value: 0.1 ether}(address(settings), "");
 
         results = factory.getAllPairsForSettings(address(settings));
         assertEq(results.length, 1);
-        assertEq(results[0], address(pair));
+        assertEq(results[0], address(pair721));
 
         // Add another pair to settings
         uint256[] memory idList2;
@@ -262,7 +288,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
 
         // Remove first pair from settings
         vm.warp(block.timestamp + 1 days + 1 seconds);
-        settings.reclaimPair(address(pair));
+        settings.reclaimPair(address(pair721));
 
         results = factory.getAllPairsForSettings(address(settings));
         assertEq(results.length, 1);
@@ -301,24 +327,24 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         StandardSettings newSettings =
             settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
-        pair.transferOwnership{value: ethCost}(address(newSettings), "");
+        pair721.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Check the upfront fee was received
         assertEq(settingsFeeRecipient.balance, ethCost);
 
         // Check the Settings has been applied, with the new bps
-        (bool settingsEnabled, uint96 pairRoyaltyBps) = factory.getSettingsForPair(address(pair));
+        (bool settingsEnabled, uint96 pairRoyaltyBps) = factory.getSettingsForPair(address(pair721));
         assertEq(settingsEnabled, true);
         assertEq(pairRoyaltyBps, newRoyaltyBps);
 
         // Check that the fee address is no longer the pool (i.e. a fee splitter has been deployed)
-        require(pair.getFeeRecipient() != address(pair), "Splitter not deployed");
+        require(pair721.getFeeRecipient() != address(pair721), "Splitter not deployed");
 
         // Perform a buy for item #1
-        (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(1);
+        (,,, uint256 inputAmount,) = pair721.getBuyNFTQuote(1);
         uint256[] memory specificIdToBuy = new uint256[](1);
         specificIdToBuy[0] = 1;
-        pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
+        pair721.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
             specificIdToBuy, inputAmount, address(this), false, address(this)
         );
 
@@ -328,28 +354,28 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         // Perform a sell for item #1
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
-        (,,, uint256 outputAmount,, uint256 expectedRoyaltyAmount) = pair.getSellNFTQuote(specificIdToSell[0], 1);
-        pair.swapNFTsForToken(specificIdToSell, outputAmount, payable(address(this)), false, address(this));
+        (,,, uint256 outputAmount,, uint256 expectedRoyaltyAmount) = pair721.getSellNFTQuote(specificIdToSell[0], 1);
+        pair721.swapNFTsForToken(specificIdToSell, outputAmount, payable(address(this)), false, address(this));
         uint256 secondRoyaltyPayment = getBalance(ROYALTY_RECEIVER) - royaltyBalance;
         assertEq(secondRoyaltyPayment, expectedRoyaltyAmount);
 
         // Changing the fee to under 20% works
         uint96 newFee = 0.2e18;
-        newSettings.changeFee(address(pair), newFee);
+        newSettings.changeFee(address(pair721), newFee);
     }
 
     // Even if an settings is enabled on the factory contract, the standard settings
     // requires ownership of the pair to provide a royalty override
     function test_enterSettingsNotPairOwner() public {
         factory.toggleSettingsForCollection(address(settings), address(test721), true);
-        factory.enableSettingsForPair(address(settings), address(pair));
-        assertEq(factory.settingsForPair(address(pair)), address(settings));
+        factory.enableSettingsForPair(address(settings), address(pair721));
+        assertEq(factory.settingsForPair(address(pair721)), address(settings));
 
-        (bool settingsEnabled, uint96 royaltyBps) = settings.getRoyaltyInfo(address(pair));
+        (bool settingsEnabled, uint96 royaltyBps) = settings.getRoyaltyInfo(address(pair721));
         assertEq(settingsEnabled, false);
         assertEq(royaltyBps, 0);
 
-        (settingsEnabled, royaltyBps) = factory.getSettingsForPair(address(pair));
+        (settingsEnabled, royaltyBps) = factory.getSettingsForPair(address(pair721));
         assertEq(settingsEnabled, false);
         assertEq(royaltyBps, 0);
     }
@@ -364,7 +390,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         StandardSettings newSettings =
             settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
-        pair.transferOwnership{value: ethCost}(address(newSettings), "");
+        pair721.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Setup multiple royalty receivers
         address secondReceiver = vm.addr(2);
@@ -380,10 +406,10 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         );
 
         // Perform a buy for item #1
-        (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(1);
+        (,,, uint256 inputAmount,) = pair721.getBuyNFTQuote(1);
         uint256[] memory specificIdToBuy = new uint256[](1);
         specificIdToBuy[0] = 1;
-        pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
+        pair721.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
             specificIdToBuy, inputAmount, address(this), false, address(this)
         );
 
@@ -403,10 +429,10 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
             settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
-        pair.changeFee(2e17 + 1);
+        pair721.changeFee(2e17 + 1);
 
         vm.expectRevert("Fee too high");
-        pair.transferOwnership{value: ethCost}(address(newSettings), "");
+        pair721.transferOwnership{value: ethCost}(address(newSettings), "");
     }
 
     // Changing the price up works (because there are tokens)
@@ -418,21 +444,45 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
         // Opt into the Settings
-        pair.transferOwnership(address(newSettings), "");
+        pair721.transferOwnership(address(newSettings), "");
 
         // Get new params for changing price to buy up
         uint256 percentage = 1.1 * 1e18; // 10%
-        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
+        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair721, percentage, true);
 
         // Changing price up works
-        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta, 1);
+        newSettings.changeSpotPriceAndDelta(address(pair721), newSpotPrice, newDelta, 1);
 
         // Get new params for changing price to buy down
         percentage = 0.9 * 1e18; // 10%
-        (newSpotPrice, newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
+        (newSpotPrice, newDelta) = this.getParamsForAdjustingPriceToBuy(pair721, percentage, true);
 
         // Changing price down works
-        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta, 1);
+        newSettings.changeSpotPriceAndDelta(address(pair721), newSpotPrice, newDelta, 1);
+    }
+
+    function test_changeParamsAfterEnteringSettings_ERC1155() public {
+        // Set up sample Settings
+        address payable settingsFeeRecipient = payable(address(123));
+        StandardSettings newSettings = settingsFactory.createSettings(settingsFeeRecipient, 0, 1, 2, 1000);
+        factory.toggleSettingsForCollection(address(newSettings), address(test1155), true);
+
+        // Opt into the Settings
+        pair1155.transferOwnership(address(newSettings), "");
+
+        // Get new params for changing price to buy up
+        uint256 percentage = 1.1 * 1e18; // 10%
+        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair1155, percentage, true);
+
+        // Changing price up works
+        newSettings.changeSpotPriceAndDelta(address(pair1155), newSpotPrice, newDelta, 1);
+
+        // Get new params for changing price to buy down
+        percentage = 0.9 * 1e18; // 10%
+        (newSpotPrice, newDelta) = this.getParamsForAdjustingPriceToBuy(pair1155, percentage, true);
+
+        // Changing price down works
+        newSettings.changeSpotPriceAndDelta(address(pair1155), newSpotPrice, newDelta, 1);
     }
 
     // Changing the price up fails (because there are no tokens)
@@ -443,17 +493,17 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
         // Withdraw tokens from pair
-        this.withdrawTokens(pair);
+        this.withdrawTokens(pair721);
 
         // Opt into the Settings
-        pair.transferOwnership(address(newSettings), "");
+        pair721.transferOwnership(address(newSettings), "");
 
         // Get new params for changing price to buy up
         uint256 percentage = 1.1 * 1e18; // 10%
-        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
+        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair721, percentage, true);
 
         // Changing price up should fail because there is no more buy pressure
-        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta, 1);
+        newSettings.changeSpotPriceAndDelta(address(pair721), newSpotPrice, newDelta, 1);
     }
 
     // Changing the price down fails (because there are no NFTs)
@@ -464,17 +514,17 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
         // Withdraw tokens from pair
-        pair.withdrawERC721(IERC721(pair.nft()), idList);
+        pair721.withdrawERC721(IERC721(pair721.nft()), idList);
 
         // Opt into the Settings
-        pair.transferOwnership(address(newSettings), "");
+        pair721.transferOwnership(address(newSettings), "");
 
         // Get new params for changing price to buy up
         uint256 percentage = 0.9 * 1e18; // 10%
-        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair, percentage, true);
+        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pair721, percentage, true);
 
         // Changing price down should fail because there is no more nft ivnentory
-        newSettings.changeSpotPriceAndDelta(address(pair), newSpotPrice, newDelta, 1);
+        newSettings.changeSpotPriceAndDelta(address(pair721), newSpotPrice, newDelta, 1);
     }
 
     function testFail_changeFeeTooHigh() public {
@@ -486,11 +536,11 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         StandardSettings newSettings =
             settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
-        pair.transferOwnership{value: ethCost}(address(newSettings), "");
+        pair721.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Setting new fee to be above 20%
         uint256 newFee = 0.2e18 + 1;
-        newSettings.changeFee(address(pair), uint96(newFee));
+        newSettings.changeFee(address(pair721), uint96(newFee));
     }
 
     // A pair cannot enter a Standard Settings if the Settings are unauthorized
@@ -502,7 +552,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         uint64 newRoyaltyBps = 10000; // 10% in bps
         StandardSettings newSettings =
             settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
-        pair.transferOwnership{value: ethCost}(address(newSettings), "");
+        pair721.transferOwnership{value: ethCost}(address(newSettings), "");
     }
 
     // A mock pair cannot enter a Standard Settings
@@ -532,21 +582,21 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
         // Opt into the Settings
-        pair.transferOwnership{value: ethCost}(address(newSettings), "");
+        pair721.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Skip ahead in time
         skip(secDuration + 1);
 
         // Attempt to leave the Settings
-        newSettings.reclaimPair(address(pair));
+        newSettings.reclaimPair(address(pair721));
 
         // Check that the owner is now set back to caller
-        assertEq(pair.owner(), address(this));
+        assertEq(pair721.owner(), address(this));
         // Check that old pairInfo has been cleared out
-        assertEq(newSettings.getPrevFeeRecipientForPair(address(pair)), address(0));
+        assertEq(newSettings.getPrevFeeRecipientForPair(address(pair721)), address(0));
         // Prev fee recipient defaulted to the pair, so it should still be the pair
-        assertEq(pair.getFeeRecipient(), address(pair));
-        (bool settingsEnabled,) = factory.getSettingsForPair(address(pair));
+        assertEq(pair721.getFeeRecipient(), address(pair721));
+        (bool settingsEnabled,) = factory.getSettingsForPair(address(pair721));
         assertEq(settingsEnabled, false);
     }
 
@@ -563,7 +613,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
         // Opt into the Settings
-        pair.transferOwnership{value: ethCost}(address(newSettings), "");
+        pair721.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Skip ahead in time
         skip(secDuration + 1);
@@ -571,7 +621,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         hoax(address(12321));
 
         // Attempt to leave the Settings
-        newSettings.reclaimPair(address(pair));
+        newSettings.reclaimPair(address(pair721));
 
         // Perform a buy for item #1
         (
@@ -583,8 +633,8 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
             /* new spot price*/
             uint256 inputAmount, // protocolFee
             ,
-        ) = pair.bondingCurve().getBuyInfo(
-            pair.spotPrice(), pair.delta(), 1, pair.fee(), factory.protocolFeeMultiplier()
+        ) = pair721.bondingCurve().getBuyInfo(
+            pair721.spotPrice(), pair721.delta(), 1, pair721.fee(), factory.protocolFeeMultiplier()
         );
         uint256[] memory specificIdToBuy = new uint256[](1);
         specificIdToBuy[0] = 1;
@@ -596,7 +646,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         uint256 startBalance = this.getBalance(royaltyRecipient);
 
         // Do the swap
-        pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
+        pair721.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
             specificIdToBuy, inputAmount, address(this), false, address(this)
         );
 
@@ -620,10 +670,10 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
 
         // Opt into the Settings
-        pair.transferOwnership{value: ethCost}(address(newSettings), "");
+        pair721.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Attempt to leave the Settings
-        newSettings.reclaimPair(address(pair));
+        newSettings.reclaimPair(address(pair721));
     }
 
     // Splitter tests
@@ -632,10 +682,10 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
     function test_splitterHandlesSplits() public {
         // Set the trade fee recipient address
         address payable pairFeeRecipient = payable(address(1));
-        pair.changeAssetRecipient(pairFeeRecipient);
+        pair721.changeAssetRecipient(pairFeeRecipient);
 
         // Set trade fee to be 10%
-        pair.changeFee(0.1 ether);
+        pair721.changeFee(0.1 ether);
 
         address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0 ether;
@@ -645,14 +695,14 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
         StandardSettings newSettings =
             settingsFactory.createSettings(settingsFeeRecipient, ethCost, secDuration, feeSplitBps, newRoyaltyBps);
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
-        pair.transferOwnership{value: ethCost}(address(newSettings), "");
+        pair721.transferOwnership{value: ethCost}(address(newSettings), "");
 
         // Check that the fee address is no longer the pool (i.e. a fee splitter has been deployed)
-        require(pair.getFeeRecipient() != address(pair), "Splitter not deployed");
+        require(pair721.getFeeRecipient() != address(pair721), "Splitter not deployed");
 
         // Verify the Splitter has the correct variables
-        assertEq(Splitter(pair.getFeeRecipient()).getParentSettings(), address(newSettings), "Incorrect parent");
-        assertEq(Splitter(pair.getFeeRecipient()).getPairAddressForSplitter(), address(pair), "Incorrect pair");
+        assertEq(Splitter(pair721.getFeeRecipient()).getParentSettings(), address(newSettings), "Incorrect parent");
+        assertEq(Splitter(pair721.getFeeRecipient()).getPairAddressForSplitter(), address(pair721), "Incorrect pair");
 
         // Perform a buy for item #1
         (
@@ -664,25 +714,22 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
             /* new spot price*/
             uint256 inputAmount,
             uint256 tradeFee, // protocolFee
-        ) = pair.bondingCurve().getBuyInfo(
-            pair.spotPrice(), pair.delta(), 1, pair.fee(), factory.protocolFeeMultiplier()
+        ) = pair721.bondingCurve().getBuyInfo(
+            pair721.spotPrice(), pair721.delta(), 1, pair721.fee(), factory.protocolFeeMultiplier()
         );
         uint256[] memory specificIdToBuy = new uint256[](1);
         specificIdToBuy[0] = 1;
-        pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
+        pair721.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
             specificIdToBuy, inputAmount, address(this), false, address(this)
         );
 
         // Ensure that 2x the trade fee went to the splitter
-        address payable splitterAddress = pair.getFeeRecipient();
+        address payable splitterAddress = pair721.getFeeRecipient();
         uint256 splitterBalance = getBalance(splitterAddress);
         assertEq(splitterBalance, 2 * tradeFee);
 
         // Withdraw the tokens
-        if (
-            factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)
-                || factory.isPair(address(pair), ILSSVMPairFactoryLike.PairVariant.ERC1155_ETH)
-        ) {
+        if (factory.getPairTokenType(address(pair721)) == ILSSVMPairFactoryLike.PairTokenType.ETH) {
             Splitter(splitterAddress).withdrawAllETH();
         } else {
             Splitter(splitterAddress).withdrawAllBaseQuoteTokens();
@@ -705,17 +752,17 @@ abstract contract SettingsE2E is Test, ERC721Holder, ConfigurableWithRoyalties {
             /* new spot price*/
             inputAmount,
             tradeFee,
-        ) = pair.bondingCurve().getBuyInfo( // protocolFee
-        pair.spotPrice(), pair.delta(), 2, pair.fee(), factory.protocolFeeMultiplier());
+        ) = pair721.bondingCurve().getBuyInfo( // protocolFee
+        pair721.spotPrice(), pair721.delta(), 2, pair721.fee(), factory.protocolFeeMultiplier());
         specificIdToBuy = new uint256[](2);
         specificIdToBuy[0] = 2;
         specificIdToBuy[1] = 3;
-        pair.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
+        pair721.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
             specificIdToBuy, inputAmount, address(this), false, address(this)
         );
 
         // Ensure that 2x the trade fee went to the splitter
-        splitterAddress = pair.getFeeRecipient();
+        splitterAddress = pair721.getFeeRecipient();
         splitterBalance = getBalance(splitterAddress);
         assertEq(splitterBalance, 2 * tradeFee);
     }

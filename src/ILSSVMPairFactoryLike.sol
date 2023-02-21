@@ -9,6 +9,16 @@ interface ILSSVMPairFactoryLike {
         address pairAddress;
     }
 
+    enum PairNFTType {
+        ERC721,
+        ERC1155
+    }
+
+    enum PairTokenType {
+        ETH,
+        ERC20
+    }
+
     enum PairVariant {
         ERC721_ETH,
         ERC721_ERC20,
@@ -32,5 +42,9 @@ interface ILSSVMPairFactoryLike {
 
     function routerStatus(LSSVMRouter router) external view returns (bool allowed, bool wasEverAllowed);
 
-    function isPair(address potentialPair, PairVariant variant) external view returns (bool);
+    function isValidPair(address pairAddress) external view returns (bool);
+
+    function getPairNFTType(address pairAddress) external pure returns (PairNFTType);
+
+    function getPairTokenType(address pairAddress) external pure returns (PairTokenType);
 }

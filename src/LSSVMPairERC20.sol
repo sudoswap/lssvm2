@@ -69,16 +69,14 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
 
             // Cache state and then call router to transfer tokens from user
             uint256 beforeBalance = _token.balanceOf(_assetRecipient);
-            router.pairTransferERC20From(_token, routerCaller, _assetRecipient, saleAmount, pairVariant());
+            router.pairTransferERC20From(_token, routerCaller, _assetRecipient, saleAmount);
 
             // Verify token transfer (protect pair against malicious router)
             require(_token.balanceOf(_assetRecipient) - beforeBalance == saleAmount, "ERC20 not transferred in");
 
             // Transfer royalties (if it exists)
             for (uint256 i; i < royaltyRecipients.length;) {
-                router.pairTransferERC20From(
-                    _token, routerCaller, royaltyRecipients[i], royaltyAmounts[i], pairVariant()
-                );
+                router.pairTransferERC20From(_token, routerCaller, royaltyRecipients[i], royaltyAmounts[i]);
                 unchecked {
                     ++i;
                 }
@@ -86,7 +84,7 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
 
             // Take protocol fee (if it exists)
             if (protocolFee != 0) {
-                router.pairTransferERC20From(_token, routerCaller, address(_factory), protocolFee, pairVariant());
+                router.pairTransferERC20From(_token, routerCaller, address(_factory), protocolFee);
             }
         } else {
             // Transfer tokens directly

@@ -273,7 +273,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     }
 
     /**
-     * @notice Returns the NFT collection that parameterizes the pair
+     * @notice Returns the address of NFT collection that parameterizes the pair
      */
     function nft() public pure returns (address _nft) {
         uint256 paramsLength = _immutableParamsLength();
@@ -476,7 +476,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         returns (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal)
     {
         (address payable[] memory recipients, uint256[] memory amounts) =
-            ROYALTY_ENGINE.getRoyalty(address(nft()), assetId, saleAmount);
+            ROYALTY_ENGINE.getRoyalty(nft(), assetId, saleAmount);
         if (recipients.length != 0) {
             // If a pair has custom Settings, use the overridden royalty amount and only use the first receiver
             (bool settingsEnabled, uint96 bps) = factory().getSettingsForPair(address(this));
@@ -511,7 +511,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         returns (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal)
     {
         (address payable[] memory recipients, uint256[] memory amounts) =
-            ROYALTY_ENGINE.getRoyaltyView(address(nft()), assetId, saleAmount);
+            ROYALTY_ENGINE.getRoyaltyView(nft(), assetId, saleAmount);
         if (recipients.length != 0) {
             // If a pair has custom Settings, use the overridden royalty amount and only use the first receiver
             (bool settingsEnabled, uint96 bps) = factory().getSettingsForPair(address(this));

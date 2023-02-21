@@ -495,24 +495,12 @@ contract LSSVMRouter {
      *     @param from The address to transfer tokens from
      *     @param to The address to transfer tokens to
      *     @param amount The amount of tokens to transfer
-     *     @param variant The pair variant of the pair contract
      */
-    function pairTransferERC20From(
-        ERC20 token,
-        address from,
-        address to,
-        uint256 amount,
-        ILSSVMPairFactoryLike.PairVariant variant
-    ) external {
+    function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
         // verify caller is a trusted pair contract
-        require(factory.isPair(msg.sender, variant), "Not pair");
-
+        require(factory.isValidPair(msg.sender), "Not pair");
         // verify caller is an ERC20 pair
-        require(
-            variant == ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20
-                || variant == ILSSVMPairFactoryLike.PairVariant.ERC1155_ERC20,
-            "Not ERC20 pair"
-        );
+        require(factory.getPairTokenType(msg.sender) == ILSSVMPairFactoryLike.PairTokenType.ERC20, "Not ERC20 pair");
 
         // transfer tokens to pair
         token.safeTransferFrom(from, to, amount);
@@ -525,17 +513,10 @@ contract LSSVMRouter {
      *     @param from The address to transfer tokens from
      *     @param to The address to transfer tokens to
      *     @param id The ID of the NFT to transfer
-     *     @param variant The pair variant of the pair contract
      */
-    function pairTransferNFTFrom(
-        IERC721 nft,
-        address from,
-        address to,
-        uint256 id,
-        ILSSVMPairFactoryLike.PairVariant variant
-    ) external {
+    function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
         // verify caller is a trusted pair contract
-        require(factory.isPair(msg.sender, variant), "Not pair");
+        require(factory.isValidPair(msg.sender), "Not pair");
 
         // transfer NFTs to pair
         nft.transferFrom(from, to, id);
@@ -546,11 +527,10 @@ contract LSSVMRouter {
         address from,
         address to,
         uint256[] calldata ids,
-        uint256[] calldata amounts,
-        ILSSVMPairFactoryLike.PairVariant variant
+        uint256[] calldata amounts
     ) external {
         // verify caller is a trusted pair contract
-        require(factory.isPair(msg.sender, variant), "Not pair");
+        require(factory.isValidPair(msg.sender), "Not pair");
 
         nft.safeBatchTransferFrom(from, to, ids, amounts, bytes(""));
     }

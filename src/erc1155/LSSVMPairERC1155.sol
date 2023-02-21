@@ -186,7 +186,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
             ids[0] = _nftId;
             uint256[] memory amounts = new uint256[](1);
             amounts[0] = numNFTs;
-            router.pairTransferERC1155From(_nft, routerCaller, _assetRecipient, ids, amounts, pairVariant());
+            router.pairTransferERC1155From(_nft, routerCaller, _assetRecipient, ids, amounts);
             require((_nft.balanceOf(_assetRecipient, _nftId) - beforeBalance) == numNFTs, "NFTs not transferred");
         } else {
             // Pull NFTs directly from sender

@@ -15,6 +15,7 @@ import {ICurve} from "./bonding-curves/ICurve.sol";
 import {LSSVMPairCloner} from "./lib/LSSVMPairCloner.sol";
 import {LSSVMPairERC1155} from "./erc1155/LSSVMPairERC1155.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
+import {LSSVMPairERC20} from "./LSSVMPairERC20.sol";
 import {LSSVMPairERC721ETH} from "./erc721/LSSVMPairERC721ETH.sol";
 import {LSSVMPairERC1155ETH} from "./erc1155/LSSVMPairERC1155ETH.sol";
 import {LSSVMPairERC721ERC20} from "./erc721/LSSVMPairERC721ERC20.sol";
@@ -299,26 +300,29 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         emit NewERC1155Pair(address(pair));
     }
 
-    /**
-     * @notice Checks if an address is a LSSVMPair. Uses the fact that the pairs are EIP-1167 minimal proxies.
-     *     @param potentialPair The address to check
-     *     @param variant The pair variant (Pair uses ETH or ERC20)
-     *     @return True if the address is the specified pair variant, false otherwise
-     */
-
-    function isPair(address potentialPair, PairVariant variant) public view override returns (bool) {
+    function isValidPair(address pairAddress) public view returns (bool) {
+        PairVariant variant = LSSVMPair(pairAddress).pairVariant();
         if (variant == PairVariant.ERC721_ETH) {
-            return LSSVMPairCloner.isERC721ETHPairClone(address(this), address(erc721ETHTemplate), potentialPair);
+            return LSSVMPairCloner.isERC721ETHPairClone(address(this), address(erc721ETHTemplate), pairAddress);
         } else if (variant == PairVariant.ERC721_ERC20) {
-            return LSSVMPairCloner.isERC721ERC20PairClone(address(this), address(erc721ERC20Template), potentialPair);
+            return LSSVMPairCloner.isERC721ERC20PairClone(address(this), address(erc721ERC20Template), pairAddress);
         } else if (variant == PairVariant.ERC1155_ETH) {
-            return LSSVMPairCloner.isERC1155ETHPairClone(address(this), address(erc1155ETHTemplate), potentialPair);
+            return LSSVMPairCloner.isERC1155ETHPairClone(address(this), address(erc1155ETHTemplate), pairAddress);
         } else if (variant == PairVariant.ERC1155_ERC20) {
-            return LSSVMPairCloner.isERC1155ERC20PairClone(address(this), address(erc1155ERC20Template), potentialPair);
+            return LSSVMPairCloner.isERC1155ERC20PairClone(address(this), address(erc1155ERC20Template), pairAddress);
         } else {
-            // invalid input
             return false;
         }
+    }
+
+    function getPairNFTType(address pairAddress) public pure returns (PairNFTType) {
+        PairVariant variant = LSSVMPair(pairAddress).pairVariant();
+        return PairNFTType(uint8(variant) / 2);
+    }
+
+    function getPairTokenType(address pairAddress) public pure returns (PairTokenType) {
+        PairVariant variant = LSSVMPair(pairAddress).pairVariant();
+        return PairTokenType(uint8(variant) % 2);
     }
 
     /**
@@ -499,7 +503,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *      @param pairAddress The address of the Pair contract
      */
     function enableSettingsForPair(address settings, address pairAddress) public {
-        require(isPair(pairAddress, LSSVMPair(pairAddress).pairVariant()), "Invalid pair address");
+        require(isValidPair(pairAddress), "Invalid pair address");
         LSSVMPair pair = LSSVMPair(pairAddress);
         require(pair.owner() == msg.sender, "Msg sender is not pair owner");
         require(settingsForCollection[address(pair.nft())][settings], "Settings not enabled for collection");
@@ -515,7 +519,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *      @param pairAddress The address of the Pair contract
      */
     function disableSettingsForPair(address settings, address pairAddress) public {
-        require(isPair(pairAddress, LSSVMPair(pairAddress).pairVariant()), "Invalid pair address");
+        require(isValidPair(pairAddress), "Invalid pair address");
         require(settingsForPair[pairAddress] == settings, "Settings not enabled for pair");
         LSSVMPair pair = LSSVMPair(pairAddress);
         require(pair.owner() == msg.sender, "Msg sender is not pair owner");
@@ -657,7 +661,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
                 ++i;
             }
         }
-        if (isPair(recipient, LSSVMPair(recipient).pairVariant())) {
+        if (isValidPair(recipient)) {
             emit NFTDeposit(recipient, ids);
         }
     }
@@ -668,8 +672,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     function depositERC20(ERC20 token, address recipient, uint256 amount) external {
         token.safeTransferFrom(msg.sender, recipient, amount);
         if (
-            (isPair(recipient, PairVariant.ERC721_ERC20) || isPair(recipient, PairVariant.ERC1155_ERC20))
-                && token == LSSVMPairERC721ERC20(recipient).token()
+            isValidPair(recipient) && getPairTokenType(recipient) == PairTokenType.ERC20
+                && token == LSSVMPairERC20(recipient).token()
         ) {
             emit TokenDeposit(recipient);
         }

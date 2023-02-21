@@ -76,8 +76,8 @@ contract MockPair is ILSSVMPair, OwnableWithTransferCallback {
         return 0;
     }
 
-    function nft() external pure returns (IERC721) {
-        return IERC721(NFT_ADDRESS);
+    function nft() external pure returns (address) {
+        return NFT_ADDRESS;
     }
 
     function withdrawERC20(ERC20 a, uint256 amount) external {}

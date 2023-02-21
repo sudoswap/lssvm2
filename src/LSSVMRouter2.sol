@@ -72,7 +72,7 @@ contract LSSVMRouter2 {
         ILSSVMPairFactoryLike.PairVariant variant
     ) external {
         // verify caller is a trusted pair contract
-        require(factory.isPair(msg.sender, variant), "Not pair");
+        require(factory.isValidPair(msg.sender), "Not pair");
 
         // transfer NFTs to pair
         nft.safeTransferFrom(from, to, id);

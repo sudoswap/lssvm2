@@ -5,6 +5,8 @@ import {Clone} from "clones-with-immutable-args/Clone.sol";
 import {ClonesWithImmutableArgs} from "clones-with-immutable-args/ClonesWithImmutableArgs.sol";
 
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import {IOwnershipTransferReceiver} from "../lib/IOwnershipTransferReceiver.sol";
 import {OwnableWithTransferCallback} from "../lib/OwnableWithTransferCallback.sol";
@@ -14,6 +16,7 @@ import {LSSVMPair} from "../LSSVMPair.sol";
 import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 import {ISettings} from "./ISettings.sol";
 import {Splitter} from "./Splitter.sol";
+import {LSSVMPairERC1155} from "../erc1155/LSSVMPairERC1155.sol";
 
 contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCallback, Clone, ISettings {
     using ClonesWithImmutableArgs for address;
@@ -177,15 +180,9 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         }
 
         // Split fees (if applicable)
-        if (
-            pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)
-                || pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC1155_ETH)
-        ) {
+        if (pairFactory.getPairTokenType(pairAddress) == ILSSVMPairFactoryLike.PairTokenType.ETH) {
             Splitter(payable(pair.getFeeRecipient())).withdrawAllETH();
-        } else if (
-            pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20)
-                || pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC1155_ERC20)
-        ) {
+        } else if (pairFactory.getPairTokenType(pairAddress) == ILSSVMPairFactoryLike.PairTokenType.ERC20) {
             Splitter(payable(pair.getFeeRecipient())).withdrawAllBaseQuoteTokens();
         }
 
@@ -248,8 +245,15 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
             ,
         ) = pair.bondingCurve().getBuyInfo(newSpotPrice, newDelta, 1, pair.fee(), pairFactory.protocolFeeMultiplier());
 
+        uint256 nftBalance;
+        if (pairFactory.getPairNFTType(pairAddress) == ILSSVMPairFactoryLike.PairNFTType.ERC721) {
+            nftBalance = IERC721(pair.nft()).balanceOf(pairAddress);
+        } else {
+            nftBalance = IERC1155(pair.nft()).balanceOf(pairAddress, LSSVMPairERC1155(pairAddress).nftId());
+        }
+
         // If the price to buy is now lower (i.e. NFTs are now cheaper), and there is at least 1 NFT in pair, then make the change
-        if ((newPriceToBuyFromPair < priceToBuyFromPair) && pair.nft().balanceOf(pairAddress) >= 1) {
+        if ((newPriceToBuyFromPair < priceToBuyFromPair) && nftBalance >= 1) {
             pair.changeSpotPrice(newSpotPrice);
             pair.changeDelta(newDelta);
             return;
@@ -272,15 +276,9 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
 
         // Get token balance of the pair (ETH or ERC20)
         uint256 pairBalance;
-        if (
-            pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ETH)
-                || pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC1155_ETH)
-        ) {
+        if (pairFactory.getPairTokenType(pairAddress) == ILSSVMPairFactoryLike.PairTokenType.ETH) {
             pairBalance = pairAddress.balance;
-        } else if (
-            pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20)
-                || pairFactory.isPair(pairAddress, ILSSVMPairFactoryLike.PairVariant.ERC1155_ERC20)
-        ) {
+        } else if (pairFactory.getPairTokenType(pairAddress) == ILSSVMPairFactoryLike.PairTokenType.ERC20) {
             pairBalance = pair.token().balanceOf(pairAddress);
         }
 

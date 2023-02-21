@@ -236,7 +236,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
                 if (numNFTs > 1) {
                     uint256 beforeBalance = _nft.balanceOf(_assetRecipient);
                     for (uint256 i = 0; i < numNFTs;) {
-                        router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i], pairVariant());
+                        router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i]);
 
                         unchecked {
                             ++i;
@@ -244,7 +244,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
                     }
                     require((_nft.balanceOf(_assetRecipient) - beforeBalance) == numNFTs, "NFTs not transferred");
                 } else {
-                    router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[0], pairVariant());
+                    router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[0]);
                     require(_nft.ownerOf(nftIds[0]) == _assetRecipient, "NFT not transferred");
                 }
             } else {

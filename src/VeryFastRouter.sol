@@ -385,24 +385,13 @@ contract VeryFastRouter {
      *     @param from The address to transfer tokens from
      *     @param to The address to transfer tokens to
      *     @param amount The amount of tokens to transfer
-     *     @param variant The pair variant of the pair contract
      */
-    function pairTransferERC20From(
-        ERC20 token,
-        address from,
-        address to,
-        uint256 amount,
-        ILSSVMPairFactoryLike.PairVariant variant
-    ) external {
+    function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
         // verify caller is a trusted pair contract
-        require(factory.isPair(msg.sender, variant), "Not pair");
+        require(factory.isValidPair(msg.sender), "Not pair");
 
         // verify caller is an ERC20 pair
-        require(
-            variant == ILSSVMPairFactoryLike.PairVariant.ERC721_ERC20
-                || variant == ILSSVMPairFactoryLike.PairVariant.ERC1155_ERC20,
-            "Not ERC20 pair"
-        );
+        require(factory.getPairTokenType(msg.sender) == ILSSVMPairFactoryLike.PairTokenType.ERC20, "Not ERC20 pair");
 
         // transfer tokens to pair
         token.safeTransferFrom(from, to, amount);
@@ -415,17 +404,14 @@ contract VeryFastRouter {
      *     @param from The address to transfer tokens from
      *     @param to The address to transfer tokens to
      *     @param id The ID of the NFT to transfer
-     *     @param variant The pair variant of the pair contract
      */
-    function pairTransferNFTFrom(
-        IERC721 nft,
-        address from,
-        address to,
-        uint256 id,
-        ILSSVMPairFactoryLike.PairVariant variant
-    ) external {
+    function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
         // verify caller is a trusted pair contract
-        require(factory.isPair(msg.sender, variant), "Not pair");
+        require(
+            factory.isValidPair(msg.sender)
+                && factory.getPairNFTType(msg.sender) == ILSSVMPairFactoryLike.PairNFTType.ERC721,
+            "Invalid ERC721 pair"
+        );
 
         // transfer NFTs to pair
         nft.transferFrom(from, to, id);
@@ -439,18 +425,20 @@ contract VeryFastRouter {
      *     @param to The address to transfer tokens to
      *     @param ids The IDs of the NFT to transfer
      *     @param amounts The amount of each ID to transfer
-     *     @param variant The pair variant of the pair contract
      */
     function pairTransferERC1155From(
         IERC1155 nft,
         address from,
         address to,
         uint256[] calldata ids,
-        uint256[] calldata amounts,
-        ILSSVMPairFactoryLike.PairVariant variant
+        uint256[] calldata amounts
     ) external {
         // verify caller is a trusted pair contract
-        require(factory.isPair(msg.sender, variant), "Not pair");
+        require(
+            factory.isValidPair(msg.sender)
+                && factory.getPairNFTType(msg.sender) == ILSSVMPairFactoryLike.PairNFTType.ERC1155,
+            "Invalid ERC1155 pair"
+        );
 
         // transfer NFTs to pair
         nft.safeBatchTransferFrom(from, to, ids, amounts, bytes(""));

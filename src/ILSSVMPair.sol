@@ -57,7 +57,7 @@ interface ILSSVMPair {
 
     function fee() external view returns (uint96);
 
-    function nft() external view returns (IERC721);
+    function nft() external view returns (address);
 
     function withdrawERC20(ERC20 a, uint256 amount) external;
 
