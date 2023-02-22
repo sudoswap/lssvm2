@@ -421,28 +421,46 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         pair.call(payable(address(pairManager)), data);
     }
 
+    function test_callBannedTarget721() public {
+        factory.setCallAllowed(payable(address(test721)), true);
+        bytes memory data = abi.encodeWithSelector(Test721.mint.selector, address(this), 1000);
+        vm.expectRevert("Banned target");
+        pair.call(payable(address(test721)), data);
+    }
+    
+    function test_callBannedTarget1155() public {
+        factory.setCallAllowed(payable(address(test1155)), true);
+        bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 0, 2, "");
+        vm.expectRevert("Banned target");
+        pair1155.call(payable(address(test1155)), data);
+    }
+
     function test_callMint721() public {
-        // arbitrary call (just call mint on Test721) works as expected
+        // arbitrary call (just call mint on a new Test721 NFT) works as expected
+        Test721 newTest721 = new Test721();
 
         // add to whitelist
-        factory.setCallAllowed(payable(address(test721)), true);
+        factory.setCallAllowed(payable(address(newTest721)), true);
 
         bytes memory data = abi.encodeWithSelector(Test721.mint.selector, address(this), 1000);
-        pair.call(payable(address(test721)), data);
+        pair.call(payable(address(newTest721)), data);
 
         // verify NFT ownership
-        assertEq(test721.ownerOf(1000), address(this));
+        assertEq(newTest721.ownerOf(1000), address(this));
     }
 
     function test_callMint1155() public {
+        // deploy new 1155
+        Test1155 newTest1155 = new Test1155();
+
         // add to whitelist
-        factory.setCallAllowed(payable(address(test1155)), true);
+        factory.setCallAllowed(payable(address(newTest1155)), true);
 
         bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 0, 2, "");
-        pair1155.call(payable(address(test1155)), data);
+        pair1155.call(payable(address(newTest1155)), data);
 
         // verify NFT ownership
-        assertEq(test1155.balanceOf(address(this), 0), 2);
+        assertEq(newTest1155.balanceOf(address(this), 0), 2);
     }
 
     function test_withdraw1155() public {

@@ -626,9 +626,14 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         ILSSVMPairFactoryLike _factory = factory();
         require(_factory.callAllowed(target), "Target must be whitelisted");
 
-        // ensure the call isn't calling a banned function
+        // Ensure the call isn't calling a banned function
         bytes4 sig = bytes4(data[:4]);
+        // (We ban calling onOwnershipTransferred when ownership isn't actually transferred)
         require(sig != IOwnershipTransferReceiver.onOwnershipTransferred.selector, "Banned function");
+
+        // Prevent calling the pair's underlying nft 
+        // (We ban calling the underlying NFT to avoid maliciously transferring assets approved for the pair to spend)
+        require(target != nft(), "Banned target");
 
         (bool result,) = target.call{value: 0}(data);
         require(result, "Call failed");
