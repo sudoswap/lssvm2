@@ -661,7 +661,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
                 ++i;
             }
         }
-        if (isValidPair(recipient)) {
+        if (isValidPair(recipient) && (address(_nft) == LSSVMPair(recipient).nft())) {
             emit NFTDeposit(recipient, ids);
         }
     }
