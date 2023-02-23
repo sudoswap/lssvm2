@@ -631,7 +631,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         // (We ban calling onOwnershipTransferred when ownership isn't actually transferred)
         require(sig != IOwnershipTransferReceiver.onOwnershipTransferred.selector, "Banned function");
 
-        // Prevent calling the pair's underlying nft 
+        // Prevent calling the pair's underlying nft
         // (We ban calling the underlying NFT to avoid maliciously transferring assets approved for the pair to spend)
         require(target != nft(), "Banned target");
 
@@ -648,6 +648,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      */
     function multicall(bytes[] calldata calls, bool revertOnFail) external onlyOwner {
         for (uint256 i; i < calls.length;) {
+            bytes4 sig = bytes4(calls[i][:4]);
+            // We ban calling transferOwnership when ownership
+            require(sig != transferOwnership.selector, "Banned function");
+
             (bool success, bytes memory result) = address(this).delegatecall(calls[i]);
             if (!success && revertOnFail) {
                 assembly {
@@ -659,8 +663,5 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
                 ++i;
             }
         }
-
-        // Prevent multicall from malicious frontend sneaking in ownership change
-        require(owner() == msg.sender, "Ownership cannot be changed in multicall");
     }
 }

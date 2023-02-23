@@ -20,6 +20,7 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {TestPairManager} from "../../mocks/TestPairManager.sol";
 import {TestPairManager2} from "../../mocks/TestPairManager2.sol";
+import {MockOwnershipTransferReceiver} from "../../mocks/MockOwnershipTransferReceiver.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
@@ -406,7 +407,12 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeCall(pair.transferOwnership, (address(69), ""));
         calls[1] = abi.encodeCall(pair.changeDelta, (2 ether));
-        vm.expectRevert(Ownable_NotOwner.selector);
+        vm.expectRevert("Banned function");
+        pair.multicall(calls, true);
+
+        MockOwnershipTransferReceiver receiver = new MockOwnershipTransferReceiver();
+        calls[0] = abi.encodeCall(pair.transferOwnership, (address(receiver), ""));
+        vm.expectRevert("Banned function");
         pair.multicall(calls, true);
     }
 
@@ -414,7 +420,12 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeCall(pair1155.transferOwnership, (address(69), ""));
         calls[1] = abi.encodeCall(pair1155.changeDelta, (2 ether));
-        vm.expectRevert(Ownable_NotOwner.selector);
+        vm.expectRevert("Banned function");
+        pair1155.multicall(calls, true);
+
+        MockOwnershipTransferReceiver receiver = new MockOwnershipTransferReceiver();
+        calls[0] = abi.encodeCall(pair1155.transferOwnership, (address(receiver), ""));
+        vm.expectRevert("Banned function");
         pair1155.multicall(calls, true);
     }
 
@@ -453,7 +464,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         vm.expectRevert("Banned target");
         pair.call(payable(address(test721)), data);
     }
-    
+
     function test_callBannedTarget1155() public {
         factory.setCallAllowed(payable(address(test1155)), true);
         bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 0, 2, "");
