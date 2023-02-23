@@ -730,7 +730,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
 
         // Withdraw the tokens
         if (factory.getPairTokenType(address(pair721)) == ILSSVMPairFactoryLike.PairTokenType.ETH) {
-            Splitter(splitterAddress).withdrawAllETH();
+            Splitter(splitterAddress).withdrawAllETHInSplitter();
         } else {
             Splitter(splitterAddress).withdrawAllBaseQuoteTokens();
         }

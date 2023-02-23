@@ -180,9 +180,10 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         }
 
         // Split fees (if applicable)
-        if (pairFactory.getPairTokenType(pairAddress) == ILSSVMPairFactoryLike.PairTokenType.ETH) {
-            Splitter(payable(pair.getFeeRecipient())).withdrawAllETH();
-        } else if (pairFactory.getPairTokenType(pairAddress) == ILSSVMPairFactoryLike.PairTokenType.ERC20) {
+        ILSSVMPairFactoryLike.PairTokenType pairTokenType = pairFactory.getPairTokenType(pairAddress);
+        if (pairTokenType == ILSSVMPairFactoryLike.PairTokenType.ETH) {
+            Splitter(payable(pair.getFeeRecipient())).withdrawAllETHInSplitter();
+        } else if (pairTokenType == ILSSVMPairFactoryLike.PairTokenType.ERC20) {
             Splitter(payable(pair.getFeeRecipient())).withdrawAllBaseQuoteTokens();
         }
 
@@ -301,7 +302,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         for (uint256 i; i < splitterAddresses.length;) {
             Splitter splitter = Splitter(payable(splitterAddresses[i]));
             if (isETHPair[i]) {
-                splitter.withdrawAllETH();
+                splitter.withdrawAllETHInSplitter();
             } else {
                 splitter.withdrawAllBaseQuoteTokens();
             }
