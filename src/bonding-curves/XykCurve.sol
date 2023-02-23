@@ -80,7 +80,11 @@ contract XykCurve is ICurve, CurveErrorCodes {
         inputValue = inputValueWithoutFee + tradeFee + protocolFee;
 
         // set the new virtual reserves
-        newSpotPrice = uint128(spotPrice + inputValueWithoutFee); // token reserve
+        uint256 newSpotPrice_ = spotPrice + inputValueWithoutFee;
+        if (newSpotPrice_ > type(uint128).max) {
+            return (Error.SPOT_PRICE_OVERFLOW, 0, 0, 0, 0, 0);
+        }
+        newSpotPrice = uint128(newSpotPrice_); // token reserve
         newDelta = uint128(nftBalance - numItems); // nft reserve
 
         // If we got all the way here, no math error happened
@@ -127,7 +131,11 @@ contract XykCurve is ICurve, CurveErrorCodes {
 
         // set the new virtual reserves
         newSpotPrice = uint128(spotPrice - outputValueWithoutFee); // token reserve
-        newDelta = uint128(nftBalance + numItems); // nft reserve
+        uint256 newDelta_ = nftBalance + numItems; // nft reserve
+        if (newDelta_ > type(uint128).max) {
+            return (Error.DELTA_OVERFLOW, 0, 0, 0, 0, 0);
+        }
+        newDelta = uint128(newDelta_);
 
         // If we got all the way here, no math error happened
         error = Error.OK;

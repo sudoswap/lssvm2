@@ -62,6 +62,16 @@ contract XykCurveTest is Test, ERC721Holder {
         );
     }
 
+    function setUpEmptyEthPair(uint256 value) public {
+        nft = new Test721();
+        nft.setApprovalForAll(address(factory), true);
+        uint256[] memory idList = new uint256[](0);
+
+        ethPair = factory.createPairERC721ETH{value: value}(
+            nft, curve, payable(0), LSSVMPair.PoolType.TRADE, 0, 0, uint128(value), address(0), idList
+        );
+    }
+
     function setupFactory(address payable feeRecipient) public virtual returns (LSSVMPairFactory) {
         LSSVMPairERC721ETH erc721ETHTemplate = new LSSVMPairERC721ETH(royaltyEngine);
         LSSVMPairERC721ERC20 erc721ERC20Template = new LSSVMPairERC721ERC20(royaltyEngine);
@@ -123,6 +133,23 @@ contract XykCurveTest is Test, ERC721Holder {
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
         assertEq(newDelta, numNfts - numItemsToBuy, "Should have updated virtual nft reserve");
         assertEq(newSpotPrice, inputValue + value, "Should have updated virtual eth reserve");
+    }
+
+    function test_getBuyInfoOverflow() public {
+        uint256 nftBalance = 10000000002;
+        uint256 tokenBalance = type(uint128).max / 10000000000;
+        setUpEmptyEthPair(tokenBalance);
+        ethPair.changeDelta(uint128(nftBalance));
+        uint256 numItemsToBuy = 10000000001;
+
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue,) =
+            ethPair.getBuyNFTQuote(numItemsToBuy);
+        assertEq(
+            uint256(error), uint256(CurveErrorCodes.Error.SPOT_PRICE_OVERFLOW), "Error code not SPOT_PRICE_OVERFLOW"
+        );
+        assertEq(newDelta, 0);
+        assertEq(newSpotPrice, 0);
+        assertEq(inputValue, 0);
     }
 
     function test_getSellInfoReturnsNewReserves() public {
@@ -206,6 +233,21 @@ contract XykCurveTest is Test, ERC721Holder {
         // assert
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
         assertEq(protocolFee, expectedProtocolFee, "Should have calculated protocol fee");
+    }
+
+    function test_getSellInfoOverflow() public {
+        uint256 nftBalance = type(uint128).max;
+        uint256 tokenBalance = 1 ether;
+        setUpEmptyEthPair(tokenBalance);
+        ethPair.changeDelta(uint128(nftBalance));
+        uint256 numItemsToSell = 1;
+
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue,,) =
+            ethPair.getSellNFTQuote(1, numItemsToSell);
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.DELTA_OVERFLOW), "Error code not DELTA_OVERFLOW");
+        assertEq(newDelta, 0);
+        assertEq(newSpotPrice, 0);
+        assertEq(inputValue, 0);
     }
 
     function test_swapTokenForSpecificNFTs() public {
