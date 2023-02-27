@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 import {LSSVMPair} from "../src/LSSVMPair.sol";
 import {LSSVMRouter} from "../src/LSSVMRouter.sol";
-import {LSSVMRouter2} from "../src/LSSVMRouter2.sol";
 import {CREATE3Script} from "./base/CREATE3Script.sol";
 import {XykCurve} from "../src/bonding-curves/XykCurve.sol";
 import {LSSVMPairFactory} from "../src/LSSVMPairFactory.sol";
@@ -22,7 +21,6 @@ contract DeployScript is CREATE3Script {
         returns (
             LSSVMPairFactory factory,
             LSSVMRouter router,
-            LSSVMRouter2 router2,
             LinearCurve linearCurve,
             ExponentialCurve exponentialCurve,
             XykCurve xykCurve
@@ -108,18 +106,9 @@ contract DeployScript is CREATE3Script {
                 )
             )
         );
-        router2 = LSSVMRouter2(
-            payable(
-                create3.deploy(
-                    getCreate3ContractSalt("LSSVMRouter2"),
-                    bytes.concat(type(LSSVMRouter2).creationCode, abi.encode(factory))
-                )
-            )
-        );
 
         // whitelist routers
         factory.setRouterAllowed(router, true);
-        factory.setRouterAllowed(LSSVMRouter(payable(address(router2))), true);
 
         // transfer factory ownership
         {
