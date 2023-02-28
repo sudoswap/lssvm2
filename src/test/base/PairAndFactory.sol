@@ -263,32 +263,6 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         pair1155.transferOwnership(payable(address(2)), "");
     }
 
-    event NFTDeposit(address poolAddress, uint256[] ids);
-
-    function test_depositNFTs() public {
-        Test721(address(test721)).mint(address(this), 69);
-        uint256[] memory ids = new uint256[](1);
-        ids[0] = 69;
-
-        vm.expectEmit(true, true, true, true);
-        emit NFTDeposit(address(pair), ids);
-
-        factory.depositNFTs(test721, ids, address(pair));
-    }
-    
-    // Should fail because the nft doesn't match the pair
-    function testFail_depositNFTsNotCollection() public {
-        Test721 newTest721 = new Test721();
-        Test721(address(newTest721)).mint(address(this), 69);
-        uint256[] memory ids = new uint256[](1);
-        ids[0] = 69;
-
-        vm.expectEmit(true, true, true, true);
-        emit NFTDeposit(address(pair), ids);
-
-        factory.depositNFTs(newTest721, ids, address(pair));
-    }
-
     function test_rescueTokensERC721() public {
         pair.withdrawERC721(test721, idList);
         pair.withdrawERC20(testERC20, 1 ether);

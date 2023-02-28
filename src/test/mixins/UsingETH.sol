@@ -130,4 +130,8 @@ abstract contract UsingETH is Configurable, RouterCaller {
     ) public payable override returns (uint256, uint256) {
         return router.robustSwapETHForSpecificNFTsAndNFTsToToken{value: msg.value}(params);
     }
+
+    function getTokenAddress() public pure override returns (address) {
+        return address(0);
+    }
 }

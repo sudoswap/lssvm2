@@ -68,4 +68,9 @@ abstract contract UsingExponentialCurve is Configurable {
             spotPrice = uint128((pair.spotPrice() / 1e18) * percentage);
         }
     }
+
+    function getReasonableDeltaAndSpotPrice() public pure override returns (uint128 delta, uint128 spotPrice) {
+        delta = 1.05e18;
+        spotPrice = 1e18;
+    }
 }

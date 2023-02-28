@@ -232,8 +232,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
                 require(routerAllowed, "Not router");
 
                 // Call router to pull NFTs
-                // If more than 1 NFT is being transfered, we can do a balance check instead of an ownership check, as pools are indifferent between NFTs from the same collection
-                if (numNFTs > 1) {
+                // If more than 1 NFT is being transfered, and there is no property checker, we can do a balance check instead of an ownership check, as pools are indifferent between NFTs from the same collection
+                if ((numNFTs > 1) && (propertyChecker() == address(0))) {
                     uint256 beforeBalance = _nft.balanceOf(_assetRecipient);
                     for (uint256 i = 0; i < numNFTs;) {
                         router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i]);
@@ -243,15 +243,21 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
                         }
                     }
                     require((_nft.balanceOf(_assetRecipient) - beforeBalance) == numNFTs, "NFTs not transferred");
-                } else {
-                    router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[0]);
-                    require(_nft.ownerOf(nftIds[0]) == _assetRecipient, "NFT not transferred");
+                }
+                // Otherwise we need to pull each asset 1 at a time and verify ownership
+                else {
+                    for (uint256 i; i < nftIds.length;) {
+                        router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i]);
+                        require(_nft.ownerOf(nftIds[i]) == _assetRecipient, "NFT not transferred");
+                        unchecked {
+                            ++i;
+                        }
+                    }
                 }
             } else {
                 // Pull NFTs directly from sender
                 for (uint256 i; i < numNFTs;) {
                     _nft.transferFrom(msg.sender, _assetRecipient, nftIds[i]);
-
                     unchecked {
                         ++i;
                     }

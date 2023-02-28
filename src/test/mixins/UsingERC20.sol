@@ -115,7 +115,7 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
             )
         );
 
-        // Set approvals for pair
+        // Set approvals for pair for erc20
         test20.approve(address(pair), type(uint256).max);
 
         return pair;
@@ -208,5 +208,9 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
         LSSVMRouter.RobustPairNFTsFoTokenAndTokenforNFTsTrade calldata params
     ) public payable override returns (uint256, uint256) {
         return router.robustSwapERC20ForSpecificNFTsAndNFTsToToken(params);
+    }
+
+    function getTokenAddress() public view override returns (address) {
+        return address(test20);
     }
 }

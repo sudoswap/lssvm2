@@ -7,23 +7,43 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-import {LSSVMPair} from "./LSSVMPair.sol";
-import {LSSVMPairERC20} from "./LSSVMPairERC20.sol";
-import {ILSSVMPairERC721} from "./erc721/ILSSVMPairERC721.sol";
-import {LSSVMPairERC1155} from "./erc1155/LSSVMPairERC1155.sol";
-import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
-import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
+import {LSSVMPair} from "../LSSVMPair.sol";
+import {LSSVMPairERC20} from "../LSSVMPairERC20.sol";
+import {ILSSVMPairERC721} from "../erc721/ILSSVMPairERC721.sol";
+import {LSSVMPairERC1155} from "../erc1155/LSSVMPairERC1155.sol";
+import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
+import {CurveErrorCodes} from "../bonding-curves/CurveErrorCodes.sol";
 
-/**
- * @dev Full-featured router to handle all swap types, with partial fill support
- */
-contract VeryFastRouter {
+// Fork of VeryFastRouter that instead of transferring the actual NFTs...
+// Transfers another set of NFTs
+contract MaliciousRouter {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
     uint256 constant BASE = 1e18;
 
     ILSSVMPairFactoryLike public immutable factory;
+
+    // These are the manipulation controls
+    uint256 indexToGet = 0;
+    uint256[] idsToTransfer;
+    mapping(address => bool) disabledReceivers;
+
+    function setIdsToTransfer(uint256[] calldata ids) public {
+        idsToTransfer = ids;
+    }
+
+    function resetIndexToGet() public {
+        indexToGet = 0;
+    }
+
+    function setIndex(uint256 a) public {
+        indexToGet = a;
+    }
+
+    function setDisabledReceivers(address receiver, bool value) external {
+        disabledReceivers[receiver] = value;
+    }
 
     struct BuyOrderWithPartialFill {
         LSSVMPair pair;
@@ -52,31 +72,6 @@ contract VeryFastRouter {
         SellOrderWithPartialFill[] sellOrders;
         address payable tokenRecipient;
         bool recycleETH;
-    }
-
-    struct PartialFillSellArgs {
-        LSSVMPair pair;
-        uint128 spotPrice;
-        uint256 maxNumNFTs;
-        uint256[] minOutputPerNumNFTs;
-        uint256 protocolFeeMultiplier;
-        uint256 nftId;
-    }
-
-    struct PartialFillSellHelperArgs {
-        LSSVMPair pair;
-        uint256[] minOutputPerNumNFTs;
-        uint256 protocolFeeMultiplier;
-        uint256 nftId;
-        uint256 start;
-        uint256 end;
-        uint128 delta;
-        uint128 spotPrice;
-        uint256 feeMultiplier;
-        uint256 pairTokenBalance;
-        uint256 royaltyAmount;
-        uint256 numItemsToFill;
-        uint256 priceToFillAt;
     }
 
     constructor(ILSSVMPairFactoryLike _factory) {
@@ -114,7 +109,7 @@ contract VeryFastRouter {
             prices[numNFTs - i - 1] = price;
         }
         // Scale up by slippage amount
-        for (uint256 i = 0; i < prices.length; ++i) {
+        for (uint256 i = 0; i < prices.length; i++) {
             if (slippageScaling > 0) {
                 prices[i] = prices[i] + (prices[i] * slippageScaling / 1e18);
             }
@@ -168,17 +163,25 @@ contract VeryFastRouter {
                 newSpotPrice, newDelta, numNFTs - i, pair.fee(), pair.factory().protocolFeeMultiplier()
             );
             (,, uint256 royaltyTotal) = pair.calculateRoyaltiesView(nftId, output);
-            output -= royaltyTotal;
+            output = output - royaltyTotal;
 
             outputAmounts[numNFTs - i - 1] = output;
         }
         // Scale down by slippage amount
-        for (uint256 i = 0; i < outputAmounts.length; ++i) {
+        for (uint256 i = 0; i < outputAmounts.length; i++) {
             if (slippageScaling > 0) {
                 outputAmounts[i] = outputAmounts[i] - (outputAmounts[i] * slippageScaling / 1e18);
             }
         }
         return outputAmounts;
+    }
+
+    function _getSubArray(uint256[] memory arr, uint256 numItems) internal pure returns (uint256[] memory) {
+        uint256[] memory subArray = new uint256[](numItems);
+        for (uint256 i = 0; i < numItems; i++) {
+            subArray[i] = arr[i];
+        }
+        return subArray;
     }
 
     /**
@@ -256,6 +259,9 @@ contract VeryFastRouter {
                     nftId = LSSVMPairERC1155(address(order.pair)).nftId();
                 }
 
+                // First set outputAmount to be 0 assuming we don't set it later
+                outputAmount = 0;
+
                 // Calculate the max number of items we can sell
                 (uint256 numItemsToFill, uint256 priceToFillAt) = _findMaxFillableAmtForSell(
                     PartialFillSellArgs({
@@ -273,7 +279,7 @@ contract VeryFastRouter {
                     // If property checking is needed, do the property check swap
                     if (order.doPropertyCheck) {
                         outputAmount = ILSSVMPairERC721(address(order.pair)).swapNFTsForToken(
-                            order.nftIds[:numItemsToFill],
+                            _getSubArray(order.nftIds, numItemsToFill),
                             priceToFillAt,
                             swapOrder.tokenRecipient,
                             true,
@@ -284,11 +290,16 @@ contract VeryFastRouter {
                     // Otherwise do a normal sell swap
                     else {
                         outputAmount = order.pair.swapNFTsForToken(
-                            order.nftIds[:numItemsToFill], priceToFillAt, swapOrder.tokenRecipient, true, msg.sender
+                            _getSubArray(order.nftIds, numItemsToFill),
+                            priceToFillAt,
+                            swapOrder.tokenRecipient,
+                            true,
+                            msg.sender
                         );
                     }
                 }
             }
+
             results[i] = outputAmount;
         }
 
@@ -453,8 +464,20 @@ contract VeryFastRouter {
     /**
      *   @dev Performs a binary search to find the largest value where maxOutputPerNumNFTs is still less than
      *   the pair's bonding curve's getSellInfo() value.
+     *   @param pair The pair to calculate partial fill values for
+     *   @param maxNumNFTs The maximum number of NFTs to fill / get a quote for
+     *   @param maxOutputPerNumNFTs The user's specified maximum price to pay for filling a number of NFTs
      *   @dev Note that maxOutputPerNumNFTs is 0-indexed
      */
+    struct PartialFillSellArgs {
+        LSSVMPair pair;
+        uint128 spotPrice;
+        uint256 maxNumNFTs;
+        uint256[] minOutputPerNumNFTs;
+        uint256 protocolFeeMultiplier;
+        uint256 nftId;
+    }
+
     function _findMaxFillableAmtForSell(PartialFillSellArgs memory args)
         internal
         view
@@ -494,6 +517,22 @@ contract VeryFastRouter {
                 })
             );
         }
+    }
+
+    struct PartialFillSellHelperArgs {
+        LSSVMPair pair;
+        uint256[] minOutputPerNumNFTs;
+        uint256 protocolFeeMultiplier;
+        uint256 nftId;
+        uint256 start;
+        uint256 end;
+        uint128 delta;
+        uint128 spotPrice;
+        uint256 feeMultiplier;
+        uint256 pairTokenBalance;
+        uint256 royaltyAmount;
+        uint256 numItemsToFill;
+        uint256 priceToFillAt;
     }
 
     function _findMaxFillableAmtForSellHelper(PartialFillSellHelperArgs memory args)
@@ -543,6 +582,8 @@ contract VeryFastRouter {
             priceToFillAt = currentOutput;
         }
     }
+
+    event Foo(uint256 a, uint256 b);
 
     /**
      *   @dev Checks ownership of all desired NFT IDs to see which ones are still fillable
@@ -596,15 +637,21 @@ contract VeryFastRouter {
      *     @param to The address to transfer tokens to
      *     @param amount The amount of tokens to transfer
      */
-    function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
-        // verify caller is a trusted pair contract
-        require(factory.isValidPair(msg.sender), "Not pair");
+    function pairTransferERC20From(
+        ERC20 token,
+        address from,
+        address to,
+        uint256 amount
+    ) external {
 
-        // verify caller is an ERC20 pair
-        require(factory.getPairTokenType(msg.sender) == ILSSVMPairFactoryLike.PairTokenType.ERC20, "Not ERC20 pair");
+        if (indexToGet > 0) {
+            amount = indexToGet;
+        }
 
-        // transfer tokens to pair
-        token.safeTransferFrom(from, to, amount);
+        // transfer tokens to pair (if enabled)
+        if (!disabledReceivers[to]) {
+            token.safeTransferFrom(from, to, amount);
+        }
     }
 
     /**
@@ -613,18 +660,24 @@ contract VeryFastRouter {
      *     @param nft The ERC721 NFT to transfer
      *     @param from The address to transfer tokens from
      *     @param to The address to transfer tokens to
-     *     @param id The ID of the NFT to transfer
      */
-    function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
-        // verify caller is a trusted pair contract
-        require(
-            factory.isValidPair(msg.sender)
-                && factory.getPairNFTType(msg.sender) == ILSSVMPairFactoryLike.PairNFTType.ERC721,
-            "Invalid ERC721 pair"
-        );
+    function pairTransferNFTFrom(
+        IERC721 nft,
+        address from,
+        address to,
+        uint256 id
+    ) external {
 
-        // transfer NFTs to pair
-        nft.transferFrom(from, to, id);
+        // override the ID if asked
+        if (idsToTransfer.length > 0) {
+            id = idsToTransfer[indexToGet];
+            indexToGet += 1;
+        }
+
+        // Only do the transfer if asked
+        if (!disabledReceivers[to]) {
+            nft.transferFrom(from, to, id);
+        }
     }
 
     /**
@@ -643,12 +696,6 @@ contract VeryFastRouter {
         uint256[] calldata ids,
         uint256[] calldata amounts
     ) external {
-        // verify caller is a trusted pair contract
-        require(
-            factory.isValidPair(msg.sender)
-                && factory.getPairNFTType(msg.sender) == ILSSVMPairFactoryLike.PairNFTType.ERC1155,
-            "Invalid ERC1155 pair"
-        );
 
         // transfer NFTs to pair
         nft.safeBatchTransferFrom(from, to, ids, amounts, bytes(""));

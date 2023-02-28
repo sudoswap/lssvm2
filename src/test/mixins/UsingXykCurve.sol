@@ -48,4 +48,9 @@ abstract contract UsingXykCurve is Configurable {
             spotPrice = uint128((pair.spotPrice() / 1e18) * percentage);
         }
     }
+
+    function getReasonableDeltaAndSpotPrice() public pure override returns (uint128 delta, uint128 spotPrice) {
+        delta = 100;
+        spotPrice = 1e18;
+    }
 }

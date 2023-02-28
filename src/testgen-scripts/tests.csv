@@ -10,3 +10,5 @@ RouterRobustSwapWithAssetRecipient,RRSWAR
 RouterRobustSwapWithRoyalties,RRSWR
 SettingsE2E,AE2E
 PropertyChecking,PC
+VeryFastRouterAllSwapTypes,VFR
+MaliciousRouterFailsSwap,MRFS

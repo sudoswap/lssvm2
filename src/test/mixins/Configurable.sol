@@ -145,5 +145,9 @@ abstract contract Configurable {
         virtual
         returns (uint128 spotPrice, uint128 delta);
 
+    function getTokenAddress() public virtual returns (address);
+
+    function getReasonableDeltaAndSpotPrice() public virtual returns (uint128 delta, uint128 spotPrice);
+
     receive() external payable {}
 }

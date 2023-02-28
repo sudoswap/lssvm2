@@ -240,7 +240,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
         if (numNFTs != 0) {
             // Compute royalties
-            (,, royaltyAmount) = _calculateRoyaltiesView(assetId, outputAmount);
+            (,, royaltyAmount) = calculateRoyaltiesView(assetId, outputAmount);
 
             // Deduct royalties from outputAmount
             unchecked {
@@ -359,8 +359,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             revert BondingCurveError(error);
         }
 
-        // Revert if input is more than expected
-        require(inputAmount <= maxExpectedTokenInput, "In too many tokens");
+        // Revert if required input is more than expected
+        require(inputAmount <= maxExpectedTokenInput, "In too few tokens");
 
         // Consolidate writes to save gas
         if (currentSpotPrice != newSpotPrice || currentDelta != newDelta) {
@@ -468,7 +468,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     function _immutableParamsLength() internal pure virtual returns (uint256);
 
     /**
-     * Royalty support internal functions
+     * Royalty support functions
      */
 
     function _calculateRoyalties(uint256 assetId, uint256 saleAmount)
@@ -503,10 +503,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     }
 
     /**
-     * @dev Same as _calculateRoyalties, but uses getRoyaltyView to avoid state mutations
+     * @dev Same as _calculateRoyalties, but uses getRoyaltyView to avoid state mutations and is public for external callers
      */
-    function _calculateRoyaltiesView(uint256 assetId, uint256 saleAmount)
-        internal
+    function calculateRoyaltiesView(uint256 assetId, uint256 saleAmount)
+        public
         view
         returns (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal)
     {

@@ -45,4 +45,9 @@ abstract contract UsingLinearCurve is Configurable {
             delta = uint128((pair.delta() * 1e18) / percentage);
         }
     }
+
+    function getReasonableDeltaAndSpotPrice() public pure override returns (uint128 delta, uint128 spotPrice) {
+        delta = 0.01e18;
+        spotPrice = 1e18;
+    }
 }
