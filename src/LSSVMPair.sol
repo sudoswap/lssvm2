@@ -477,29 +477,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     {
         (address payable[] memory recipients, uint256[] memory amounts) =
             ROYALTY_ENGINE.getRoyalty(nft(), assetId, saleAmount);
-        if (recipients.length != 0) {
-            // If a pair has custom Settings, use the overridden royalty amount and only use the first receiver
-            (bool settingsEnabled, uint96 bps) = factory().getSettingsForPair(address(this));
-            if (settingsEnabled) {
-                royaltyRecipients = new address payable[](1);
-                royaltyRecipients[0] = recipients[0];
-                royaltyAmounts = new uint256[](1);
-                royaltyAmounts[0] = (saleAmount * bps) / 10000;
-            } else {
-                royaltyRecipients = recipients;
-                royaltyAmounts = amounts;
-            }
-        }
-
-        for (uint256 i; i < royaltyRecipients.length;) {
-            royaltyTotal += royaltyAmounts[i];
-            unchecked {
-                ++i;
-            }
-        }
-
-        // validate royalty total
-        require(saleAmount >= royaltyTotal, "Royalty exceeds sale price");
+        return _calculateRoyaltiesLogic(recipients, amounts, saleAmount);
     }
 
     /**
@@ -512,6 +490,17 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     {
         (address payable[] memory recipients, uint256[] memory amounts) =
             ROYALTY_ENGINE.getRoyaltyView(nft(), assetId, saleAmount);
+        return _calculateRoyaltiesLogic(recipients, amounts, saleAmount);
+    }
+
+    /**
+     * @dev Common logic used by _calculateRoyalties() and calculateRoyaltiesView()
+     */
+    function _calculateRoyaltiesLogic(address payable[] memory recipients, uint256[] memory amounts, uint256 saleAmount)
+        internal
+        view
+        returns (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal)
+    {
         if (recipients.length != 0) {
             // If a pair has custom Settings, use the overridden royalty amount and only use the first receiver
             (bool settingsEnabled, uint96 bps) = factory().getSettingsForPair(address(this));

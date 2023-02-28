@@ -637,13 +637,7 @@ contract MaliciousRouter {
      *     @param to The address to transfer tokens to
      *     @param amount The amount of tokens to transfer
      */
-    function pairTransferERC20From(
-        ERC20 token,
-        address from,
-        address to,
-        uint256 amount
-    ) external {
-
+    function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
         if (indexToGet > 0) {
             amount = indexToGet;
         }
@@ -661,13 +655,7 @@ contract MaliciousRouter {
      *     @param from The address to transfer tokens from
      *     @param to The address to transfer tokens to
      */
-    function pairTransferNFTFrom(
-        IERC721 nft,
-        address from,
-        address to,
-        uint256 id
-    ) external {
-
+    function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
         // override the ID if asked
         if (idsToTransfer.length > 0) {
             id = idsToTransfer[indexToGet];
@@ -696,7 +684,6 @@ contract MaliciousRouter {
         uint256[] calldata ids,
         uint256[] calldata amounts
     ) external {
-
         // transfer NFTs to pair
         nft.safeBatchTransferFrom(from, to, ids, amounts, bytes(""));
     }
