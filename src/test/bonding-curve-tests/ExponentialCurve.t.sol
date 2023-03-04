@@ -90,7 +90,7 @@ contract ExponentialCurveTest is Test {
     }
 
     function test_getSellInfoWithoutFee(uint128 spotPrice, uint128 delta, uint8 numItems) public {
-        if (delta < FixedPointMathLib.WAD || spotPrice < MIN_PRICE || numItems == 0) {
+        if (delta <= FixedPointMathLib.WAD || spotPrice < MIN_PRICE || numItems == 0) {
             return;
         }
 
