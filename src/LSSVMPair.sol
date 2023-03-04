@@ -617,8 +617,13 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
 
         // Ensure the call isn't calling a banned function
         bytes4 sig = bytes4(data[:4]);
-        // (We ban calling onOwnershipTransferred when ownership isn't actually transferred)
-        require(sig != IOwnershipTransferReceiver.onOwnershipTransferred.selector, "Banned function");
+        if (
+            sig == IOwnershipTransferReceiver.onOwnershipTransferred.selector
+                || sig == LSSVMRouter.pairTransferERC20From.selector || sig == LSSVMRouter.pairTransferNFTFrom.selector
+                || sig == LSSVMRouter.pairTransferERC1155From.selector
+        ) {
+            revert("Banned function");
+        }
 
         // Prevent calling the pair's underlying nft
         // (We ban calling the underlying NFT to avoid maliciously transferring assets approved for the pair to spend)

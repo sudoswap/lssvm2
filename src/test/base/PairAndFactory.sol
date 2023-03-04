@@ -12,6 +12,7 @@ import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155
 
 import {Test20} from "../../mocks/Test20.sol";
 import {LSSVMPair} from "../../LSSVMPair.sol";
+import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {Test721} from "../../mocks/Test721.sol";
 import {Test1155} from "../../mocks/Test1155.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
@@ -428,6 +429,27 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
 
         bytes memory data =
             abi.encodeWithSelector(IOwnershipTransferReceiver.onOwnershipTransferred.selector, address(this), "");
+        vm.expectRevert("Banned function");
+        pair.call(payable(address(pairManager)), data);
+
+        data =
+            abi.encodeWithSelector(LSSVMRouter.pairTransferERC20From.selector, vm.addr(1), vm.addr(2), vm.addr(3), 1000);
+        vm.expectRevert("Banned function");
+        pair.call(payable(address(pairManager)), data);
+
+        data = abi.encodeWithSelector(LSSVMRouter.pairTransferNFTFrom.selector, vm.addr(1), vm.addr(2), vm.addr(3), 10);
+        vm.expectRevert("Banned function");
+        pair.call(payable(address(pairManager)), data);
+
+        uint256[] memory idsAndAmounts = new uint256[](0);
+        data = abi.encodeWithSelector(
+            LSSVMRouter.pairTransferERC1155From.selector,
+            vm.addr(1),
+            vm.addr(2),
+            vm.addr(3),
+            idsAndAmounts,
+            idsAndAmounts
+        );
         vm.expectRevert("Banned function");
         pair.call(payable(address(pairManager)), data);
     }
