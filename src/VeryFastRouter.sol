@@ -261,7 +261,7 @@ contract VeryFastRouter {
                     PartialFillSellArgs({
                         pair: order.pair,
                         spotPrice: pairSpotPrice,
-                        maxNumNFTs: order.nftIds.length,
+                        maxNumNFTs: (order.isERC721 ? order.nftIds.length : order.nftIds[0]),
                         minOutputPerNumNFTs: order.minExpectedOutputPerNumNFTs,
                         protocolFeeMultiplier: protocolFeeMultiplier,
                         nftId: nftId
@@ -318,7 +318,7 @@ contract VeryFastRouter {
                 (uint256 numItemsToFill, uint256 priceToFillAt) = _findMaxFillableAmtForBuy(
                     order.pair,
                     uint128(inputAmount),
-                    order.nftIds.length,
+                    (order.isERC721 ? order.nftIds.length : order.nftIds[0]),
                     order.maxCostPerNumNFTs,
                     protocolFeeMultiplier
                 );
