@@ -6,7 +6,6 @@ import {IRoyaltyEngineV1} from "manifoldxyz/IRoyaltyEngineV1.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -600,6 +599,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         }
     }
 
+    function _preCallCheck(address target) internal virtual;
+
     /**
      * @notice Allows the pair to make arbitrary external calls to contracts
      *     whitelisted by the protocol. Only callable by the owner.
@@ -621,8 +622,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         }
 
         // Prevent calling the pair's underlying nft
-        // (We ban calling the underlying NFT to avoid maliciously transferring assets approved for the pair to spend)
+        // (We ban calling the underlying NFT/ERC20 to avoid maliciously transferring assets approved for the pair to spend)
         require(target != nft(), "Banned target");
+
+        _preCallCheck(target);
 
         (bool result,) = target.call{value: 0}(data);
         require(result, "Call failed");

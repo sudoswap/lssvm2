@@ -21,11 +21,11 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {TestPairManager} from "../../mocks/TestPairManager.sol";
 import {TestPairManager2} from "../../mocks/TestPairManager2.sol";
-import {MockOwnershipTransferReceiver} from "../../mocks/MockOwnershipTransferReceiver.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 import {IOwnershipTransferReceiver} from "../../lib/IOwnershipTransferReceiver.sol";
+import {MockOwnershipTransferReceiver} from "../../mocks/MockOwnershipTransferReceiver.sol";
 
 error Ownable_NotOwner();
 
@@ -466,6 +466,16 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 0, 2, "");
         vm.expectRevert("Banned target");
         pair1155.call(payable(address(test1155)), data);
+    }
+
+    function test_callBannedTargetERC20() public {
+        // Only for ERC20 pairs
+        if (getTokenAddress() != address(0)) {
+            factory.setCallAllowed(payable(getTokenAddress()), true);
+            bytes memory data = abi.encodeWithSelector(Test20.mint.selector, address(this), 1000);
+            vm.expectRevert("Banned target");
+            pair.call(payable(getTokenAddress()), data);
+        }
     }
 
     function test_callMint721() public {

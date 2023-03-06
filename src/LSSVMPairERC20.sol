@@ -139,4 +139,8 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
             emit TokenWithdrawal(amount);
         }
     }
+
+    function _preCallCheck(address target) internal pure override {
+        require(target != address(token()), "Banned target");
+    }
 }

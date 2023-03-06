@@ -131,4 +131,6 @@ abstract contract LSSVMPairETH is LSSVMPair {
         require(msg.data.length == _immutableParamsLength());
         emit TokenDeposit(msg.value);
     }
+
+    function _preCallCheck(address) internal pure override {}
 }
