@@ -451,11 +451,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     function _refundTokenToSender(uint256 inputAmount) internal virtual;
 
     /**
-     * @notice Sends protocol fee (if it exists) back to the LSSVMPairFactory from the pair
-     */
-    function _payProtocolFeeFromPair(ILSSVMPairFactoryLike _factory, uint256 protocolFee) internal virtual;
-
-    /**
      * @notice Sends tokens to a recipient
      *     @param tokenRecipient The address receiving the tokens
      *     @param outputAmount The amount of tokens to send

@@ -125,9 +125,9 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
             }
         }
 
-        _payProtocolFeeFromPair(_factory, protocolFee);
+        _sendTokenOutput(payable(address(_factory)), protocolFee);
 
-        _takeNFTsFromSender(IERC1155(nft()), numNFTs[0], isRouter, routerCaller);
+        _takeNFTsFromSender(IERC1155(nft()), numNFTs[0], _factory, isRouter, routerCaller);
 
         emit SwapNFTInPair(outputAmount, numNFTs[0]);
     }
@@ -168,7 +168,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
      *     @param _nft The NFT collection to take from
      *     @param numNFTs The number of NFTs to take
      */
-    function _takeNFTsFromSender(IERC1155 _nft, uint256 numNFTs, bool isRouter, address routerCaller)
+    function _takeNFTsFromSender(IERC1155 _nft, uint256 numNFTs, ILSSVMPairFactoryLike factory, bool isRouter, address routerCaller)
         internal
         virtual
     {
@@ -177,7 +177,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         if (isRouter) {
             // Verify if router is allowed
             LSSVMRouter router = LSSVMRouter(payable(msg.sender));
-            (bool routerAllowed,) = factory().routerStatus(router);
+            (bool routerAllowed,) = factory.routerStatus(router);
             require(routerAllowed, "Not router");
 
             uint256 _nftId = nftId();

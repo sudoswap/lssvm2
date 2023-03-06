@@ -81,14 +81,6 @@ abstract contract LSSVMPairETH is LSSVMPair {
     }
 
     /// @inheritdoc LSSVMPair
-    function _payProtocolFeeFromPair(ILSSVMPairFactoryLike _factory, uint256 protocolFee) internal override {
-        // Take protocol fee
-        if (protocolFee > 0) {
-            payable(address(_factory)).safeTransferETH(protocolFee);
-        }
-    }
-
-    /// @inheritdoc LSSVMPair
     function _sendTokenOutput(address payable tokenRecipient, uint256 outputAmount) internal override {
         // Send ETH to caller
         if (outputAmount != 0) {

@@ -174,7 +174,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
             }
         }
 
-        _payProtocolFeeFromPair(_factory, protocolFee);
+        _sendTokenOutput(payable(address(_factory)), protocolFee);
 
         _takeNFTsFromSender(IERC721(nft()), nftIds, _factory, isRouter, routerCaller);
 
