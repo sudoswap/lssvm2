@@ -111,7 +111,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
      *     this value, the transaction will be reverted.
      */
     function withdrawETH(uint256 amount) public onlyOwner {
-        payable(owner()).safeTransferETH(amount);
+        payable(msg.sender).safeTransferETH(amount);
 
         // emit event since ETH is the pair token
         emit TokenWithdrawal(amount);
