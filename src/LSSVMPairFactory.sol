@@ -530,7 +530,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     /**
      * @notice Fetches all the Pair addresses that are registered with the given Settings
      *      @param settings The address of the Settings contract
-     *      @return A list of addresses of the Pairs that belong to an Settings
+     *      @return A list of addresses of the Pairs that belong to a Settings
      */
     function getAllPairsForSettings(address settings) external view returns (address[] memory) {
         uint256 numPairs = pairsForSettings[settings].length();
@@ -621,7 +621,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         payable(address(_pair)).safeTransferETH(msg.value);
 
         // transfer initial NFTs from sender to pair
-        _nft.safeTransferFrom(msg.sender, address(_pair), _nftId, _initialNFTBalance, bytes(""));
+        if (_initialNFTBalance != 0) {
+            _nft.safeTransferFrom(msg.sender, address(_pair), _nftId, _initialNFTBalance, bytes(""));
+        } 
     }
 
     function _initializePairERC1155ERC20(
@@ -645,7 +647,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         }
 
         // transfer initial NFTs from sender to pair
-        _nft.safeTransferFrom(msg.sender, address(_pair), _nftId, _initialNFTBalance, bytes(""));
+        if (_initialNFTBalance != 0) {
+            _nft.safeTransferFrom(msg.sender, address(_pair), _nftId, _initialNFTBalance, bytes(""));
+        }
     }
 
     /**

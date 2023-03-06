@@ -283,9 +283,18 @@ contract VeryFastRouter {
                     }
                     // Otherwise do a normal sell swap
                     else {
-                        outputAmount = order.pair.swapNFTsForToken(
+                        // Get subarray if ERC721
+                        if (order.isERC721) {
+                            outputAmount = order.pair.swapNFTsForToken(
                             order.nftIds[:numItemsToFill], priceToFillAt, swapOrder.tokenRecipient, true, msg.sender
-                        );
+                            );
+                        }
+                        // For 1155 swaps, wrap as number
+                        else {
+                            outputAmount = order.pair.swapNFTsForToken(
+                            _wrapUintAsArray(numItemsToFill), priceToFillAt, swapOrder.tokenRecipient, true, msg.sender
+                            );
+                        }
                     }
                 }
             }
