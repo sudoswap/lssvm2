@@ -636,7 +636,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     @notice The revert handling is forked from: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/c239e1af8d1a1296577108dd6989a17b57434f8e/contracts/utils/Address.sol#L201
      *     @dev Intended for withdrawing/altering pool pricing in one tx, only callable by owner, cannot change owner
      *     @param calls The calldata for each call to make
-     *     @param revertOnFail Whether or not to revert the entire tx if any of the calls fail
+     *     @param revertOnFail Whether or not to revert the entire tx if any of the calls fail. Calls to transferOwnership will revert regardless.
      */
     function multicall(bytes[] calldata calls, bool revertOnFail) external onlyOwner {
         for (uint256 i; i < calls.length;) {

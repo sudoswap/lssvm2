@@ -148,7 +148,10 @@ abstract contract VeryFastRouterAllSwapTypes is
         nft.setApprovalForAll(address(router), true);
     }
 
-    function _setUpERC1155(address nftRecipient, address factoryCaller, address routerCaller) internal returns (IERC1155Mintable nft) {
+    function _setUpERC1155(address nftRecipient, address factoryCaller, address routerCaller)
+        internal
+        returns (IERC1155Mintable nft)
+    {
         nft = setup1155();
         nft.mint(nftRecipient, ID_1155, END_INDEX + 1);
         vm.prank(factoryCaller);
@@ -203,22 +206,30 @@ abstract contract VeryFastRouterAllSwapTypes is
         }
     }
 
-    function setUpPairERC1155ForSale(uint256 depositAmount, uint256 numNFTsToDeposit, address nftRecipient, address factoryCaller, address routerCaller) public returns (LSSVMPair pair) {
+    function setUpPairERC1155ForSale(
+        uint256 depositAmount,
+        uint256 numNFTsToDeposit,
+        address nftRecipient,
+        address factoryCaller,
+        address routerCaller
+    ) public returns (LSSVMPair pair) {
         IERC1155 nft = _setUpERC1155(nftRecipient, factoryCaller, routerCaller);
-        pair = this.setupPairERC1155{value: modifyInputAmount(depositAmount)}(CreateERC1155PairParams({
-            factory: pairFactory,
-            nft: nft,
-            bondingCurve: bondingCurve,
-            assetRecipient: payable(address(0)),
-            poolType: LSSVMPair.PoolType.TRADE,
-            delta: delta,
-            fee: 0, // fee
-            spotPrice: spotPrice,
-            nftId: ID_1155,
-            initialNFTBalance: numNFTsToDeposit,
-            initialTokenBalance: depositAmount,
-            routerAddress: address(router)
-        }));
+        pair = this.setupPairERC1155{value: modifyInputAmount(depositAmount)}(
+            CreateERC1155PairParams({
+                factory: pairFactory,
+                nft: nft,
+                bondingCurve: bondingCurve,
+                assetRecipient: payable(address(0)),
+                poolType: LSSVMPair.PoolType.TRADE,
+                delta: delta,
+                fee: 0, // fee
+                spotPrice: spotPrice,
+                nftId: ID_1155,
+                initialNFTBalance: numNFTsToDeposit,
+                initialTokenBalance: depositAmount,
+                routerAddress: address(router)
+            })
+        );
     }
 
     function _getBuyOrderAllItemsAvailable(bool is721)
@@ -233,8 +244,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             // Set up pair with empty property checker as PAIR_CREATOR
             nftIds = _getArray(START_INDEX, END_INDEX);
             pair = setUpPairERC721ForSale(0, address(0), nftIds);
-        }
-        else {
+        } else {
             // Set up ERC1155 pair
             pair = setUpPairERC1155ForSale(0, numNFTsForQuote, address(this), address(this), ROUTER_CALLER);
 
@@ -245,7 +255,7 @@ abstract contract VeryFastRouterAllSwapTypes is
 
         (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(numNFTsForQuote);
         uint256[] memory partialFillAmounts =
-        router.getNFTQuoteForBuyOrderWithPartialFill(pair, numNFTsForQuote, SLIPPAGE);
+            router.getNFTQuoteForBuyOrderWithPartialFill(pair, numNFTsForQuote, SLIPPAGE);
 
         // Assert that we are sending as many tokens as needed in the case where we fill everything
         assertApproxEqRel(inputAmount, partialFillAmounts[partialFillAmounts.length - 1], 1e9, "Difference too large");
@@ -286,8 +296,7 @@ abstract contract VeryFastRouterAllSwapTypes is
 
             // Get set of all ids from START_INDEX to END_INDEX
             nftIds = _getArray(START_INDEX, END_INDEX);
-        }
-        else {
+        } else {
             pair = setUpPairERC1155ForSale(0, numNFTsToReceive, address(this), address(this), ROUTER_CALLER);
             // Set the first value to be the number of assets to swap
             nftIds = new uint256[](1);
@@ -324,7 +333,6 @@ abstract contract VeryFastRouterAllSwapTypes is
         internal
         returns (VeryFastRouter.BuyOrderWithPartialFill memory buyOrder, BuyResult memory result)
     {
-
         LSSVMPair pair;
         uint256[] memory nftInfo;
         uint256 numNFTsToDeposit = END_INDEX + 1;
@@ -334,8 +342,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
             pair = setUpPairERC721ForSale(0, address(0), nftIds);
             nftInfo = nftIds;
-        }
-        else {
+        } else {
             pair = setUpPairERC1155ForSale(0, numNFTsToDeposit, address(this), address(this), ROUTER_CALLER);
             // Set the first value to be the number of assets to swap
             nftInfo = new uint256[](1);
@@ -382,7 +389,6 @@ abstract contract VeryFastRouterAllSwapTypes is
         internal
         returns (VeryFastRouter.BuyOrderWithPartialFill memory buyOrder, BuyResult memory result)
     {
-
         LSSVMPair pair;
         uint256[] memory nftInfo;
         uint256 numNFTsToDeposit = PARTIAL_FILL_INDEX + 1;
@@ -400,8 +406,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             pair = setUpPairERC721ForSale(0, address(0), nftsInPair);
 
             nftInfo = nftIds;
-        }
-        else {
+        } else {
             pair = setUpPairERC1155ForSale(0, numNFTsToDeposit, address(this), address(this), ROUTER_CALLER);
             // Set the first value to be the number of assets to swap
             nftInfo = new uint256[](1);
@@ -410,8 +415,7 @@ abstract contract VeryFastRouterAllSwapTypes is
 
         // Get the partial fill quotes assuming we can buy all of the items
         (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(numNFTsTotal);
-        uint256[] memory partialFillAmounts =
-            router.getNFTQuoteForBuyOrderWithPartialFill(pair, numNFTsTotal, SLIPPAGE);
+        uint256[] memory partialFillAmounts = router.getNFTQuoteForBuyOrderWithPartialFill(pair, numNFTsTotal, SLIPPAGE);
 
         // Assume that NUM_BEFORE_PARTIAL_FILL + PARTIAL_FILL number of items have been bought first
         (, uint256 newSpotPrice, uint256 newDelta,,) = pair.getBuyNFTQuote(PARTIAL_FILL_INDEX + NUM_BEFORE_PARTIAL_FILL);
@@ -446,7 +450,6 @@ abstract contract VeryFastRouterAllSwapTypes is
         internal
         returns (VeryFastRouter.BuyOrderWithPartialFill memory buyOrder, BuyResult memory result)
     {
-
         uint256[] memory nftInfo;
         uint256 numNFTsTotal = END_INDEX + 1;
         uint256[] memory emptyList = new uint256[](0);
@@ -460,8 +463,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             // Set up pair with empty property checker as PAIR_CREATOR
             // Deposit none of the NFTs
             pair = setUpPairERC721ForSale(0, address(0), emptyList);
-        }
-        else {
+        } else {
             // Deposit no NFTs
             pair = setUpPairERC1155ForSale(0, 0, address(this), address(this), ROUTER_CALLER);
             // Set the first value to be the number of assets to swap
@@ -471,8 +473,7 @@ abstract contract VeryFastRouterAllSwapTypes is
 
         // Get the partial fill quotes assuming we can buy all of the items
         (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(numNFTsTotal);
-        uint256[] memory partialFillAmounts =
-            router.getNFTQuoteForBuyOrderWithPartialFill(pair, numNFTsTotal, SLIPPAGE);
+        uint256[] memory partialFillAmounts = router.getNFTQuoteForBuyOrderWithPartialFill(pair, numNFTsTotal, SLIPPAGE);
 
         // Construct the buy order
         buyOrder = VeryFastRouter.BuyOrderWithPartialFill({
@@ -499,7 +500,6 @@ abstract contract VeryFastRouterAllSwapTypes is
         internal
         returns (VeryFastRouter.BuyOrderWithPartialFill memory buyOrder, BuyResult memory result)
     {
-
         uint256[] memory nftInfo;
         uint256 numNFTsTotal = END_INDEX + 1;
         LSSVMPair pair;
@@ -508,8 +508,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
             nftInfo = nftIds;
             pair = setUpPairERC721ForSale(0, address(0), nftIds);
-        }
-        else {
+        } else {
             // Deposit no NFTs
             pair = setUpPairERC1155ForSale(numNFTsTotal, 0, address(this), address(this), ROUTER_CALLER);
             // Set the first value to be the number of assets to swap
@@ -519,8 +518,7 @@ abstract contract VeryFastRouterAllSwapTypes is
 
         // Get the partial fill quotes
         (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(numNFTsTotal);
-        uint256[] memory partialFillAmounts =
-            router.getNFTQuoteForBuyOrderWithPartialFill(pair, numNFTsTotal, SLIPPAGE);
+        uint256[] memory partialFillAmounts = router.getNFTQuoteForBuyOrderWithPartialFill(pair, numNFTsTotal, SLIPPAGE);
 
         // Assume that *all* items have been bought
         (, uint256 newSpotPrice, uint256 newDelta,,) = pair.getBuyNFTQuote(END_INDEX + 1);
@@ -567,7 +565,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             return _getBuyOrderAllItemsUnavailable(true);
         } else if (swapType == BuySwap.ITEM_FULL_PRICE_NONE_721) {
             return _getBuyOrderAllItemsNotInPrice(true);
-        } 
+        }
         // 1155 test variants start here
         else if (swapType == BuySwap.ITEM_FULL_PRICE_FULL_1155) {
             return _getBuyOrderAllItemsAvailable(false);
@@ -581,7 +579,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             return _getBuyOrderAllItemsUnavailable(false);
         } else if (swapType == BuySwap.ITEM_FULL_PRICE_NONE_1155) {
             return _getBuyOrderAllItemsNotInPrice(false);
-        } 
+        }
     }
 
     function _getSellOrderFullPriceFullBalance(bool doPropertyCheck, bool is721)
@@ -606,8 +604,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             // Get array of all NFT IDs we want to sell
             uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
             nftInfo = nftIds;
-        }
-        else {
+        } else {
             pair = setUpPairERC1155ForSale(0, 0, address(ROUTER_CALLER), address(ROUTER_CALLER), address(ROUTER_CALLER));
             nftInfo = new uint256[](1);
             nftInfo[0] = numNFTsForQuote;
@@ -676,8 +673,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
             nftInfo = nftIds;
             pair = setUpPairERC721ForSale(0, propertyCheckerAddress, new uint256[](0));
-        }
-        else {
+        } else {
             pair = setUpPairERC1155ForSale(0, 0, address(ROUTER_CALLER), address(ROUTER_CALLER), address(ROUTER_CALLER));
             nftInfo = new uint256[](1);
             nftInfo[0] = numNFTsTotal;
@@ -744,8 +740,7 @@ abstract contract VeryFastRouterAllSwapTypes is
         if (is721) {
             pair = setUpPairERC721ForSale(0, propertyCheckerAddress, new uint256[](0));
             nftInfo = _getArray(START_INDEX, END_INDEX);
-        }
-        else {
+        } else {
             pair = setUpPairERC1155ForSale(0, 0, address(ROUTER_CALLER), address(ROUTER_CALLER), address(ROUTER_CALLER));
             nftInfo = new uint256[](1);
             nftInfo[0] = numNFTsTotal;
@@ -809,22 +804,21 @@ abstract contract VeryFastRouterAllSwapTypes is
     function _getSellOrderPartialPricePartialBalance(bool doPropertyCheck, bool is721)
         internal
         returns (VeryFastRouter.SellOrderWithPartialFill memory sellOrder, SellResult memory result)
-    {   
-
+    {
         LSSVMPair pair;
         uint256[] memory nftInfo;
 
         if (is721) {
             address propertyCheckerAddress = address(0);
             if (doPropertyCheck) {
-                propertyCheckerAddress = address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, END_INDEX));
+                propertyCheckerAddress =
+                    address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, END_INDEX));
             }
             // Set up pair with no tokens
             pair = setUpPairERC721ForSale(0, propertyCheckerAddress, new uint256[](0));
 
             nftInfo = _getArray(START_INDEX, END_INDEX);
-        }
-        else {
+        } else {
             pair = setUpPairERC1155ForSale(0, 0, address(ROUTER_CALLER), address(ROUTER_CALLER), address(ROUTER_CALLER));
             nftInfo = new uint256[](1);
             nftInfo[0] = END_INDEX + 1;
@@ -833,7 +827,11 @@ abstract contract VeryFastRouterAllSwapTypes is
         {
             // Get the amount needed to put in the pair to support only selling up to the partial fill amount
             (,,, uint256 outputAmount,, uint256 protocolFee) = pair.bondingCurve().getSellInfo(
-                pair.spotPrice(), pair.delta(), PARTIAL_FILL_INDEX + 1, pair.fee(), pair.factory().protocolFeeMultiplier()
+                pair.spotPrice(),
+                pair.delta(),
+                PARTIAL_FILL_INDEX + 1,
+                pair.fee(),
+                pair.factory().protocolFeeMultiplier()
             );
 
             // Send that many tokens to the pair
@@ -889,19 +887,18 @@ abstract contract VeryFastRouterAllSwapTypes is
         internal
         returns (VeryFastRouter.SellOrderWithPartialFill memory sellOrder, SellResult memory result)
     {
-
         LSSVMPair pair;
         uint256[] memory nftInfo;
 
         if (is721) {
-          address propertyCheckerAddress = address(0);
-          if (doPropertyCheck) {
-              propertyCheckerAddress = address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, END_INDEX));
-          }
-          pair = setUpPairERC721ForSale(0, propertyCheckerAddress, new uint256[](0));
-          nftInfo = _getArray(START_INDEX, END_INDEX);
-        }
-        else {
+            address propertyCheckerAddress = address(0);
+            if (doPropertyCheck) {
+                propertyCheckerAddress =
+                    address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, END_INDEX));
+            }
+            pair = setUpPairERC721ForSale(0, propertyCheckerAddress, new uint256[](0));
+            nftInfo = _getArray(START_INDEX, END_INDEX);
+        } else {
             pair = setUpPairERC1155ForSale(0, 0, address(ROUTER_CALLER), address(ROUTER_CALLER), address(ROUTER_CALLER));
             nftInfo = new uint256[](1);
             nftInfo[0] = END_INDEX + 1;
@@ -964,12 +961,12 @@ abstract contract VeryFastRouterAllSwapTypes is
         if (is721) {
             address propertyCheckerAddress = address(0);
             if (doPropertyCheck) {
-                propertyCheckerAddress = address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, END_INDEX));
+                propertyCheckerAddress =
+                    address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, END_INDEX));
             }
             pair = setUpPairERC721ForSale(0, propertyCheckerAddress, new uint256[](0));
             nftInfo = _getArray(START_INDEX, END_INDEX);
-        }
-        else {
+        } else {
             pair = setUpPairERC1155ForSale(0, 0, address(ROUTER_CALLER), address(ROUTER_CALLER), address(ROUTER_CALLER));
             nftInfo = new uint256[](1);
             nftInfo[0] = END_INDEX + 1;
@@ -1040,13 +1037,13 @@ abstract contract VeryFastRouterAllSwapTypes is
             return _getSellOrderPartialPriceNoBalance(doPropertyCheck, true);
         } else if (swapType == SellSwap.PRICE_NONE_BALANCE_FULL_721) {
             return _getSellOrderPriceNoneFullBalance(doPropertyCheck, true);
-        } 
+        }
         // 1155 tests begin here
         else if (swapType == SellSwap.PRICE_FULL_BALANCE_FULL_1155) {
             return _getSellOrderFullPriceFullBalance(false, false);
         } else if (swapType == SellSwap.PRICE_FULL_BALANCE_PARTIAL_1155) {
             return _getSellOrderFullPricePartialBalance(false, false);
-        }  else if (swapType == SellSwap.PRICE_PARTIAL_BALANCE_FULL_1155) {
+        } else if (swapType == SellSwap.PRICE_PARTIAL_BALANCE_FULL_1155) {
             return _getSellOrderPartialPriceFullBalance(false, false);
         } else if (swapType == SellSwap.PRICE_PARTIAL_BALANCE_PARTIAL_1155) {
             return _getSellOrderPartialPricePartialBalance(false, false);
@@ -1054,16 +1051,15 @@ abstract contract VeryFastRouterAllSwapTypes is
             return _getSellOrderPartialPriceNoBalance(false, false);
         } else if (swapType == SellSwap.PRICE_NONE_BALANCE_FULL_1155) {
             return _getSellOrderPriceNoneFullBalance(false, false);
-        } 
+        }
     }
 
     // Do all the swap combos
     function testSwap() public {
-
         // Construct buy orders
         uint256 totalETHToSend = 0;
         uint256 numBuySwapTypes = uint256(type(BuySwap).max) + 1;
-        
+
         BuyResult[] memory buyResults = new BuyResult[](numBuySwapTypes);
         VeryFastRouter.BuyOrderWithPartialFill[] memory buyOrders =
             new VeryFastRouter.BuyOrderWithPartialFill[](numBuySwapTypes);
@@ -1179,13 +1175,13 @@ abstract contract VeryFastRouterAllSwapTypes is
         if (is721) {
             address propertyCheckerAddress = address(0);
             if (doPropertyCheck) {
-                propertyCheckerAddress = address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, END_INDEX));
+                propertyCheckerAddress =
+                    address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, END_INDEX));
             }
             // Set up pair with no tokens
             pair = setUpPairERC721ForSale(0, propertyCheckerAddress, new uint256[](0));
             nftInfo = _getArray(START_INDEX, END_INDEX);
-        }
-        else {
+        } else {
             pair = setUpPairERC1155ForSale(0, 0, address(ROUTER_CALLER), address(ROUTER_CALLER), address(ROUTER_CALLER));
             nftInfo = new uint256[](1);
             nftInfo[0] = numNFTsTotal;
@@ -1265,9 +1261,9 @@ abstract contract VeryFastRouterAllSwapTypes is
 
         // Add 1155 swap to the array of buys and sells
         (
-          VeryFastRouter.SellOrderWithPartialFill memory sellOrder1155,
-          VeryFastRouter.BuyOrderWithPartialFill memory buyOrder1155,
-          uint256 differenceToSend1155
+            VeryFastRouter.SellOrderWithPartialFill memory sellOrder1155,
+            VeryFastRouter.BuyOrderWithPartialFill memory buyOrder1155,
+            uint256 differenceToSend1155
         ) = _getRecycleOrder(false, false);
         sellOrders[2] = sellOrder1155;
         buyOrders[2] = buyOrder1155;

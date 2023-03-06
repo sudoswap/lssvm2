@@ -623,7 +623,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         // transfer initial NFTs from sender to pair
         if (_initialNFTBalance != 0) {
             _nft.safeTransferFrom(msg.sender, address(_pair), _nftId, _initialNFTBalance, bytes(""));
-        } 
+        }
     }
 
     function _initializePairERC1155ERC20(
