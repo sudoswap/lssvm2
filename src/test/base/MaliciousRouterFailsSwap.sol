@@ -48,6 +48,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
     address constant ROUTER_CALLER = address(1);
     address constant TOKEN_RECIPIENT = address(420);
+    address constant NFT_RECIPIENT = address(0x69);
 
     uint256 constant START_INDEX = 0;
     uint256 constant END_INDEX = 10;
@@ -388,6 +389,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
                 buyOrders: buyOrders,
                 sellOrders: sellOrders,
                 tokenRecipient: payable(address(TOKEN_RECIPIENT)),
+                nftRecipient: NFT_RECIPIENT,
                 recycleETH: false
             });
 
@@ -422,6 +424,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
                 buyOrders: buyOrders,
                 sellOrders: sellOrders,
                 tokenRecipient: payable(address(TOKEN_RECIPIENT)),
+                nftRecipient: NFT_RECIPIENT,
                 recycleETH: false
             });
 

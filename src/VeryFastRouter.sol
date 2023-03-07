@@ -51,6 +51,7 @@ contract VeryFastRouter {
         BuyOrderWithPartialFill[] buyOrders;
         SellOrderWithPartialFill[] sellOrders;
         address payable tokenRecipient;
+        address nftRecipient;
         bool recycleETH;
     }
 
@@ -317,7 +318,7 @@ contract VeryFastRouter {
             if (inputAmount == order.expectedSpotPrice) {
                 // Then do a direct swap for all items we want
                 inputAmount = order.pair.swapTokenForSpecificNFTs{value: order.ethAmount}(
-                    order.nftIds, order.maxInputAmount, swapOrder.tokenRecipient, true, msg.sender
+                    order.nftIds, order.maxInputAmount, swapOrder.nftRecipient, true, msg.sender
                 );
 
                 // Deduct ETH amount if it's an ETH swap
@@ -355,7 +356,7 @@ contract VeryFastRouter {
                         // Only swap if there are valid IDs to buy
                         if (availableIds.length > 0) {
                             inputAmount = order.pair.swapTokenForSpecificNFTs{value: ethToSendForBuy}(
-                                availableIds, priceToFillAt, swapOrder.tokenRecipient, true, msg.sender
+                                availableIds, priceToFillAt, swapOrder.nftRecipient, true, msg.sender
                             );
                         }
                     }
@@ -375,7 +376,7 @@ contract VeryFastRouter {
                             inputAmount = order.pair.swapTokenForSpecificNFTs{value: ethToSendForBuy}(
                                 _wrapUintAsArray(numItemsToFill),
                                 priceToFillAt,
-                                swapOrder.tokenRecipient,
+                                swapOrder.nftRecipient,
                                 true,
                                 msg.sender
                             );

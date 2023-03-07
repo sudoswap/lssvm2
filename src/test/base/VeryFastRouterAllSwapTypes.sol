@@ -49,6 +49,7 @@ abstract contract VeryFastRouterAllSwapTypes is
 
     address constant ROUTER_CALLER = address(1);
     address constant TOKEN_RECIPIENT = address(420);
+    address constant NFT_RECIPIENT = address(0x69);
 
     uint256 constant START_INDEX = 0;
     uint256 constant NUM_BEFORE_PARTIAL_FILL = 2;
@@ -1108,6 +1109,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             buyOrders: buyOrders,
             sellOrders: sellOrders,
             tokenRecipient: payable(address(TOKEN_RECIPIENT)),
+            nftRecipient: NFT_RECIPIENT,
             recycleETH: false
         });
 
@@ -1131,15 +1133,15 @@ abstract contract VeryFastRouterAllSwapTypes is
 
             // Assert the owned items are as expected
             if (result.isERC721) {
-                assertEq(IERC721(result.pair.nft()).balanceOf(TOKEN_RECIPIENT), result.numItemsReceived);
+                assertEq(IERC721(result.pair.nft()).balanceOf(NFT_RECIPIENT), result.numItemsReceived);
 
                 for (uint256 j; j < result.idsReceived.length; j++) {
-                    assertEq(IERC721(result.pair.nft()).ownerOf(result.idsReceived[j]), TOKEN_RECIPIENT);
+                    assertEq(IERC721(result.pair.nft()).ownerOf(result.idsReceived[j]), NFT_RECIPIENT);
                 }
             }
             // Otherwise, if 1155, do a balance check for the recipient
             else {
-                assertEq(IERC1155(result.pair.nft()).balanceOf(TOKEN_RECIPIENT, ID_1155), result.numItemsReceived);
+                assertEq(IERC1155(result.pair.nft()).balanceOf(NFT_RECIPIENT, ID_1155), result.numItemsReceived);
             }
         }
 
@@ -1274,6 +1276,7 @@ abstract contract VeryFastRouterAllSwapTypes is
             buyOrders: buyOrders,
             sellOrders: sellOrders,
             tokenRecipient: payable(address(TOKEN_RECIPIENT)),
+            nftRecipient: NFT_RECIPIENT,
             recycleETH: true
         });
 

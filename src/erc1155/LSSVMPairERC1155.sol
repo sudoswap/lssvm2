@@ -168,10 +168,13 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
      *     @param _nft The NFT collection to take from
      *     @param numNFTs The number of NFTs to take
      */
-    function _takeNFTsFromSender(IERC1155 _nft, uint256 numNFTs, ILSSVMPairFactoryLike factory, bool isRouter, address routerCaller)
-        internal
-        virtual
-    {
+    function _takeNFTsFromSender(
+        IERC1155 _nft,
+        uint256 numNFTs,
+        ILSSVMPairFactoryLike factory,
+        bool isRouter,
+        address routerCaller
+    ) internal virtual {
         address _assetRecipient = getAssetRecipient();
 
         if (isRouter) {
