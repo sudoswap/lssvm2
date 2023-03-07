@@ -115,11 +115,12 @@ contract VeryFastRouter {
             prices[numNFTs - i - 1] = price;
         }
         // Scale up by slippage amount
-        for (uint256 i = 0; i < prices.length; ++i) {
-            if (slippageScaling > 0) {
+        if (slippageScaling > 0) {
+            for (uint256 i = 0; i < prices.length; ++i) {
                 prices[i] = prices[i] + (prices[i] * slippageScaling / 1e18);
             }
         }
+
         return prices;
     }
 
@@ -174,8 +175,8 @@ contract VeryFastRouter {
             outputAmounts[numNFTs - i - 1] = output;
         }
         // Scale down by slippage amount
-        for (uint256 i = 0; i < outputAmounts.length; ++i) {
-            if (slippageScaling > 0) {
+        if (slippageScaling > 0) {
+            for (uint256 i = 0; i < outputAmounts.length; ++i) {
                 outputAmounts[i] = outputAmounts[i] - (outputAmounts[i] * slippageScaling / 1e18);
             }
         }
