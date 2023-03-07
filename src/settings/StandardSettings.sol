@@ -284,7 +284,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         }
 
         // If the new sell price is higher, and there is enough liquidity to support at least 1 sell, then make the change
-        if ((newPriceToSellToPair > priceToSellToPair) && pairBalance > newPriceToSellToPair) {
+        if ((newPriceToSellToPair > priceToSellToPair) && pairBalance >= newPriceToSellToPair) {
             pair.changeSpotPrice(newSpotPrice);
             pair.changeDelta(newDelta);
             return;

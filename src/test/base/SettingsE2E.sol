@@ -66,7 +66,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         royaltyEngine = setupRoyaltyEngine();
 
         // Set a royalty override
-        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test721), address(test2981));
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test721), address(test2981));
 
         // Set up the pair factory
         factory = setupFactory(royaltyEngine, feeRecipient);
@@ -401,7 +401,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         bps[0] = 750;
         bps[1] = 200;
         TestManifold testManifold = new TestManifold(receivers, bps);
-        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(
             address(test721), address(testManifold)
         );
 

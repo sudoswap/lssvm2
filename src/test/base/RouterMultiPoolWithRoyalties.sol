@@ -36,7 +36,7 @@ abstract contract RouterMultiPoolWithRoyalties is Test, ERC721Holder, Configurab
         test721 = setup721();
         test2981 = setup2981();
         royaltyEngine = setupRoyaltyEngine();
-        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test721), address(test2981));
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test721), address(test2981));
 
         factory = setupFactory(royaltyEngine, feeRecipient);
         router = new LSSVMRouter(factory);

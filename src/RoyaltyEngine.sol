@@ -47,11 +47,11 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
 
     mapping(address => int16) _specCache;
 
-    address public royaltyRegistry;
+    address public immutable ROYALTY_REGISTRY;
 
     constructor(address royaltyRegistry_) {
         require(ERC165Checker.supportsInterface(royaltyRegistry_, type(IRoyaltyRegistry).interfaceId));
-        royaltyRegistry = royaltyRegistry_;
+        ROYALTY_REGISTRY = royaltyRegistry_;
     }
 
     /**
@@ -65,7 +65,7 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
      * @dev View function to get the cached spec of a token
      */
     function getCachedRoyaltySpec(address tokenAddress) public view returns (int16) {
-        address royaltyAddress = IRoyaltyRegistry(royaltyRegistry).getRoyaltyLookupAddress(tokenAddress);
+        address royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddress);
         return _specCache[royaltyAddress];
     }
 
@@ -80,7 +80,7 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
     {
         for (uint256 i = 0; i < tokenAddresses.length; ++i) {
             // Invalidate cached value
-            address royaltyAddress = IRoyaltyRegistry(royaltyRegistry).getRoyaltyLookupAddress(tokenAddresses[i]);
+            address royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddresses[i]);
             delete _specCache[royaltyAddress];
 
             (,, int16 newSpec,,) = _getRoyaltyAndSpec(tokenAddresses[i], tokenIds[i], values[i]);
@@ -140,7 +140,7 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
             bool addToCache
         )
     {
-        royaltyAddress = IRoyaltyRegistry(royaltyRegistry).getRoyaltyLookupAddress(tokenAddress);
+        royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddress);
         spec = _specCache[royaltyAddress];
 
         if (spec <= NOT_CONFIGURED && spec > NONE) {

@@ -576,15 +576,15 @@ contract VeryFastRouter {
 
         // Go through each potential ID, and check to see if it's still owned by the pair
         // If it is, record the ID
-        // Return early if we found all the IDs we need
         for (uint256 i; i < maxIdsNeeded; ++i) {
             if (nft.ownerOf(potentialIds[i]) == address(pair)) {
                 idsThatExist[numIdsFound] = potentialIds[i];
                 numIdsFound += 1;
-                if (numIdsFound == maxIdsNeeded) {
-                    return idsThatExist;
-                }
             }
+        }
+        // If all ids were found, return the full id list
+        if (numIdsFound == maxIdsNeeded) {
+            return idsThatExist;
         }
         // Otherwise, we didn't find enough IDs, so we need to return a subset
         if (numIdsFound < maxIdsNeeded) {

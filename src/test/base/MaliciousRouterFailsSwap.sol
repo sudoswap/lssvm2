@@ -101,7 +101,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         returns (IERC721Mintable nft)
     {
         nft = IERC721Mintable(address(new Test721()));
-        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(nft), address(test2981));
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(nft), address(test2981));
 
         for (uint256 i = START_INDEX; i <= END_INDEX; i++) {
             nft.mint(nftRecipient, i);

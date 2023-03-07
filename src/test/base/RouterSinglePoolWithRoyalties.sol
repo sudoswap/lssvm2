@@ -50,8 +50,8 @@ abstract contract RouterSinglePoolWithRoyalties is
         test1155 = setup1155();
         test2981 = setup2981();
         royaltyEngine = setupRoyaltyEngine();
-        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test721), address(test2981));
-        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test1155), address(test2981));
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test721), address(test2981));
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test1155), address(test2981));
 
         factory = setupFactory(royaltyEngine, feeRecipient);
         router = new LSSVMRouter(factory);
@@ -167,7 +167,7 @@ abstract contract RouterSinglePoolWithRoyalties is
         address payable[] memory receivers = new address payable[](0);
         uint256[] memory bps = new uint256[](0);
         TestManifold testManifold = new TestManifold(receivers, bps);
-        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(
             address(test721), address(testManifold)
         );
 
@@ -195,7 +195,7 @@ abstract contract RouterSinglePoolWithRoyalties is
         bps[0] = 750;
         bps[1] = 250;
         TestManifold testManifold = new TestManifold(receivers, bps);
-        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(
             address(test721), address(testManifold)
         );
 
@@ -228,7 +228,7 @@ abstract contract RouterSinglePoolWithRoyalties is
         bps[0] = 750;
         bps[1] = 250;
         TestManifold testManifold = new TestManifold(receivers, bps);
-        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(
             address(test1155), address(testManifold)
         );
 
