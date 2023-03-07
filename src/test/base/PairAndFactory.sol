@@ -303,7 +303,6 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         assertEq(pair.spotPrice(), spotPrice);
         assertEq(pair.owner(), address(this));
         assertEq(pair.fee(), 0);
-        assertEq(pair.assetRecipient(), address(0));
         assertEq(pair.getAssetRecipient(), address(pair));
         assertEq(getBalance(address(pair)), tokenAmount);
 
@@ -320,7 +319,6 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         assertEq(pair1155.spotPrice(), spotPrice);
         assertEq(pair1155.owner(), address(this));
         assertEq(pair1155.fee(), 0);
-        assertEq(pair1155.assetRecipient(), address(0));
         assertEq(pair1155.getAssetRecipient(), address(pair1155));
         assertEq(getBalance(address(pair1155)), tokenAmount);
 

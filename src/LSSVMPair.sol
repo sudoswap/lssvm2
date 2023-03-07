@@ -74,7 +74,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     // The address that swapped assets are sent to
     // For TRADE pools, assets are always sent to the pool, so this is used to track trade fee
     // If set to address(0), will default to owner() for NFT and TOKEN pools
-    address payable public assetRecipient;
+    address payable internal assetRecipient;
 
     /**
      *  Events
@@ -296,19 +296,18 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      *     Can be set to another address by the owner, but has no effect on TRADE pools
      *     If set to address(0), defaults to owner() for NFT/TOKEN pools
      */
-    function getAssetRecipient() public view returns (address payable _assetRecipient) {
+    function getAssetRecipient() public view returns (address payable) {
         // TRADE pools will always receive the asset themselves
         if (poolType() == PoolType.TRADE) {
-            _assetRecipient = payable(address(this));
-            return _assetRecipient;
+            return payable(address(this));
         }
 
         // Otherwise, we return the recipient if it's been set
         // Or, we replace it with owner() if it's address(0)
-        _assetRecipient = assetRecipient;
-        if (_assetRecipient == address(0)) {
-            _assetRecipient = payable(owner());
+        if (assetRecipient == address(0)) {
+            return payable(owner());
         }
+        return assetRecipient;
     }
 
     /**
