@@ -656,8 +656,12 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @dev Used to deposit NFTs into a pair after creation and emit an event for indexing (if recipient is indeed a pair)
      */
     function depositNFTs(IERC721 _nft, uint256[] calldata ids, address recipient) external {
-        // transfer NFTs from caller to recipient
         uint256 numNFTs = ids.length;
+
+        // early return for trivial transfers
+        if (numNFTs == 0) return;
+
+        // transfer NFTs from caller to recipient
         for (uint256 i; i < numNFTs;) {
             _nft.transferFrom(msg.sender, recipient, ids[i]);
 
@@ -674,6 +678,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @dev Used to deposit ERC20s into a pair after creation and emit an event for indexing (if recipient is indeed an ERC20 pair and the token matches)
      */
     function depositERC20(ERC20 token, address recipient, uint256 amount) external {
+        // early return for trivial transfers
+        if (amount == 0) return;
+
         token.safeTransferFrom(msg.sender, recipient, amount);
         if (
             isValidPair(recipient) && getPairTokenType(recipient) == PairTokenType.ERC20
