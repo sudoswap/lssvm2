@@ -356,13 +356,13 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         // Nifty Gateway overrides
         try INiftyBuilderInstance(tokenAddress).niftyRegistryContract() returns (address niftyRegistry) {
             try INiftyRegistry(niftyRegistry).isValidNiftySender(proposedAuthAddress) returns (bool valid) {
-                return valid;
+                if (valid) return true;
             } catch {}
         } catch {}
         // Foundation overrides
         try IFoundationTreasuryNode(tokenAddress).getFoundationTreasury() returns (address payable foundationTreasury) {
             try IFoundationTreasury(foundationTreasury).isAdmin(proposedAuthAddress) returns (bool isAdmin) {
-                return isAdmin;
+                if (isAdmin) return true;
             } catch {}
         } catch {}
         // DIGITALAX overrides
