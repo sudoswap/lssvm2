@@ -78,12 +78,14 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
     function bulkCacheSpecs(address[] calldata tokenAddresses, uint256[] calldata tokenIds, uint256[] calldata values)
         public
     {
-        for (uint256 i = 0; i < tokenAddresses.length; ++i) {
+        uint256 numTokens = tokenAddresses.length;
+        for (uint256 i = 0; i < numTokens; ++i) {
             // Invalidate cached value
             address royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddresses[i]);
             delete _specCache[royaltyAddress];
 
-            (,, int16 newSpec,,) = _getRoyaltyAndSpec(tokenAddresses[i], tokenIds[i], values[i]);
+            (,uint256[] memory royaltyAmounts, int16 newSpec,,) = _getRoyaltyAndSpec(tokenAddresses[i], tokenIds[i], values[i]);
+            _checkAmountsDoesNotExceedValue(values[i], royaltyAmounts);
             _specCache[royaltyAddress] = newSpec;
         }
     }
@@ -150,26 +152,22 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
             // Moved 2981 handling to the top because this will be the most prevalent type
             try IEIP2981(royaltyAddress).royaltyInfo(tokenId, value) returns (address recipient, uint256 amount) {
                 // Supports EIP2981.  Return amounts
-                require(amount < value, "Invalid royalty amount");
                 recipients = new address payable[](1);
                 amounts = new uint256[](1);
                 recipients[0] = payable(recipient);
                 amounts[0] = amount;
                 return (recipients, amounts, EIP2981, royaltyAddress, addToCache);
             } catch {}
-
             try IArtBlocksOverride(royaltyAddress).getRoyalties(tokenAddress, tokenId) returns (
                 address payable[] memory recipients_, uint256[] memory bps
             ) {
                 // Support Art Blocks override
-                require(recipients_.length == bps.length);
                 return (recipients_, _computeAmounts(value, bps), ARTBLOCKS, royaltyAddress, addToCache);
             } catch {}
             try IManifold(royaltyAddress).getRoyalties(tokenId) returns (
                 address payable[] memory recipients_, uint256[] memory bps
             ) {
                 // Supports manifold interface.  Compute amounts
-                require(recipients_.length == bps.length);
                 return (recipients_, _computeAmounts(value, bps), MANIFOLD, royaltyAddress, addToCache);
             } catch {}
             try IRaribleV2(royaltyAddress).getRaribleV2Royalties(tokenId) returns (IRaribleV2.Part[] memory royalties) {
@@ -182,14 +180,12 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
                     amounts[i] = value * royalties[i].value / 10000;
                     totalAmount += amounts[i];
                 }
-                require(totalAmount < value, "Invalid royalty amount");
                 return (recipients, amounts, RARIBLEV2, royaltyAddress, addToCache);
             } catch {}
             try IRaribleV1(royaltyAddress).getFeeRecipients(tokenId) returns (address payable[] memory recipients_) {
                 // Supports rarible v1 interface. Compute amounts
                 recipients_ = IRaribleV1(royaltyAddress).getFeeRecipients(tokenId);
                 try IRaribleV1(royaltyAddress).getFeeBps(tokenId) returns (uint256[] memory bps) {
-                    require(recipients_.length == bps.length);
                     return (recipients_, _computeAmounts(value, bps), RARIBLEV1, royaltyAddress, addToCache);
                 } catch {}
             } catch {}
@@ -212,24 +208,20 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
                 address payable[] memory recipients_, uint256[] memory bps
             ) {
                 // Supports foundation interface.  Compute amounts
-                require(recipients_.length == bps.length);
                 return (recipients_, _computeAmounts(value, bps), FOUNDATION, royaltyAddress, addToCache);
             } catch {}
             try IZoraOverride(royaltyAddress).convertBidShares(tokenAddress, tokenId) returns (
                 address payable[] memory recipients_, uint256[] memory bps
             ) {
                 // Support Zora override
-                require(recipients_.length == bps.length);
                 return (recipients_, _computeAmounts(value, bps), ZORA, royaltyAddress, addToCache);
             } catch {}
             try IKODAV2Override(royaltyAddress).getKODAV2RoyaltyInfo(tokenAddress, tokenId, value) returns (
                 address payable[] memory _recipients, uint256[] memory _amounts
             ) {
                 // Support KODA V2 override
-                require(_recipients.length == _amounts.length);
                 return (_recipients, _amounts, KNOWNORIGINV2, royaltyAddress, addToCache);
             } catch {}
-
             // No supported royalties configured
             return (recipients, amounts, NONE, royaltyAddress, addToCache);
         } else {
@@ -240,7 +232,6 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
             } else if (spec == EIP2981) {
                 // EIP2981 spec moved to the top because it will be the most prevalent type
                 (address recipient, uint256 amount) = IEIP2981(royaltyAddress).royaltyInfo(tokenId, value);
-                require(amount < value, "Invalid royalty amount");
                 recipients = new address payable[](1);
                 amounts = new uint256[](1);
                 recipients[0] = payable(recipient);
@@ -250,13 +241,11 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
                 // Manifold spec
                 uint256[] memory bps;
                 (recipients, bps) = IManifold(royaltyAddress).getRoyalties(tokenId);
-                require(recipients.length == bps.length);
                 return (recipients, _computeAmounts(value, bps), spec, royaltyAddress, addToCache);
             } else if (spec == ARTBLOCKS) {
                 // Art Blocks spec
                 uint256[] memory bps;
                 (recipients, bps) = IArtBlocksOverride(royaltyAddress).getRoyalties(tokenAddress, tokenId);
-                require(recipients.length == bps.length);
                 return (recipients, _computeAmounts(value, bps), spec, royaltyAddress, addToCache);
             } else if (spec == RARIBLEV2) {
                 // Rarible v2 spec
@@ -270,20 +259,17 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
                     amounts[i] = value * royalties[i].value / 10000;
                     totalAmount += amounts[i];
                 }
-                require(totalAmount < value, "Invalid royalty amount");
                 return (recipients, amounts, spec, royaltyAddress, addToCache);
             } else if (spec == RARIBLEV1) {
                 // Rarible v1 spec
                 uint256[] memory bps;
                 recipients = IRaribleV1(royaltyAddress).getFeeRecipients(tokenId);
                 bps = IRaribleV1(royaltyAddress).getFeeBps(tokenId);
-                require(recipients.length == bps.length);
                 return (recipients, _computeAmounts(value, bps), spec, royaltyAddress, addToCache);
             } else if (spec == FOUNDATION) {
                 // Foundation spec
                 uint256[] memory bps;
                 (recipients, bps) = IFoundation(royaltyAddress).getFees(tokenId);
-                require(recipients.length == bps.length);
                 return (recipients, _computeAmounts(value, bps), spec, royaltyAddress, addToCache);
             } else if (spec == SUPERRARE) {
                 // SUPERRARE spec
@@ -301,7 +287,6 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
                 // Zora spec
                 uint256[] memory bps;
                 (recipients, bps) = IZoraOverride(royaltyAddress).convertBidShares(tokenAddress, tokenId);
-                require(recipients.length == bps.length);
                 return (recipients, _computeAmounts(value, bps), spec, royaltyAddress, addToCache);
             } else if (spec == KNOWNORIGINV2) {
                 // KnownOrigin.io V2 spec (V3 falls under EIP2981)
@@ -316,13 +301,22 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
      * Compute royalty amounts
      */
     function _computeAmounts(uint256 value, uint256[] memory bps) private pure returns (uint256[] memory amounts) {
-        amounts = new uint256[](bps.length);
+        uint256 numBps = bps.length;
+        amounts = new uint256[](numBps);
         uint256 totalAmount;
-        for (uint256 i = 0; i < bps.length; i++) {
+        for (uint256 i = 0; i < numBps; ++i) {
             amounts[i] = value * bps[i] / 10000;
             totalAmount += amounts[i];
         }
-        require(totalAmount < value, "Invalid royalty amount");
         return amounts;
+    }
+    
+    function _checkAmountsDoesNotExceedValue(uint256 saleAmount, uint256[] memory royalties) private pure {
+        uint256 numRoyalties = royalties.length;
+        uint256 totalRoyalties;
+        for (uint256 i = 0; i < numRoyalties; ++i) {
+            totalRoyalties += royalties[i];
+        }
+        require(totalRoyalties < saleAmount, "Invalid royalty amount");
     }
 }
