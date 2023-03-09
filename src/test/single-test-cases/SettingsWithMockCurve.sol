@@ -63,7 +63,7 @@ contract SettingsWithMockCurve is Test, ERC721Holder, ConfigurableWithRoyalties,
         royaltyEngine = setupRoyaltyEngine();
 
         // Set a royalty override
-        IRoyaltyRegistry(royaltyEngine.royaltyRegistry()).setRoyaltyLookupAddress(address(test721), address(test2981));
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test721), address(test2981));
 
         // Set up the pair factory
         factory = setupFactory(royaltyEngine, feeRecipient);
