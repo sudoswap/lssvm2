@@ -140,7 +140,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
 
         // Enable settings in factory contract. This also validates that msg.sender is a valid pair.
         try pairFactory.enableSettingsForPair(address(this), msg.sender) {}
-        catch (bytes memory) {
+        catch {
             revert("Pair verification failed");
         }
 

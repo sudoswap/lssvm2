@@ -31,8 +31,8 @@ import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
  * @dev Engine to lookup royalty configurations
  */
 contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
-    // uint16 values copied over from the manifold contract.
-    // Anything > NONE and <= NOT_CONFIGURED is considered not configured
+    // int16 values copied over from the manifold contract.
+    // Anything <= NOT_CONFIGURED is considered not configured
     int16 private constant NONE = -1;
     int16 private constant NOT_CONFIGURED = 0;
     int16 private constant MANIFOLD = 1;
@@ -145,7 +145,7 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
         royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddress);
         spec = _specCache[royaltyAddress];
 
-        if (spec <= NOT_CONFIGURED && spec > NONE) {
+        if (spec <= NOT_CONFIGURED) {
             // No spec configured yet, so we need to detect the spec
             addToCache = true;
 
