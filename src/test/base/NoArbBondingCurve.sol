@@ -160,38 +160,51 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
         numNFTs[0] = numItems;
 
         // sell all NFTs minted to the pair
+        bool isError = true;
         {
-            (, uint256 newSpotPrice,, uint256 outputAmount, /* tradeFee */, uint256 protocolFee) =
-                bondingCurve.getSellInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
+            (
+                CurveErrorCodes.Error error,
+                uint256 newSpotPrice,
+                ,
+                uint256 outputAmount, /* tradeFee */
+                ,
+                uint256 protocolFee
+            ) = bondingCurve.getSellInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
 
-            // give the pair contract enough tokens to pay for the NFTs
-            sendTokens(pair, outputAmount + protocolFee);
+            if (error == CurveErrorCodes.Error.OK) {
+                // give the pair contract enough tokens to pay for the NFTs
+                sendTokens(pair, outputAmount + protocolFee);
 
-            // sell NFTs
-            test1155.setApprovalForAll(address(pair), true);
-            startBalance = getBalance(address(this));
+                // sell NFTs
+                test1155.setApprovalForAll(address(pair), true);
+                startBalance = getBalance(address(this));
 
-            pair.swapNFTsForToken(numNFTs, 0, payable(address(this)), false, address(0));
-            spotPrice = uint56(newSpotPrice);
+                pair.swapNFTsForToken(numNFTs, 0, payable(address(this)), false, address(0));
+                spotPrice = uint56(newSpotPrice);
+
+                isError = false;
+            }
         }
 
         // buy back the NFTs just sold to the pair
-        {
-            (,,, uint256 inputAmount,,) =
-                bondingCurve.getBuyInfo(spotPrice, pair.delta(), numItems, 0, protocolFeeMultiplier);
-            pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
-                numNFTs, inputAmount, address(this), false, address(0)
-            );
-            endBalance = getBalance(address(this));
-        }
+        if (!isError) {
+            {
+                (,,, uint256 inputAmount,,) =
+                    bondingCurve.getBuyInfo(spotPrice, pair.delta(), numItems, 0, protocolFeeMultiplier);
+                pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+                    numNFTs, inputAmount, address(this), false, address(0)
+                );
+                endBalance = getBalance(address(this));
+            }
 
-        // ensure the caller didn't profit from the aggregate trade
-        if (endBalance > startBalance) {
-            assertApproxEqRel(startBalance, endBalance, 1e9, "caller received profit");
-        }
+            // ensure the caller didn't profit from the aggregate trade
+            if (endBalance > startBalance) {
+                assertApproxEqRel(startBalance, endBalance, 1e9, "caller received profit");
+            }
 
-        // withdraw the tokens in the pair back
-        withdrawTokens(pair);
+            // withdraw the tokens in the pair back
+            withdrawTokens(pair);
+        }
     }
 
     /**
@@ -323,17 +336,20 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
 
         // sell back the NFTs
         {
-            bondingCurve.getSellInfo(spotPrice, pair.delta(), numItems, 0, protocolFeeMultiplier);
-            pair.swapNFTsForToken(numNFTs, 0, payable(address(this)), false, address(0));
-            endBalance = getBalance(address(this));
-        }
+            (CurveErrorCodes.Error error,,,,,) =
+                bondingCurve.getSellInfo(spotPrice, pair.delta(), numItems, 0, protocolFeeMultiplier);
 
-        // ensure the caller didn't profit from the aggregate trade
-        if (endBalance > startBalance) {
-            assertApproxEqRel(startBalance, endBalance, 1e9, "caller received profit");
-        }
+            if (error == CurveErrorCodes.Error.OK) {
+                pair.swapNFTsForToken(numNFTs, 0, payable(address(this)), false, address(0));
+                endBalance = getBalance(address(this));
 
-        // withdraw the tokens in the pair back
-        withdrawTokens(pair);
+                // ensure the caller didn't profit from the aggregate trade
+                if (endBalance > startBalance) {
+                    assertApproxEqRel(startBalance, endBalance, 1e9, "caller received profit");
+                }
+                // withdraw the tokens in the pair back
+                withdrawTokens(pair);
+            }
+        }
     }
 }

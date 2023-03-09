@@ -11,6 +11,9 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 contract ExponentialCurve is ICurve, CurveErrorCodes {
     using FixedPointMathLib for uint256;
 
+    // minimum price to prevent numerical issues
+    uint256 public constant MIN_PRICE = 1000000 wei;
+
     /**
      * @dev See {ICurve-validateDelta}
      */
@@ -21,8 +24,8 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
     /**
      * @dev See {ICurve-validateSpotPrice}
      */
-    function validateSpotPrice(uint128) external pure override returns (bool) {
-        return true;
+    function validateSpotPrice(uint128 spotPrice) external pure override returns (bool) {
+        return spotPrice >= MIN_PRICE;
     }
 
     /**
@@ -131,6 +134,11 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         // safe to convert newSpotPrice directly into uint128 since we know newSpotPrice <= spotPrice
         // and spotPrice <= type(uint128).max
         newSpotPrice = uint128(uint256(spotPrice).mulWadDown(invDeltaPowN));
+
+        // Prevent getting stuck in a minimal price
+        if (newSpotPrice < MIN_PRICE) {
+            return (Error.SPOT_PRICE_UNDERFLOW, 0, 0, 0, 0, 0);
+        }
 
         // If the user sells n items, then the total revenue is equal to:
         // spotPrice + ((1 / delta) * spotPrice) + ((1 / delta)^2 * spotPrice) + ... ((1 / delta)^(numItems - 1) * spotPrice)

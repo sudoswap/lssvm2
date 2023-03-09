@@ -96,15 +96,46 @@ contract ExponentialCurveTest is Test {
 
         (CurveErrorCodes.Error error, uint256 newSpotPrice,, uint256 outputValue,,) =
             curve.getSellInfo(spotPrice, delta, numItems, 0, 0);
-        assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
 
-        if (spotPrice > MIN_PRICE && numItems > 0) {
-            assertTrue(
-                (newSpotPrice < spotPrice && delta > 0) || (newSpotPrice == spotPrice && delta == 0),
-                "Price update incorrect"
-            );
+        if (error == CurveErrorCodes.Error.OK) {
+            if (spotPrice > MIN_PRICE && numItems > 0) {
+                assertTrue(
+                    (newSpotPrice < spotPrice && delta > 0) || (newSpotPrice == spotPrice && delta == 0),
+                    "Price update incorrect"
+                );
+            }
+            assertLe(outputValue, numItems * uint256(spotPrice), "Output value incorrect");
+        }
+    }
+
+    function test_largeBuysAndSellsCannotLeadToZeroState(uint256 numBuysAndSells, uint128 spotPrice, uint128 delta)
+        public
+    {
+        delta = uint128(bound(delta, FixedPointMathLib.WAD + 1, 2*FixedPointMathLib.WAD));
+        spotPrice = uint128(bound(spotPrice, curve.MIN_PRICE(), type(uint96).max));
+        numBuysAndSells = bound(numBuysAndSells, 1, type(uint96).max);
+
+        // Simulate a large sell
+        (CurveErrorCodes.Error error1, uint256 newSpotPrice, uint256 newDelta, uint256 outputValue,,) =
+            curve.getSellInfo(spotPrice, delta, numBuysAndSells, 0, 0);
+
+        // Return early if there is a math issue
+        if (error1 != CurveErrorCodes.Error.OK) {
+            return;
         }
 
-        assertLe(outputValue, numItems * uint256(spotPrice), "Output value incorrect");
+        // Do try/catch
+        // Simulate a large buy using the new parameters
+        try curve.getBuyInfo(uint128(newSpotPrice), uint128(newDelta), numBuysAndSells, 0, 0) returns (
+            CurveErrorCodes.Error error2, uint128, uint128, uint256 inputValue, uint256, uint256
+        ) {
+            // If no math error, check that we pay more than zero
+            if (error2 == CurveErrorCodes.Error.OK) {
+                // If get out more than we pay, check to see if it's a big amount
+                if (inputValue < outputValue) {
+                    assertApproxEqRel(inputValue, outputValue, 1e12, "Value extraction possible");
+                }
+            }
+        } catch {}
     }
 }
