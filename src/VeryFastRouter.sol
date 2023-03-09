@@ -612,11 +612,12 @@ contract VeryFastRouter {
      *     @param amount The amount of tokens to transfer
      */
     function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
-        // verify caller is a trusted pair contract
-        require(factory.isValidPair(msg.sender), "Not pair");
-
-        // verify caller is an ERC20 pair
-        require(factory.getPairTokenType(msg.sender) == ILSSVMPairFactoryLike.PairTokenType.ERC20, "Not ERC20 pair");
+        // verify caller is a trusted ERC20 pair contract
+        require(
+            factory.isValidPair(msg.sender)
+                && factory.getPairTokenType(msg.sender) == ILSSVMPairFactoryLike.PairTokenType.ERC20,
+            "Invalid ERC20 pair"
+        );
 
         // transfer tokens to pair
         token.safeTransferFrom(from, to, amount);

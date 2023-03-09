@@ -121,7 +121,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         uint128 _delta,
         uint96 _fee,
         uint128 _spotPrice
-    ) external payable {
+    ) external {
         require(owner() == address(0), "Initialized");
         __Ownable_init(_owner);
         __ReentrancyGuard_init();

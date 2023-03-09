@@ -417,7 +417,6 @@ contract LSSVMRouter {
      */
     function robustSwapERC20ForSpecificNFTsAndNFTsToToken(RobustPairNFTsFoTokenAndTokenforNFTsTrade calldata params)
         external
-        payable
         virtual
         returns (uint256 remainingValue, uint256 outputAmount)
     {
