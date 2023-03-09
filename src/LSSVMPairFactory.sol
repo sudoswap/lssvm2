@@ -588,8 +588,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         // initialize pair
         _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
 
-        // transfer initial tokens to pair (if > 0)
-        if (_initialTokenBalance > 0) {
+        // transfer initial tokens to pair (if != 0)
+        if (_initialTokenBalance != 0) {
             _token.safeTransferFrom(msg.sender, address(_pair), _initialTokenBalance);
         }
 

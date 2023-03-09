@@ -49,7 +49,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         {
             PoolType _poolType = poolType();
             require(_poolType == PoolType.NFT || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(numNFTs.length == 1 && numNFTs[0] > 0, "Must swap > 0 NFTs");
+            require(numNFTs.length == 1 && numNFTs[0] != 0, "Must swap != 0 NFTs");
         }
 
         // Call bonding curve for pricing information
@@ -97,7 +97,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         {
             PoolType _poolType = poolType();
             require(_poolType == PoolType.TOKEN || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(numNFTs.length == 1 && numNFTs[0] > 0, "Must swap > 0 NFTs");
+            require(numNFTs.length == 1 && numNFTs[0] != 0, "Must swap != 0 NFTs");
         }
 
         // Call bonding curve for pricing information

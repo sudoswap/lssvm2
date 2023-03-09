@@ -99,7 +99,7 @@ contract VeryFastRouter {
             uint128 newDelta = pair.delta();
 
             // Assume that i items have been bought and get the new params
-            if (i > 0) {
+            if (i != 0) {
                 (, newSpotPrice, newDelta,,,) = pair.bondingCurve().getBuyInfo(
                     newSpotPrice, newDelta, i, pair.fee(), pair.factory().protocolFeeMultiplier()
                 );
@@ -115,7 +115,7 @@ contract VeryFastRouter {
             prices[numNFTs - i - 1] = price;
         }
         // Scale up by slippage amount
-        if (slippageScaling > 0) {
+        if (slippageScaling != 0) {
             for (uint256 i = 0; i < prices.length; ++i) {
                 prices[i] = prices[i] + (prices[i] * slippageScaling / 1e18);
             }
@@ -158,7 +158,7 @@ contract VeryFastRouter {
             uint128 newDelta = pair.delta();
 
             // Assume that i items have been sold and get the new params
-            if (i > 0) {
+            if (i != 0) {
                 (, newSpotPrice, newDelta,,,) = pair.bondingCurve().getSellInfo(
                     newSpotPrice, newDelta, i, pair.fee(), pair.factory().protocolFeeMultiplier()
                 );
@@ -175,7 +175,7 @@ contract VeryFastRouter {
             outputAmounts[numNFTs - i - 1] = output;
         }
         // Scale down by slippage amount
-        if (slippageScaling > 0) {
+        if (slippageScaling != 0) {
             for (uint256 i = 0; i < outputAmounts.length; ++i) {
                 outputAmounts[i] = outputAmounts[i] - (outputAmounts[i] * slippageScaling / 1e18);
             }
@@ -271,7 +271,7 @@ contract VeryFastRouter {
                 );
 
                 // If we can sell at least 1 item...
-                if (numItemsToFill > 0) {
+                if (numItemsToFill != 0) {
                     // If property checking is needed, do the property check swap
                     if (order.doPropertyCheck) {
                         outputAmount = ILSSVMPairERC721(address(order.pair)).swapNFTsForToken(
@@ -323,7 +323,7 @@ contract VeryFastRouter {
                 );
 
                 // Deduct ETH amount if it's an ETH swap
-                if (order.ethAmount > 0) {
+                if (order.ethAmount != 0) {
                     ethAmount -= inputAmount;
                 }
             }
@@ -342,10 +342,10 @@ contract VeryFastRouter {
                 inputAmount = 0;
 
                 // Continue if we can fill at least 1 item
-                if (numItemsToFill > 0) {
+                if (numItemsToFill != 0) {
                     // Set ETH amount to send (is 0 if it's an ERC20 swap)
                     uint256 ethToSendForBuy;
-                    if (order.ethAmount > 0) {
+                    if (order.ethAmount != 0) {
                         ethToSendForBuy = priceToFillAt;
                     }
 
@@ -355,7 +355,7 @@ contract VeryFastRouter {
                         uint256[] memory availableIds = _findAvailableIds(order.pair, numItemsToFill, order.nftIds);
 
                         // Only swap if there are valid IDs to buy
-                        if (availableIds.length > 0) {
+                        if (availableIds.length != 0) {
                             inputAmount = order.pair.swapTokenForSpecificNFTs{value: ethToSendForBuy}(
                                 availableIds, priceToFillAt, swapOrder.nftRecipient, true, msg.sender
                             );
@@ -372,7 +372,7 @@ contract VeryFastRouter {
                         }
 
                         // Only continue if we can fill for nonzero amount of items
-                        if (numItemsToFill > 0) {
+                        if (numItemsToFill != 0) {
                             // Do the 1155 swap, with the modified amount to buy
                             inputAmount = order.pair.swapTokenForSpecificNFTs{value: ethToSendForBuy}(
                                 _wrapUintAsArray(numItemsToFill),
@@ -385,7 +385,7 @@ contract VeryFastRouter {
                     }
 
                     // Deduct ETH amount if it's an ETH swap
-                    if (order.ethAmount > 0) {
+                    if (order.ethAmount != 0) {
                         ethAmount -= inputAmount;
                     }
                 }
@@ -395,7 +395,7 @@ contract VeryFastRouter {
         }
 
         // Send excess ETH back to token recipient
-        if (ethAmount > 0) {
+        if (ethAmount != 0) {
             payable(swapOrder.tokenRecipient).safeTransferETH(ethAmount);
         }
     }

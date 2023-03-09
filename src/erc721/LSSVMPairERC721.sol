@@ -39,7 +39,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         {
             PoolType _poolType = poolType();
             require(_poolType == PoolType.NFT || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require((nftIds.length > 0), "Must ask for > 0 NFTs");
+            require((nftIds.length != 0), "Must ask for != 0 NFTs");
         }
 
         // Call bonding curve for pricing information
@@ -146,7 +146,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         {
             PoolType _poolType = poolType();
             require(_poolType == PoolType.TOKEN || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(nftIds.length > 0, "Must ask for > 0 NFTs");
+            require(nftIds.length != 0, "Must ask for != 0 NFTs");
         }
 
         // Call bonding curve for pricing information

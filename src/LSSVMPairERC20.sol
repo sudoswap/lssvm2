@@ -109,7 +109,7 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
             }
         }
         // Send trade fee if it exists, is TRADE pool, and fee recipient != pool address
-        if (poolType() == PoolType.TRADE && tradeFeeAmount > 0) {
+        if (poolType() == PoolType.TRADE && tradeFeeAmount != 0) {
             address payable _feeRecipient = getFeeRecipient();
             if (_feeRecipient != _assetRecipient) {
                 _token.safeTransfer(_feeRecipient, tradeFeeAmount);

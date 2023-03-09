@@ -45,7 +45,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
         address payable _assetRecipient = getAssetRecipient();
 
         // Transfer trade fees only if TRADE pool and they exist
-        if (poolType() == PoolType.TRADE && tradeFeeAmount > 0) {
+        if (poolType() == PoolType.TRADE && tradeFeeAmount != 0) {
             address payable _feeRecipient = getFeeRecipient();
             // Only send and deduct inputAmount if the fee recipient is not the asset recipient (i.e. the pool)
             if (_feeRecipient != _assetRecipient) {
