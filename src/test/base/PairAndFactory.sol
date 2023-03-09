@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
+import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -12,17 +14,19 @@ import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155
 
 import {Test20} from "../../mocks/Test20.sol";
 import {LSSVMPair} from "../../LSSVMPair.sol";
-import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {Test721} from "../../mocks/Test721.sol";
+import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {Test1155} from "../../mocks/Test1155.sol";
+import {Test2981} from "../../mocks/Test2981.sol";
+import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
-import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {TestPairManager} from "../../mocks/TestPairManager.sol";
 import {TestPairManager2} from "../../mocks/TestPairManager2.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
+import {ILSSVMPairFactoryLike} from "../../ILSSVMPairFactoryLike.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 import {IOwnershipTransferReceiver} from "../../lib/IOwnershipTransferReceiver.sol";
 import {MockOwnershipTransferReceiver} from "../../mocks/MockOwnershipTransferReceiver.sol";
@@ -609,6 +613,38 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
             nftIds, inputAmount, address(this), false, address(0)
         );
         spotPrice = uint56(newSpotPrice);
+    }
+
+    function test_pullTokenInputAndPayProtocolFeeGivesEnoughTradeFee() public {
+        // skip test if the pair uses ERC20
+        if (factory.getPairTokenType(address(pair)) == ILSSVMPairFactoryLike.PairTokenType.ERC20) {
+            return;
+        }
+
+        // increase trade fee to large value
+        uint96 fee = 0.49 ether;
+        pair.changeFee(fee);
+
+        // increase royalty to large value
+        uint96 bps = 9999;
+        Test2981 test2981 = new Test2981(ROYALTY_RECEIVER, bps);
+        RoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test721), address(test2981));
+
+        // set reasonable delta and spot price
+        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
+        pair.changeDelta(delta_);
+        pair.changeSpotPrice(spotPrice_);
+
+        // fetch buy info
+        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, fee, protocolFeeMultiplier);
+
+        // buy specific NFT
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = 1;
+        vm.expectRevert("Not enough trade fee");
+        pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            nftIds, inputAmount, address(this), false, address(0)
+        );
     }
 
     /**

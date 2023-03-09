@@ -51,6 +51,8 @@ abstract contract LSSVMPairETH is LSSVMPair {
             if (_feeRecipient != _assetRecipient) {
                 saleAmount -= tradeFeeAmount;
                 _feeRecipient.safeTransferETH(tradeFeeAmount);
+            } else {
+                require(saleAmount >= tradeFeeAmount / 2, "Not enough trade fee");
             }
         }
 
