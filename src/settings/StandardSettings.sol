@@ -17,6 +17,7 @@ import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 import {ISettings} from "./ISettings.sol";
 import {Splitter} from "./Splitter.sol";
 import {LSSVMPairERC1155} from "../erc1155/LSSVMPairERC1155.sol";
+import {CurveErrorCodes} from "../bonding-curves/CurveErrorCodes.sol";
 
 contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCallback, Clone, ISettings {
     using ClonesWithImmutableArgs for address;
@@ -29,6 +30,8 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
 
     Splitter immutable splitterImplementation;
     ILSSVMPairFactoryLike immutable pairFactory;
+
+    error BondingCurveError(CurveErrorCodes.Error error);
 
     event SettingsAddedForPair(address pairAddress);
     event SettingsRemovedForPair(address pairAddress);
@@ -236,7 +239,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
 
         // Get new price to buy from pair
         (
-            ,
+            CurveErrorCodes.Error error,
             ,
             ,
             /* error */
@@ -245,6 +248,9 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
             uint256 newPriceToBuyFromPair, /* trade fee */ /* protocol fee */
             ,
         ) = pair.bondingCurve().getBuyInfo(newSpotPrice, newDelta, 1, pair.fee(), pairFactory.protocolFeeMultiplier());
+        if (error != CurveErrorCodes.Error.OK) {
+            revert BondingCurveError(error);
+        }
 
         uint256 nftBalance;
         if (pairFactory.getPairNFTType(pairAddress) == ILSSVMPairFactoryLike.PairNFTType.ERC721) {
@@ -264,16 +270,20 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         (,,, uint256 priceToSellToPair,,) = pair.getSellNFTQuote(assetId, 1);
 
         // Get new price to sell to pair
+        uint256 newPriceToSellToPair;
         (
-            ,
+            error,
             ,
             ,
             /* error */
             /* new spot price */
             /* new delta */
-            uint256 newPriceToSellToPair, /* trade fee */ /* protocol fee */
+            newPriceToSellToPair, /* trade fee */ /* protocol fee */
             ,
         ) = pair.bondingCurve().getSellInfo(newSpotPrice, newDelta, 1, pair.fee(), pairFactory.protocolFeeMultiplier());
+        if (error != CurveErrorCodes.Error.OK) {
+            revert BondingCurveError(error);
+        }
 
         // Get token balance of the pair (ETH or ERC20)
         uint256 pairBalance;

@@ -23,6 +23,7 @@ import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
 import {ILSSVMPairFactoryLike} from "../../ILSSVMPairFactoryLike.sol";
 import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
+import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
 
 import {StandardSettings} from "../../settings/StandardSettings.sol";
 import {StandardSettingsFactory} from "../../settings/StandardSettingsFactory.sol";
@@ -56,6 +57,8 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
     RoyaltyEngine royaltyEngine;
     StandardSettingsFactory settingsFactory;
     StandardSettings settings;
+
+    error BondingCurveError(CurveErrorCodes.Error error);
 
     function setUp() public {
         bondingCurve = setupCurve();
