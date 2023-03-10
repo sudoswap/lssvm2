@@ -85,7 +85,8 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
             address royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddresses[i]);
             delete _specCache[royaltyAddress];
 
-            (,uint256[] memory royaltyAmounts, int16 newSpec,,) = _getRoyaltyAndSpec(tokenAddresses[i], tokenIds[i], values[i]);
+            (, uint256[] memory royaltyAmounts, int16 newSpec,,) =
+                _getRoyaltyAndSpec(tokenAddresses[i], tokenIds[i], values[i]);
             _checkAmountsDoesNotExceedValue(values[i], royaltyAmounts);
             _specCache[royaltyAddress] = newSpec;
 
@@ -324,7 +325,7 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
         }
         return amounts;
     }
-    
+
     function _checkAmountsDoesNotExceedValue(uint256 saleAmount, uint256[] memory royalties) private pure {
         uint256 numRoyalties = royalties.length;
         uint256 totalRoyalties;

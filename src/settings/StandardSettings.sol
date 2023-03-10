@@ -33,8 +33,8 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
 
     error BondingCurveError(CurveErrorCodes.Error error);
 
-    event SettingsAddedForPair(address pairAddress);
-    event SettingsRemovedForPair(address pairAddress);
+    event SettingsAddedForPair(address indexed pairAddress);
+    event SettingsRemovedForPair(address indexed pairAddress);
 
     constructor(Splitter _splitterImplementation, ILSSVMPairFactoryLike _pairFactory) {
         splitterImplementation = _splitterImplementation;

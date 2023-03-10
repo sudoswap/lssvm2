@@ -8,8 +8,8 @@ import {RangePropertyChecker} from "./RangePropertyChecker.sol";
 contract PropertyCheckerFactory {
     using ClonesWithImmutableArgs for address;
 
-    event NewMerklePropertyChecker(address a, bytes32 root);
-    event NewRangePropertyChecker(address a, uint256 startInclusive, uint256 endInclusive);
+    event NewMerklePropertyChecker(address indexed a, bytes32 indexed root);
+    event NewRangePropertyChecker(address indexed a, uint256 indexed startInclusive, uint256 indexed endInclusive);
 
     MerklePropertyChecker immutable merklePropertyCheckerImplementation;
     RangePropertyChecker immutable rangePropertyCheckerImplementation;

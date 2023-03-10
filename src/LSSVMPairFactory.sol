@@ -70,15 +70,15 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     mapping(LSSVMRouter => RouterStatus) public override routerStatus;
 
-    event NewERC721Pair(address poolAddress);
-    event NewERC1155Pair(address poolAddress);
-    event TokenDeposit(address poolAddress);
-    event NFTDeposit(address poolAddress, uint256[] ids);
-    event ProtocolFeeRecipientUpdate(address recipientAddress);
+    event NewERC721Pair(address indexed poolAddress);
+    event NewERC1155Pair(address indexed poolAddress);
+    event TokenDeposit(address indexed poolAddress);
+    event NFTDeposit(address indexed poolAddress, uint256[] ids);
+    event ProtocolFeeRecipientUpdate(address indexed recipientAddress);
     event ProtocolFeeMultiplierUpdate(uint256 newMultiplier);
-    event BondingCurveStatusUpdate(ICurve bondingCurve, bool isAllowed);
-    event CallTargetStatusUpdate(address target, bool isAllowed);
-    event RouterStatusUpdate(LSSVMRouter router, bool isAllowed);
+    event BondingCurveStatusUpdate(ICurve indexed bondingCurve, bool isAllowed);
+    event CallTargetStatusUpdate(address indexed target, bool isAllowed);
+    event RouterStatusUpdate(LSSVMRouter indexed router, bool isAllowed);
 
     constructor(
         LSSVMPairERC721ETH _erc721ETHTemplate,

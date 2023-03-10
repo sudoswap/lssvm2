@@ -7,7 +7,7 @@ import {StandardSettings} from "./StandardSettings.sol";
 contract StandardSettingsFactory {
     using ClonesWithImmutableArgs for address;
 
-    event NewSettings(address settingsAddress);
+    event NewSettings(address indexed settingsAddress);
 
     uint256 constant ONE_YEAR_SECS = 31556952;
     uint256 constant BASE = 10_000;

@@ -91,7 +91,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     event NFTWithdrawal(uint256 numNFTs);
     event DeltaUpdate(uint128 newDelta);
     event FeeUpdate(uint96 newFee);
-    event AssetRecipientChange(address a);
+    event AssetRecipientChange(address indexed a);
 
     /**
      *  Errors
