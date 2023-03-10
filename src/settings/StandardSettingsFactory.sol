@@ -9,7 +9,7 @@ contract StandardSettingsFactory {
 
     event NewSettings(address indexed settingsAddress);
 
-    uint256 constant ONE_YEAR_SECS = 31_556_926;
+    uint256 constant ONE_YEAR_SECS = 31556952;
     uint256 constant BASE = 10_000;
 
     StandardSettings immutable standardSettingsImplementation;

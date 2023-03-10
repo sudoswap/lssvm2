@@ -69,7 +69,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     }
 
     mapping(LSSVMRouter => RouterStatus) public override routerStatus;
-
+    
     event NewERC721Pair(address indexed poolAddress);
     event NewERC1155Pair(address indexed poolAddress);
     event TokenDeposit(address indexed poolAddress);
@@ -562,7 +562,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
 
         // transfer initial ETH to pair
-        if (msg.value > 0) payable(address(_pair)).safeTransferETH(msg.value);
+        payable(address(_pair)).safeTransferETH(msg.value);
 
         // transfer initial NFTs from sender to pair
         uint256 numNFTs = _initialNFTIDs.length;
@@ -619,7 +619,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
 
         // transfer initial ETH to pair
-        if (msg.value > 0) payable(address(_pair)).safeTransferETH(msg.value);
+        payable(address(_pair)).safeTransferETH(msg.value);
 
         // transfer initial NFTs from sender to pair
         if (_initialNFTBalance != 0) {

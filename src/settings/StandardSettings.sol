@@ -23,7 +23,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
     using ClonesWithImmutableArgs for address;
     using SafeTransferLib for address payable;
 
-    uint96 constant MAX_SETTABLE_FEE = 0.2e18; // Max fee of 20%
+    uint96 constant MAX_SETTABLE_FEE = 2e17; // Max fee of 20%
 
     mapping(address => PairInfo) public pairInfos;
     address payable public settingsFeeRecipient;
