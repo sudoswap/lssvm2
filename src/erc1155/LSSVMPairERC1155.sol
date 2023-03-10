@@ -49,7 +49,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         {
             PoolType _poolType = poolType();
             require(_poolType == PoolType.NFT || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(numNFTs.length == 1 && numNFTs[0] != 0, "Must swap != 0 NFTs");
+            require(numNFTs.length == 1 && numNFTs[0] != 0, "Must swap > 0 NFTs");
         }
 
         // Call bonding curve for pricing information
@@ -97,7 +97,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         {
             PoolType _poolType = poolType();
             require(_poolType == PoolType.TOKEN || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(numNFTs.length == 1 && numNFTs[0] != 0, "Must swap != 0 NFTs");
+            require(numNFTs.length == 1 && numNFTs[0] != 0, "Must swap > 0 NFTs");
         }
 
         // Call bonding curve for pricing information
@@ -110,12 +110,14 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
         // Deduct royalties from outputAmount
         unchecked {
-            // Safe because we already require outputAmount >= royaltyTotal in _calculateRoyalties()
+            // Safe because we already require outputAmount >= royaltyTotal in calculateRoyalties()
             outputAmount -= royaltyTotal;
         }
 
         require(outputAmount >= minExpectedTokenOutput, "Out too few tokens");
 
+        _takeNFTsFromSender(IERC1155(nft()), numNFTs[0], _factory, isRouter, routerCaller);
+        
         _sendTokenOutput(tokenRecipient, outputAmount);
 
         for (uint256 i; i < royaltyRecipients.length;) {
@@ -126,8 +128,6 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         }
 
         _sendTokenOutput(payable(address(_factory)), protocolFee);
-
-        _takeNFTsFromSender(IERC1155(nft()), numNFTs[0], _factory, isRouter, routerCaller);
 
         emit SwapNFTInPair(outputAmount, numNFTs[0]);
     }
