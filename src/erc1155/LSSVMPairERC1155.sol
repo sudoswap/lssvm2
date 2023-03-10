@@ -117,7 +117,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         require(outputAmount >= minExpectedTokenOutput, "Out too few tokens");
 
         _takeNFTsFromSender(IERC1155(nft()), numNFTs[0], _factory, isRouter, routerCaller);
-        
+
         _sendTokenOutput(tokenRecipient, outputAmount);
 
         for (uint256 i; i < royaltyRecipients.length;) {
