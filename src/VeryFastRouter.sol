@@ -94,7 +94,7 @@ contract VeryFastRouter {
     {
         uint256[] memory prices = new uint256[](numNFTs);
 
-        for (uint256 i; i < numNFTs; ++i) {
+        for (uint256 i; i < numNFTs;) {
             uint128 newSpotPrice = pair.spotPrice();
             uint128 newDelta = pair.delta();
 
@@ -113,11 +113,19 @@ contract VeryFastRouter {
 
             // Set the price to buy numNFT - i items
             prices[numNFTs - i - 1] = price;
+
+            unchecked {
+                ++i;
+            }
         }
         // Scale up by slippage amount
-        if (slippageScaling != 0) {
-            for (uint256 i = 0; i < prices.length; ++i) {
+        if (slippageScaling > 0) {
+            for (uint256 i = 0; i < prices.length;) {
                 prices[i] = prices[i] + (prices[i] * slippageScaling / 1e18);
+
+                unchecked {
+                    ++i;
+                }
             }
         }
 
@@ -153,7 +161,7 @@ contract VeryFastRouter {
     ) external view returns (uint256[] memory) {
         uint256[] memory outputAmounts = new uint256[](numNFTs);
 
-        for (uint256 i; i < numNFTs; ++i) {
+        for (uint256 i; i < numNFTs;) {
             uint128 newSpotPrice = pair.spotPrice();
             uint128 newDelta = pair.delta();
 
@@ -173,11 +181,19 @@ contract VeryFastRouter {
             output -= royaltyTotal;
 
             outputAmounts[numNFTs - i - 1] = output;
+
+            unchecked {
+                ++i;
+            }
         }
         // Scale down by slippage amount
-        if (slippageScaling != 0) {
-            for (uint256 i = 0; i < outputAmounts.length; ++i) {
+        if (slippageScaling > 0) {
+            for (uint256 i = 0; i < outputAmounts.length;) {
                 outputAmounts[i] = outputAmounts[i] - (outputAmounts[i] * slippageScaling / 1e18);
+
+                unchecked {
+                    ++i;
+                }
             }
         }
         return outputAmounts;
@@ -201,7 +217,7 @@ contract VeryFastRouter {
         results = new uint256[](swapOrder.buyOrders.length + swapOrder.sellOrders.length);
 
         // Go through each sell order
-        for (uint256 i; i < swapOrder.sellOrders.length; ++i) {
+        for (uint256 i; i < swapOrder.sellOrders.length;) {
             SellOrderWithPartialFill calldata order = swapOrder.sellOrders[i];
             uint128 pairSpotPrice = order.pair.spotPrice();
             uint256 outputAmount;
@@ -305,10 +321,14 @@ contract VeryFastRouter {
                 }
             }
             results[i] = outputAmount;
+
+            unchecked {
+                ++i;
+            }
         }
 
         // Go through each buy order
-        for (uint256 i; i < swapOrder.buyOrders.length; ++i) {
+        for (uint256 i; i < swapOrder.buyOrders.length;) {
             BuyOrderWithPartialFill calldata order = swapOrder.buyOrders[i];
 
             // @dev We use inputAmount to store the spot price temporarily before it's overwritten
@@ -392,6 +412,10 @@ contract VeryFastRouter {
             }
             // Store inputAmount in results
             results[i + swapOrder.sellOrders.length] = inputAmount;
+
+            unchecked {
+                ++i;
+            }
         }
 
         // Send excess ETH back to token recipient
@@ -577,10 +601,14 @@ contract VeryFastRouter {
 
         // Go through each potential ID, and check to see if it's still owned by the pair
         // If it is, record the ID
-        for (uint256 i; i < maxIdsNeeded; ++i) {
+        for (uint256 i; i < maxIdsNeeded;) {
             if (nft.ownerOf(potentialIds[i]) == address(pair)) {
                 idsThatExist[numIdsFound] = potentialIds[i];
                 numIdsFound += 1;
+            }
+
+            unchecked {
+                ++i;
             }
         }
         // If all ids were found, return the full id list
@@ -590,8 +618,12 @@ contract VeryFastRouter {
         // Otherwise, we didn't find enough IDs, so we need to return a subset
         if (numIdsFound < maxIdsNeeded) {
             uint256[] memory allIdsFound = new uint256[](numIdsFound);
-            for (uint256 i; i < numIdsFound; ++i) {
+            for (uint256 i; i < numIdsFound;) {
                 allIdsFound[i] = idsThatExist[i];
+
+                unchecked {
+                    ++i;
+                }
             }
             return allIdsFound;
         }

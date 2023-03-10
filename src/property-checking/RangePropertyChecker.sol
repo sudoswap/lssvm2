@@ -25,11 +25,15 @@ contract RangePropertyChecker is IPropertyChecker, Clone {
         isAllowed = true;
         uint256 lowerBound = getLowerBoundInclusive();
         uint256 upperBound = getUpperBoundInclusive();
-        for (uint256 i; i < ids.length; i++) {
+        for (uint256 i; i < ids.length;) {
             if (ids[i] < lowerBound) {
                 return false;
             } else if (ids[i] > upperBound) {
                 return false;
+            }
+
+            unchecked {
+                ++i;
             }
         }
     }

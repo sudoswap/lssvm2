@@ -79,7 +79,8 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
         public
     {
         uint256 numTokens = tokenAddresses.length;
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i = 0; i < numTokens;) {
+        
             // Invalidate cached value
             address royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddresses[i]);
             delete _specCache[royaltyAddress];
@@ -87,6 +88,10 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
             (,uint256[] memory royaltyAmounts, int16 newSpec,,) = _getRoyaltyAndSpec(tokenAddresses[i], tokenIds[i], values[i]);
             _checkAmountsDoesNotExceedValue(values[i], royaltyAmounts);
             _specCache[royaltyAddress] = newSpec;
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -175,10 +180,13 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
                 recipients = new address payable[](royalties.length);
                 amounts = new uint256[](royalties.length);
                 uint256 totalAmount;
-                for (uint256 i = 0; i < royalties.length; i++) {
+                for (uint256 i = 0; i < royalties.length;) {
                     recipients[i] = royalties[i].account;
                     amounts[i] = value * royalties[i].value / 10000;
                     totalAmount += amounts[i];
+                    unchecked {
+                        ++i;
+                    }
                 }
                 return (recipients, amounts, RARIBLEV2, royaltyAddress, addToCache);
             } catch {}
@@ -254,10 +262,13 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
                 recipients = new address payable[](royalties.length);
                 amounts = new uint256[](royalties.length);
                 uint256 totalAmount;
-                for (uint256 i = 0; i < royalties.length; i++) {
+                for (uint256 i = 0; i < royalties.length;) {
                     recipients[i] = royalties[i].account;
                     amounts[i] = value * royalties[i].value / 10000;
                     totalAmount += amounts[i];
+                    unchecked {
+                        ++i;
+                    }
                 }
                 return (recipients, amounts, spec, royaltyAddress, addToCache);
             } else if (spec == RARIBLEV1) {
@@ -304,9 +315,12 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
         uint256 numBps = bps.length;
         amounts = new uint256[](numBps);
         uint256 totalAmount;
-        for (uint256 i = 0; i < numBps; ++i) {
+        for (uint256 i = 0; i < numBps;) {
             amounts[i] = value * bps[i] / 10000;
             totalAmount += amounts[i];
+            unchecked {
+                ++i;
+            }
         }
         return amounts;
     }

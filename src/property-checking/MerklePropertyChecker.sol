@@ -19,10 +19,14 @@ contract MerklePropertyChecker is IPropertyChecker, Clone {
         isAllowed = true;
         bytes32 root = getMerkleRoot();
         (bytes[] memory proofList) = abi.decode(params, (bytes[]));
-        for (uint256 i; i < ids.length; i++) {
+        for (uint256 i; i < ids.length;) {
             bytes32[] memory proof = abi.decode(proofList[i], (bytes32[]));
             if (!MerkleProof.verify(proof, root, keccak256(abi.encodePacked(ids[i])))) {
                 return false;
+            }
+
+            unchecked {
+                ++i;
             }
         }
     }
