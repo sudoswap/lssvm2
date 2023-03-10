@@ -69,11 +69,12 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     }
 
     mapping(LSSVMRouter => RouterStatus) public override routerStatus;
-
+    
     event NewERC721Pair(address indexed poolAddress);
     event NewERC1155Pair(address indexed poolAddress);
     event TokenDeposit(address indexed poolAddress);
     event NFTDeposit(address indexed poolAddress, uint256[] ids);
+    event ERC1155Deposit(address indexed poolAddress, uint256 indexed id, uint256 amount);
     event ProtocolFeeRecipientUpdate(address indexed recipientAddress);
     event ProtocolFeeMultiplierUpdate(uint256 newMultiplier);
     event BondingCurveStatusUpdate(ICurve indexed bondingCurve, bool isAllowed);
@@ -687,6 +688,22 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
                 && token == LSSVMPairERC20(recipient).token()
         ) {
             emit TokenDeposit(recipient);
+        }
+    }
+
+    /**
+     * @dev Used to deposit ERC1155 NFTs into a pair after creation and emit an event for indexing (if recipient is indeed a pair)
+     */
+    function depositERC1155(IERC1155 nft, uint256 id, address recipient, uint256 amount) external {
+        if (amount == 0) return;
+
+        nft.safeTransferFrom(msg.sender, recipient, id, amount, bytes(""));
+
+        if (
+            isValidPair(recipient) && getPairNFTType(recipient) == PairNFTType.ERC1155
+                && address(nft) == LSSVMPair(recipient).nft() && id == LSSVMPairERC1155(recipient).nftId()
+        ) {
+            emit ERC1155Deposit(recipient, id, amount);
         }
     }
 }

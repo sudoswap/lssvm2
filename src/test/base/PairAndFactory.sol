@@ -527,6 +527,15 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         assertEq(test721.ownerOf(0), address(this));
     }
 
+    function test_depositERC1155(uint256 id, uint256 amount) public {
+        id = bound(id, 1, type(uint256).max);
+
+        test1155.mint(address(this), id, amount);
+        test1155.setApprovalForAll(address(factory), true);
+        factory.depositERC1155(test1155, id, address(pair1155), amount);
+        assertEq(test1155.balanceOf(address(pair1155), id), amount, "didn't deposit ERC1155 NFTs");
+    }
+
     /**
      * Test failure conditions
      */
