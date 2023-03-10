@@ -80,7 +80,6 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
     {
         uint256 numTokens = tokenAddresses.length;
         for (uint256 i = 0; i < numTokens;) {
-        
             // Invalidate cached value
             address royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddresses[i]);
             delete _specCache[royaltyAddress];

@@ -44,7 +44,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
      */
 
     // 50%, must <= 1 - MAX_PROTOCOL_FEE (set in LSSVMPairFactory)
-    uint256 internal constant MAX_FEE = 0.5e18;
+    uint256 internal constant MAX_TRADE_FEE = 0.5e18;
 
     /**
      *  Immutable params
@@ -132,7 +132,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
         if ((_poolType == PoolType.TOKEN) || (_poolType == PoolType.NFT)) {
             require(_fee == 0, "Only Trade Pools can have nonzero fee");
         } else if (_poolType == PoolType.TRADE) {
-            require(_fee < MAX_FEE, "Trade fee must be less than 90%");
+            require(_fee < MAX_TRADE_FEE, "Trade fee must be less than 90%");
             fee = _fee;
         }
 
@@ -579,7 +579,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     function changeFee(uint96 newFee) external onlyOwner {
         PoolType _poolType = poolType();
         require(_poolType == PoolType.TRADE, "Only for Trade pools");
-        require(newFee < MAX_FEE, "Trade fee must be less than 50%");
+        require(newFee < MAX_TRADE_FEE, "Trade fee must be less than 50%");
         if (fee != newFee) {
             fee = newFee;
             emit FeeUpdate(newFee);
