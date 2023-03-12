@@ -258,45 +258,6 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         factory.disableSettingsForPair(address(settings), address(pair721));
     }
 
-    function test_getAllPairsForSettings() public {
-        address[] memory results = factory.getAllPairsForSettings(address(settings));
-        assertEq(results.length, 0);
-
-        // Add pair to settings
-        factory.toggleSettingsForCollection(address(settings), address(test721), true);
-        pair721.transferOwnership{value: 0.1 ether}(address(settings), "");
-
-        results = factory.getAllPairsForSettings(address(settings));
-        assertEq(results.length, 1);
-        assertEq(results[0], address(pair721));
-
-        // Add another pair to settings
-        uint256[] memory idList2;
-        LSSVMPair pair2 = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
-            factory,
-            test721,
-            bondingCurve,
-            payable(address(0)), // asset recipient
-            LSSVMPair.PoolType.TRADE,
-            delta,
-            0, // 0% for trade fee
-            spotPrice,
-            idList2,
-            tokenAmount,
-            address(0)
-        );
-        pair2.transferOwnership{value: 0.1 ether}(address(settings), "");
-        results = factory.getAllPairsForSettings(address(settings));
-        assertEq(results.length, 2);
-
-        // Remove first pair from settings
-        vm.warp(block.timestamp + 1 days + 1 seconds);
-        settings.reclaimPair(address(pair721));
-
-        results = factory.getAllPairsForSettings(address(settings));
-        assertEq(results.length, 1);
-    }
-
     // Standard Settings + Settings Factory tests:
 
     // Creating a Standard Settings works as expected, values are as expected

@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -42,7 +41,6 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     using AddressUpgradeable for address;
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 internal constant MAX_PROTOCOL_FEE = 0.1e18; // 10%, must <= 1 - MAX_FEE
 
@@ -61,7 +59,6 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     // Data structures for settings logic
     mapping(address => mapping(address => bool)) public settingsForCollection;
     mapping(address => address) public settingsForPair;
-    mapping(address => EnumerableSet.AddressSet) private pairsForSettings;
 
     struct RouterStatus {
         bool allowed;
@@ -509,7 +506,6 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         require(pair.owner() == msg.sender, "Msg sender is not pair owner");
         require(settingsForCollection[address(pair.nft())][settings], "Settings not enabled for collection");
         settingsForPair[pairAddress] = settings;
-        pairsForSettings[settings].add(pairAddress);
     }
 
     /**
@@ -525,24 +521,6 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         LSSVMPair pair = LSSVMPair(pairAddress);
         require(pair.owner() == msg.sender, "Msg sender is not pair owner");
         delete settingsForPair[pairAddress];
-        pairsForSettings[settings].remove(pairAddress);
-    }
-
-    /**
-     * @notice Fetches all the Pair addresses that are registered with the given Settings
-     *      @param settings The address of the Settings contract
-     *      @return A list of addresses of the Pairs that belong to a Settings
-     */
-    function getAllPairsForSettings(address settings) external view returns (address[] memory) {
-        uint256 numPairs = pairsForSettings[settings].length();
-        address[] memory pairs = new address[](numPairs);
-        for (uint256 i; i < numPairs;) {
-            pairs[i] = pairsForSettings[settings].at(i);
-            unchecked {
-                ++i;
-            }
-        }
-        return pairs;
     }
 
     /**
