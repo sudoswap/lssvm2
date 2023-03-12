@@ -302,12 +302,14 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
             return payable(address(this));
         }
 
+        address payable _assetRecipient = assetRecipient;
+
         // Otherwise, we return the recipient if it's been set
         // Or, we replace it with owner() if it's address(0)
-        if (assetRecipient == address(0)) {
+        if (_assetRecipient == address(0)) {
             return payable(owner());
         }
-        return assetRecipient;
+        return _assetRecipient;
     }
 
     /**
