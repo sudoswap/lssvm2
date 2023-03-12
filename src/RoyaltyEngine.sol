@@ -331,6 +331,6 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
         for (uint256 i = 0; i < numRoyalties; ++i) {
             totalRoyalties += royalties[i];
         }
-        require(totalRoyalties < saleAmount, "Invalid royalty amount");
+        require(totalRoyalties <= saleAmount, "Invalid royalty amount");
     }
 }

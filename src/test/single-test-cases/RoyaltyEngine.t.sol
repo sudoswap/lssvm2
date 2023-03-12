@@ -93,7 +93,7 @@ contract RoyaltyEngineTest is Test {
         address payable[] memory receivers = new address payable[](1);
         receivers[0] = payable(vm.addr(1));
         uint256[] memory bps = new uint256[](1);
-        bps[0] = 10000;
+        bps[0] = 10001;
         royaltyLookup2 = new TestManifold(receivers, bps);
 
         // Change the lookup for nft2
