@@ -37,6 +37,8 @@ abstract contract OwnableWithTransferCallback {
     }
 
     /// @dev Transfers ownership of the contract to a new account (`newOwner`).
+    /// @param newOwner The new address to become owner
+    /// @param data Any additional data to send to the ownership received callback
     /// Disallows setting to the zero address as a way to more gas-efficiently avoid reinitialization
     /// When ownership is transferred, if the new owner implements IOwnershipTransferCallback, we make a callback
     /// Can only be called by the current owner.

@@ -436,6 +436,7 @@ contract VeryFastRouter {
      *   @param pair The pair to calculate partial fill values for
      *   @param maxNumNFTs The maximum number of NFTs to fill / get a quote for
      *   @param maxCostPerNumNFTs The user's specified maximum price to pay for filling a number of NFTs
+     *   @param protocolFeeMultiplier The % set as protocol fee
      *   @dev Note that maxPricesPerNumNFTs is 0-indexed
      */
     function _findMaxFillableAmtForBuy(

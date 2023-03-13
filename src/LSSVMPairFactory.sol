@@ -62,7 +62,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     struct RouterStatus {
         bool allowed;
-        bool wasEverAllowed;
+        bool wasEverTouched;
     }
 
     mapping(LSSVMRouter => RouterStatus) public override routerStatus;
@@ -131,7 +131,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
         pair = LSSVMPairERC721ETH(
             payable(
-                address(erc721ETHTemplate).cloneETHPair(this, _bondingCurve, _nft, uint8(_poolType), _propertyChecker)
+                address(erc721ETHTemplate).cloneERC721ETHPair(this, _bondingCurve, _nft, uint8(_poolType), _propertyChecker)
             )
         );
 
@@ -179,7 +179,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
         pair = LSSVMPairERC721ERC20(
             payable(
-                address(erc721ERC20Template).cloneERC20Pair(
+                address(erc721ERC20Template).cloneERC721ERC20Pair(
                     this, params.bondingCurve, params.nft, uint8(params.poolType), params.propertyChecker, params.token
                 )
             )
@@ -443,7 +443,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     function setCallAllowed(address payable target, bool isAllowed) external onlyOwner {
         // ensure target is not / was not ever a router
         if (isAllowed) {
-            require(!routerStatus[LSSVMRouter(target)].wasEverAllowed, "Can't call router");
+            require(!routerStatus[LSSVMRouter(target)].wasEverTouched, "Can't call router");
         }
 
         callAllowed[target] = isAllowed;
@@ -460,7 +460,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         if (isAllowed) {
             require(!callAllowed[address(_router)], "Can't call router");
         }
-        routerStatus[_router] = RouterStatus({allowed: isAllowed, wasEverAllowed: true});
+        routerStatus[_router] = RouterStatus({allowed: isAllowed, wasEverTouched: true});
 
         emit RouterStatusUpdate(_router, isAllowed);
     }

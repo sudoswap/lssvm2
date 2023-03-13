@@ -168,7 +168,6 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         _takeNFTsFromSender(IERC721(nft()), nftIds, _factory, isRouter, routerCaller);
 
         _sendTokenOutput(tokenRecipient, outputAmount);
-
         for (uint256 i; i < royaltyRecipients.length;) {
             _sendTokenOutput(royaltyRecipients[i], royaltyAmounts[i]);
             unchecked {
@@ -246,7 +245,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
                 }
                 // Otherwise we need to pull each asset 1 at a time and verify ownership
                 else {
-                    for (uint256 i; i < nftIds.length;) {
+                    for (uint256 i; i < numNFTs;) {
                         router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i]);
                         require(_nft.ownerOf(nftIds[i]) == _assetRecipient, "NFT not transferred");
                         unchecked {
@@ -271,7 +270,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
      */
 
     /**
-     * @notice Rescues a specified set of NFTs owned by the pair to the owner address. (onlyOwnable modifier is in the implemented function)
+     * @notice Rescues a specified set of NFTs owned by the pair to the owner address. (onlyOwner modifier is in the implemented function)
      *     @param a The NFT to transfer
      *     @param nftIds The list of IDs of the NFTs to send to the owner
      */

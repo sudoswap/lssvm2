@@ -9,7 +9,7 @@ contract MerklePropertyChecker is IPropertyChecker, Clone {
     // Immutable params
 
     /**
-     * @return Returns the lower bound of IDs allowed
+     * @return Returns the merkle root
      */
     function getMerkleRoot() public pure returns (bytes32) {
         return bytes32(_getArgUint256(0));
@@ -19,7 +19,8 @@ contract MerklePropertyChecker is IPropertyChecker, Clone {
         isAllowed = true;
         bytes32 root = getMerkleRoot();
         (bytes[] memory proofList) = abi.decode(params, (bytes[]));
-        for (uint256 i; i < ids.length;) {
+        uint256 numIds = ids.length;
+        for (uint256 i; i < numIds;) {
             bytes32[] memory proof = abi.decode(proofList[i], (bytes32[]));
             if (!MerkleProof.verify(proof, root, keccak256(abi.encodePacked(ids[i])))) {
                 return false;

@@ -19,7 +19,7 @@ library LSSVMPairCloner {
      * During the delegate call, extra data is copied into the calldata which can then be
      * accessed by the implementation contract.
      */
-    function cloneETHPair(
+    function cloneERC721ETHPair(
         address implementation,
         ILSSVMPairFactoryLike factory,
         ICurve bondingCurve,
@@ -109,7 +109,7 @@ library LSSVMPairCloner {
      * During the delegate call, extra data is copied into the calldata which can then be
      * accessed by the implementation contract.
      */
-    function cloneERC20Pair(
+    function cloneERC721ERC20Pair(
         address implementation,
         ILSSVMPairFactoryLike factory,
         ICurve bondingCurve,

@@ -167,6 +167,8 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
      *     @dev This is used by the LSSVMPair's swapNFTForToken function.
      *     @param _nft The NFT collection to take from
      *     @param numNFTs The number of NFTs to take
+     *     @param isRouter Whether or not to use the router pull flow
+     *     @param routerCaller If the caller is a router, passes in which address to pull from (i.e. the router's caller)
      */
     function _takeNFTsFromSender(
         IERC1155 _nft,

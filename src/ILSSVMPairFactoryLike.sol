@@ -40,7 +40,7 @@ interface ILSSVMPairFactoryLike {
 
     function disableSettingsForPair(address settings, address pairAddress) external;
 
-    function routerStatus(LSSVMRouter router) external view returns (bool allowed, bool wasEverAllowed);
+    function routerStatus(LSSVMRouter router) external view returns (bool allowed, bool wasEverTouched);
 
     function isValidPair(address pairAddress) external view returns (bool);
 
