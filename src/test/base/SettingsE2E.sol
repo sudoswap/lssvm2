@@ -218,7 +218,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         assertEq(royaltyBps, 0);
     }
 
-    function test_reclaimPairBeforeLockupAsOwner() public {
+    function test_reclaimPairBeforeLockupAsOwnerFails() public {
         factory.toggleSettingsForCollection(address(settings), address(test721), true);
 
         address newOwner = address(12345);
@@ -230,6 +230,27 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         // Pretend to be the new owner
         vm.prank(newOwner);
         pair721.transferOwnership{value: 0.1 ether}(address(settings), "");
+
+        // Reclaim the pair as the settings owner
+        vm.expectRevert("Lockup not over");
+        settings.reclaimPair(address(pair721));
+    }
+
+    function test_reclaimPairAfterLockupAsOwner() public {
+        factory.toggleSettingsForCollection(address(settings), address(test721), true);
+
+        address newOwner = address(12345);
+        pair721.transferOwnership(newOwner, "");
+
+        // Give the new owner enough funds to opt into the settings
+        vm.deal(newOwner, 10 ether);
+
+        // Pretend to be the new owner
+        vm.prank(newOwner);
+        pair721.transferOwnership{value: 0.1 ether}(address(settings), "");
+
+        // Skip ahead in time
+        skip(settingsLockup + 1);
 
         // Reclaim the pair as the settings owner
         settings.reclaimPair(address(pair721));
@@ -565,7 +586,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
     }
 
     // Leaving after the expiry date succeeds
-    function testFail_leaveSettingsAfterExpiryAsDiffCaller() public {
+    function test_leaveSettingsAfterExpiryAsDiffCaller() public {
         // Set up basic Settings
         address payable settingsFeeRecipient = payable(address(123));
         uint256 ethCost = 0;
@@ -582,43 +603,12 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         // Skip ahead in time
         skip(secDuration + 1);
 
+        // Pretend to be a diff address
         hoax(address(12321));
 
         // Attempt to leave the Settings
+        vm.expectRevert("Not prev owner or authed");
         newSettings.reclaimPair(address(pair721));
-
-        // Perform a buy for item #1
-        (
-            ,
-            ,
-            ,
-            /* error*/
-            /* new delta */
-            /* new spot price*/
-            uint256 inputAmount, // protocolFee
-            ,
-        ) = pair721.bondingCurve().getBuyInfo(
-            pair721.spotPrice(), pair721.delta(), 1, pair721.fee(), factory.protocolFeeMultiplier()
-        );
-        uint256[] memory specificIdToBuy = new uint256[](1);
-        specificIdToBuy[0] = 1;
-
-        // Check test2981
-        (address royaltyRecipient, uint256 royaltyAmount) = test2981.royaltyInfo(1, inputAmount);
-
-        // Get before balance
-        uint256 startBalance = this.getBalance(royaltyRecipient);
-
-        // Do the swap
-        pair721.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
-            specificIdToBuy, inputAmount, address(this), false, address(this)
-        );
-
-        // Get after balance
-        uint256 afterBalance = this.getBalance(royaltyRecipient);
-
-        // Ensure the right royalty amount was paid
-        assertEq(afterBalance - startBalance, royaltyAmount);
     }
 
     // Leaving before the expiry date fails

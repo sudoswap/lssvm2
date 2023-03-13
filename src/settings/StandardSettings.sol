@@ -173,13 +173,12 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 
         // Verify that the caller is the previous pair owner or admin of the NFT collection
-        if (msg.sender == pairInfo.prevOwner) {
+        if (msg.sender == pairInfo.prevOwner || pairFactory.authAllowedForToken(address(pair.nft()), msg.sender)) {
             // If previous owner, verify that the current time is past the unlock time
             require(block.timestamp > pairInfo.unlockTime, "Lockup not over");
         }
-        // Otherwise, if not an authorized address, revert
-        else if (!pairFactory.authAllowedForToken(address(pair.nft()), msg.sender)) {
-            revert("Not prev owner or collection admin");
+        else {
+            revert("Not prev owner or authed");
         }
 
         // Split fees (if applicable)
