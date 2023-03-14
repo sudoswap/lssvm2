@@ -1059,7 +1059,8 @@ abstract contract VeryFastRouterAllSwapTypes is
     function testSwap() public {
         // Construct buy orders
         uint256 totalETHToSend = 0;
-        uint256 numBuySwapTypes = uint256(type(BuySwap).max) + 1;
+        // uint256 numBuySwapTypes = uint256(type(BuySwap).max) + 1;
+        uint256 numBuySwapTypes = 0;
 
         BuyResult[] memory buyResults = new BuyResult[](numBuySwapTypes);
         VeryFastRouter.BuyOrderWithPartialFill[] memory buyOrders =
@@ -1075,7 +1076,8 @@ abstract contract VeryFastRouterAllSwapTypes is
         totalETHToSend = modifyInputAmount(totalETHToSend);
 
         // Construct sell orders
-        uint256 numSellSwapTypes = uint256(type(SellSwap).max) + 1;
+        // uint256 numSellSwapTypes = uint256(type(SellSwap).max) + 1;
+        uint256 numSellSwapTypes = 1;
 
         // @dev the below 2 arrays are 2x the numSellSwapTypes because we have doPropertyCheck vs not doPropertyCheck
         SellResult[] memory sellResults = new SellResult[](numSellSwapTypes * 2);

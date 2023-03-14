@@ -40,13 +40,7 @@ contract MockCurve is ICurve, CurveErrorCodes {
      * @dev See {ICurve-getBuyInfo}
      */
 
-    function getBuyInfo(
-        uint128 spotPrice,
-        uint128 delta,
-        uint256 numItems,
-        uint256 feeMultiplier,
-        uint256 protocolFeeMultiplier
-    )
+    function getBuyInfo(uint128 spotPrice, uint128 delta, uint256, uint256, uint256)
         external
         view
         override
@@ -68,13 +62,7 @@ contract MockCurve is ICurve, CurveErrorCodes {
     /**
      * @dev See {ICurve-getSellInfo}
      */
-    function getSellInfo(
-        uint128 spotPrice,
-        uint128 delta,
-        uint256 numItems,
-        uint256 feeMultiplier,
-        uint256 protocolFeeMultiplier
-    )
+    function getSellInfo(uint128 spotPrice, uint128 delta, uint256, uint256, uint256)
         external
         view
         override

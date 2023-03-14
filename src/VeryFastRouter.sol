@@ -100,16 +100,11 @@ contract VeryFastRouter {
 
             // Assume that i items have been bought and get the new params
             if (i != 0) {
-                (, newSpotPrice, newDelta,,,) = pair.bondingCurve().getBuyInfo(
-                    newSpotPrice, newDelta, i, pair.fee(), pair.factory().protocolFeeMultiplier()
-                );
+                (newSpotPrice, newDelta) = _getNewPoolParamsAfterBuying(pair, i);
             }
 
             // Calculate price to purchase the remaining numNFTs - i items
-            uint256 price;
-            (,,, price,,) = pair.bondingCurve().getBuyInfo(
-                newSpotPrice, newDelta, numNFTs - i, pair.fee(), pair.factory().protocolFeeMultiplier()
-            );
+            uint256 price = _getHypotheticalNewPoolParamsAfterBuying(pair, newSpotPrice, newDelta, numNFTs-i);
 
             // Set the price to buy numNFT - i items
             prices[numNFTs - i - 1] = price;
@@ -130,6 +125,35 @@ contract VeryFastRouter {
         }
 
         return prices;
+    }
+
+    function _getNewPoolParamsAfterBuying(LSSVMPair pair, uint256 i)
+        internal
+        view
+        returns (uint128 newSpotPrice, uint128 newDelta)
+    { 
+        CurveErrorCodes.Error errorCode;
+        (errorCode, newSpotPrice, newDelta,,,) = pair.bondingCurve().getBuyInfo(
+            pair.spotPrice(), pair.delta(), i, pair.fee(), pair.factory().protocolFeeMultiplier()
+        );
+        if (errorCode != CurveErrorCodes.Error.OK) {
+            revert("Bonding curve quote error");
+        }
+    }
+
+    function _getHypotheticalNewPoolParamsAfterBuying(
+        LSSVMPair pair,
+        uint128 newSpotPrice,
+        uint128 newDelta,
+        uint256 num
+    ) internal view returns (uint256 output) {
+        CurveErrorCodes.Error errorCode;
+        (errorCode,,, output,,) = pair.bondingCurve().getBuyInfo(
+            newSpotPrice, newDelta, num, pair.fee(), pair.factory().protocolFeeMultiplier()
+        );
+        if (errorCode != CurveErrorCodes.Error.OK) {
+            revert("Bonding curve quote error");
+        }
     }
 
     function getPairBaseQuoteTokenBalance(LSSVMPair pair) public view returns (uint256 balance) {
@@ -167,16 +191,11 @@ contract VeryFastRouter {
 
             // Assume that i items have been sold and get the new params
             if (i != 0) {
-                (, newSpotPrice, newDelta,,,) = pair.bondingCurve().getSellInfo(
-                    newSpotPrice, newDelta, i, pair.fee(), pair.factory().protocolFeeMultiplier()
-                );
+                (newSpotPrice, newDelta) = _getNewPoolParamsAfterSelling(pair, i);
             }
 
             // Calculate output to sell the remaining numNFTs - i items, factoring in royalties
-            uint256 output;
-            (,,, output,,) = pair.bondingCurve().getSellInfo(
-                newSpotPrice, newDelta, numNFTs - i, pair.fee(), pair.factory().protocolFeeMultiplier()
-            );
+            uint256 output = _getHypotheticalNewPoolParamsAfterSelling(pair, newSpotPrice, newDelta, numNFTs - i);
             (,, uint256 royaltyTotal) = pair.calculateRoyaltiesView(nftId, output);
             output -= royaltyTotal;
 
@@ -197,6 +216,35 @@ contract VeryFastRouter {
             }
         }
         return outputAmounts;
+    }
+
+    function _getNewPoolParamsAfterSelling(LSSVMPair pair, uint256 i)
+        internal
+        view
+        returns (uint128 newSpotPrice, uint128 newDelta)
+    {
+        CurveErrorCodes.Error errorCode;
+        (errorCode, newSpotPrice, newDelta,,,) = pair.bondingCurve().getSellInfo(
+            pair.spotPrice(), pair.delta(), i, pair.fee(), pair.factory().protocolFeeMultiplier()
+        );
+        if (errorCode != CurveErrorCodes.Error.OK) {
+            revert("Bonding curve quote error");
+        }
+    }
+
+    function _getHypotheticalNewPoolParamsAfterSelling(
+        LSSVMPair pair,
+        uint128 newSpotPrice,
+        uint128 newDelta,
+        uint256 num
+    ) internal view returns (uint256 output) {
+        CurveErrorCodes.Error errorCode;
+        (errorCode,,, output,,) = pair.bondingCurve().getSellInfo(
+            newSpotPrice, newDelta, num, pair.fee(), pair.factory().protocolFeeMultiplier()
+        );
+        if (errorCode != CurveErrorCodes.Error.OK) {
+            revert("Bonding curve quote error");
+        }
     }
 
     /**
