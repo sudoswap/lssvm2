@@ -50,6 +50,8 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
     address constant TOKEN_RECIPIENT = address(420);
     address constant NFT_RECIPIENT = address(0x69);
 
+    address constant PAIR_RECIPIENT = address(1111111111);
+
     uint256 constant START_INDEX = 0;
     uint256 constant END_INDEX = 10;
     uint256 constant NUM_ITEMS_TO_SWAP = 5;
@@ -113,6 +115,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
     }
 
     function setUpPairERC721ForSale(
+        LSSVMPair.PoolType poolType,
         address nftRecipient,
         uint256 depositAmount,
         address _propertyChecker,
@@ -124,7 +127,33 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
                 nft: IERC721(address(_setUpERC721(nftRecipient, address(this), ROUTER_CALLER))),
                 bondingCurve: bondingCurve,
                 assetRecipient: payable(address(0)),
-                poolType: LSSVMPair.PoolType.TRADE,
+                poolType: poolType,
+                delta: delta,
+                fee: 0,
+                spotPrice: spotPrice,
+                _idList: nftIdsToDeposit,
+                initialTokenBalance: depositAmount,
+                routerAddress: address(router),
+                propertyChecker: _propertyChecker
+            })
+        );
+    }
+    
+    function setUpPairERC721ForSale(
+        LSSVMPair.PoolType poolType,
+        IERC721 nft,
+        address ,
+        uint256 depositAmount,
+        address _propertyChecker,
+        uint256[] memory nftIdsToDeposit
+    ) public returns (LSSVMPair pair) {
+        pair = this.setupPairWithPropertyCheckerERC721{value: modifyInputAmount(depositAmount)}(
+            PairCreationParamsWithPropertyCheckerERC721({
+                factory: pairFactory,
+                nft: nft,
+                bondingCurve: bondingCurve,
+                assetRecipient: payable(address(0)),
+                poolType: poolType,
                 delta: delta,
                 fee: 0,
                 spotPrice: spotPrice,
@@ -146,7 +175,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
         // Set up pair with no tokens
         uint256[] memory emptyList = new uint256[](0);
-        LSSVMPair pair = setUpPairERC721ForSale(ROUTER_CALLER, 0, propertyCheckerAddress, emptyList);
+        LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, ROUTER_CALLER, 0, propertyCheckerAddress, emptyList);
 
         // Get array of all NFT IDs we want to sell
         uint256[] memory nftIds = _getArray(START_INDEX, NUM_ITEMS_TO_SWAP);
@@ -202,7 +231,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
         // Set up pair with no tokens
         uint256[] memory emptyList = new uint256[](0);
-        LSSVMPair pair = setUpPairERC721ForSale(ROUTER_CALLER, 0, propertyCheckerAddress, emptyList);
+        LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, ROUTER_CALLER, 0, propertyCheckerAddress, emptyList);
 
         // Get array of all NFT IDs we want to sell
         uint256[] memory nftIds = _getArray(START_INDEX, NUM_ITEMS_TO_SWAP);
@@ -251,7 +280,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
     {
         // Set up pair with empty property checker as PAIR_CREATOR
         uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
-        LSSVMPair pair = setUpPairERC721ForSale(address(this), 0, address(0), nftIds);
+        LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, address(this), 0, address(0), nftIds);
         (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(nftIds.length);
         uint256[] memory partialFillAmounts =
             router.getNFTQuoteForBuyOrderWithPartialFill(pair, nftIds.length, SLIPPAGE);
@@ -286,7 +315,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
     {
         // Set up pair with empty property checker as PAIR_CREATOR
         uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
-        LSSVMPair pair = setUpPairERC721ForSale(address(this), 0, address(0), nftIds);
+        LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, address(this), 0, address(0), nftIds);
         (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(nftIds.length);
         uint256[] memory partialFillAmounts =
             router.getNFTQuoteForBuyOrderWithPartialFill(pair, nftIds.length, SLIPPAGE);
@@ -321,7 +350,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
     {
         // Set up pair with empty property checker as PAIR_CREATOR
         uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
-        LSSVMPair pair = setUpPairERC721ForSale(address(this), 0, address(0), nftIds);
+        LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, address(this), 0, address(0), nftIds);
         (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(nftIds.length);
         uint256[] memory partialFillAmounts =
             router.getNFTQuoteForBuyOrderWithPartialFill(pair, nftIds.length, SLIPPAGE);
@@ -444,5 +473,170 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
             vm.stopPrank();
         }
+    }
+    
+    function test_reenterSellSwap() public {  
+        IERC721 nft = _setUpERC721(ROUTER_CALLER, ROUTER_CALLER, ROUTER_CALLER);
+
+        // Create 2 pairs willing to buy at the same price
+        LSSVMPair pair1 = setUpPairERC721ForSale(
+            LSSVMPair.PoolType.TOKEN,
+            nft,
+            address(this),
+            0,
+            address(0),
+            new uint256[](0)
+        );
+        LSSVMPair pair2 = setUpPairERC721ForSale(
+            LSSVMPair.PoolType.TOKEN,
+            nft,
+            address(this),
+            0,
+            address(0),
+            new uint256[](0)
+        ); 
+
+        // Get the amount needed to put in the pair to support selling 1 NFT
+        (,,, uint256 outputAmount,, uint256 protocolFee) = pair1.bondingCurve().getSellInfo(
+            pair1.spotPrice(), pair1.delta(), 1, pair1.fee(), pair1.factory().protocolFeeMultiplier()
+        );
+
+        // Send that many tokens to both pairs
+        sendTokens(pair1, outputAmount + protocolFee);        
+        sendTokens(pair2, outputAmount + protocolFee);
+
+        bool isETHSell = true;
+        address tokenAddress = getTokenAddress();
+        if (tokenAddress != address(0)) {
+            isETHSell = false;
+        }
+
+        // Set both to have the same asset recipient
+        pair1.changeAssetRecipient(payable(PAIR_RECIPIENT));
+        pair2.changeAssetRecipient(payable(PAIR_RECIPIENT));
+
+        // Set the malicious router configs
+        router.setReenterSell(true);
+        router.setPair721ToTriggerCallback(pair1);
+        router.setPair721ToEnter(pair2);
+
+        MaliciousRouter.SellOrderWithPartialFill memory sellOrder = MaliciousRouter.SellOrderWithPartialFill({
+            pair: pair1,
+            isETHSell: isETHSell,
+            isERC721: true,
+            nftIds: new uint256[](1), // Sell ID 0
+            doPropertyCheck: false,
+            propertyCheckParams: "",
+            expectedSpotPrice: pair1.spotPrice(),
+            minExpectedOutput: 0,
+            minExpectedOutputPerNumNFTs: new uint256[](1)
+        });
+
+        MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders =
+                new MaliciousRouter.SellOrderWithPartialFill[](1);
+            sellOrders[0] = sellOrder;
+
+        MaliciousRouter.BuyOrderWithPartialFill[] memory buyOrders =
+                new MaliciousRouter.BuyOrderWithPartialFill[](0);
+
+        // Set up the actual VFR swap
+        MaliciousRouter.Order memory swapOrder = MaliciousRouter.Order({
+            buyOrders: buyOrders,
+            sellOrders: sellOrders,
+            tokenRecipient: payable(address(TOKEN_RECIPIENT)),
+            nftRecipient: NFT_RECIPIENT,
+            recycleETH: false
+        });
+
+        // Prank as the router caller and do the swap
+        vm.startPrank(ROUTER_CALLER);
+
+        // Expect revert on malicious call
+        vm.expectRevert("ReentrancyGuard: reentrant call");
+        router.swap{value: 0}(swapOrder);
+    }
+
+    function test_reenterBuySwap() public {  
+        IERC721 nft = _setUpERC721(address(this), address(this), ROUTER_CALLER);
+
+        uint256[] memory id1 = new uint256[](1);
+        uint256[] memory id2 = new uint256[](1);
+        id1[0] = 0;
+        id2[0] = 1;
+
+        // Create 2 pairs willing to buy at the same price
+        LSSVMPair pair1 = setUpPairERC721ForSale(
+            LSSVMPair.PoolType.NFT,
+            nft,
+            address(this),
+            0,
+            address(0),
+            id1
+        );
+        LSSVMPair pair2 = setUpPairERC721ForSale(
+            LSSVMPair.PoolType.NFT,
+            nft,
+            address(this),
+            0,
+            address(0),
+            id2
+        );
+
+        bool isETHSell = true;
+        address tokenAddress = getTokenAddress();
+        // Only do call for ERC20 pairs
+        if (tokenAddress != address(0)) {
+            isETHSell = false;
+        }
+        else {
+            return;
+        }
+
+        // Set both to have the same asset recipient
+        pair1.changeAssetRecipient(payable(PAIR_RECIPIENT));
+        pair2.changeAssetRecipient(payable(PAIR_RECIPIENT));
+
+        // Set the malicious router configs
+        router.setReenterSell(false);
+        router.setPair721ToTriggerCallback(pair1);
+        router.setPair721ToEnter(pair2);
+
+        MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders =
+                new MaliciousRouter.SellOrderWithPartialFill[](0);
+
+        MaliciousRouter.BuyOrderWithPartialFill[] memory buyOrders =
+                new MaliciousRouter.BuyOrderWithPartialFill[](1);
+
+        uint256[] memory maxCost = new uint256[](1);
+        maxCost[0] = type(uint256).max;
+        buyOrders[0] = MaliciousRouter.BuyOrderWithPartialFill({
+            pair: pair1,
+            nftIds: new uint256[](1),
+            maxInputAmount: type(uint256).max,
+            ethAmount: 0,
+            expectedSpotPrice: pair1.spotPrice(),
+            isERC721: true,
+            maxCostPerNumNFTs: maxCost
+        });
+
+        // Set up the actual VFR swap
+        MaliciousRouter.Order memory swapOrder = MaliciousRouter.Order({
+            buyOrders: buyOrders,
+            sellOrders: sellOrders,
+            tokenRecipient: payable(address(TOKEN_RECIPIENT)),
+            nftRecipient: NFT_RECIPIENT,
+            recycleETH: false
+        });
+
+        // Prank as the router caller and do the swap
+        vm.startPrank(ROUTER_CALLER);
+
+        // Set approval
+        ERC20(tokenAddress).approve(address(router), 1e18 ether);
+        IMintable(tokenAddress).mint(ROUTER_CALLER, 1e18 ether);
+
+        // Perform the swap
+        vm.expectRevert("ReentrancyGuard: reentrant call");
+        router.swap{value: 0}(swapOrder);
     }
 }

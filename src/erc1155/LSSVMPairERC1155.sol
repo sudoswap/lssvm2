@@ -39,9 +39,12 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         address nftRecipient,
         bool isRouter,
         address routerCaller
-    ) external payable virtual override nonReentrant returns (uint256 inputAmount) {
+    ) external payable virtual override returns (uint256 inputAmount) {
         // Store locally to remove extra calls
         ILSSVMPairFactoryLike _factory = factory();
+
+        _factory.openLock();
+
         ICurve _bondingCurve = bondingCurve();
         IERC1155 _nft = IERC1155(nft());
 
@@ -66,6 +69,8 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
         _refundTokenToSender(inputAmount);
 
+        _factory.closeLock();
+
         emit SwapNFTOutPair(inputAmount, numNFTs[0]);
     }
 
@@ -88,9 +93,12 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         address payable tokenRecipient,
         bool isRouter,
         address routerCaller
-    ) external virtual override nonReentrant returns (uint256 outputAmount) {
+    ) external virtual override returns (uint256 outputAmount) {
         // Store locally to remove extra calls
         ILSSVMPairFactoryLike _factory = factory();
+
+        _factory.openLock();
+
         ICurve _bondingCurve = bondingCurve();
 
         // Input validation
@@ -128,6 +136,8 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         }
 
         _sendTokenOutput(payable(address(_factory)), protocolFee);
+
+        _factory.closeLock();
 
         emit SwapNFTInPair(outputAmount, numNFTs[0]);
     }

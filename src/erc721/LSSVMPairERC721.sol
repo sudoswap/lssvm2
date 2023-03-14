@@ -30,9 +30,12 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         address nftRecipient,
         bool isRouter,
         address routerCaller
-    ) external payable virtual override nonReentrant returns (uint256 inputAmount) {
+    ) external payable virtual override returns (uint256 inputAmount) {
         // Store locally to remove extra calls
         ILSSVMPairFactoryLike _factory = factory();
+
+        _factory.openLock();
+
         ICurve _bondingCurve = bondingCurve();
 
         // Input validation
@@ -62,6 +65,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
 
         _refundTokenToSender(inputAmount);
 
+        _factory.closeLock();
+
         emit SwapNFTOutPair(inputAmount, nftIds);
     }
 
@@ -74,7 +79,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         address payable tokenRecipient,
         bool isRouter,
         address routerCaller
-    ) external virtual override nonReentrant returns (uint256 outputAmount) {
+    ) external virtual override returns (uint256 outputAmount) {
         {
             require(propertyChecker() == address(0), "Verify property");
         }
@@ -103,7 +108,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         bool isRouter,
         address routerCaller,
         bytes calldata propertyCheckerParams
-    ) external virtual nonReentrant returns (uint256 outputAmount) {
+    ) external virtual returns (uint256 outputAmount) {
         {
             require(
                 IPropertyChecker(propertyChecker()).hasProperties(nftIds, propertyCheckerParams),
@@ -142,6 +147,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         // Store locally to remove extra calls
         ILSSVMPairFactoryLike _factory = factory();
 
+        _factory.openLock();
+
         // Input validation
         {
             PoolType _poolType = poolType();
@@ -176,6 +183,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         }
 
         _sendTokenOutput(payable(address(_factory)), protocolFee);
+
+        _factory.closeLock();
 
         emit SwapNFTInPair(outputAmount, nftIds);
     }

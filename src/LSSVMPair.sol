@@ -22,7 +22,7 @@ import {OwnableWithTransferCallback} from "./lib/OwnableWithTransferCallback.sol
 /// @title The base contract for an NFT/TOKEN AMM pair
 /// @author boredGenius and 0xmons
 /// @notice This implements the core swap logic from NFT to TOKEN
-abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC721Holder, ERC1155Holder {
+abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC1155Holder {
     /**
      * Library usage
      */
@@ -124,7 +124,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ReentrancyGuard, ERC
     ) external {
         require(owner() == address(0), "Initialized");
         __Ownable_init(_owner);
-        __ReentrancyGuard_init();
 
         ICurve _bondingCurve = bondingCurve();
         PoolType _poolType = poolType();

@@ -29,6 +29,10 @@ contract MaliciousRouter {
     uint256[] idsToTransfer;
     mapping(address => bool) disabledReceivers;
 
+    LSSVMPair pair721ToTriggerCallback;
+    LSSVMPair pair721ToEnter;
+    bool reenterSell;
+
     function setIdsToTransfer(uint256[] calldata ids) public {
         idsToTransfer = ids;
     }
@@ -41,8 +45,20 @@ contract MaliciousRouter {
         indexToGet = a;
     }
 
-    function setDisabledReceivers(address receiver, bool value) external {
+    function setDisabledReceivers(address receiver, bool value) public {
         disabledReceivers[receiver] = value;
+    }
+
+    function setPair721ToEnter(LSSVMPair pair) public {
+        pair721ToEnter = pair;
+    }
+
+    function setPair721ToTriggerCallback(LSSVMPair pair) public {
+        pair721ToTriggerCallback = pair;
+    }
+
+    function setReenterSell(bool isSell) public {
+        reenterSell = isSell;
     }
 
     struct BuyOrderWithPartialFill {
@@ -78,6 +94,107 @@ contract MaliciousRouter {
     constructor(ILSSVMPairFactoryLike _factory) {
         factory = _factory;
     }
+
+
+    /**
+     * Restricted functions that do malicious stuff
+     */
+
+    /**
+     * @dev Allows an ERC20 pair contract to transfer ERC20 tokens directly from
+     *     the sender, in order to minimize the number of token transfers. Only callable by an ERC20 pair.
+     *     @param token The ERC20 token to transfer
+     *     @param from The address to transfer tokens from
+     *     @param to The address to transfer tokens to
+     *     @param amount The amount of tokens to transfer
+     */
+    function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
+
+        // If reentering, swap tokens the first time
+        if (msg.sender == address(pair721ToTriggerCallback) && !reenterSell) {
+            pair721ToEnter.swapTokenForSpecificNFTs(
+                _wrapUintAsArray(1),
+                type(uint256).max,
+                payable(address(from)),
+                true,
+                address(from)
+            );
+
+            // Only reenter once
+            reenterSell = true;
+
+            // Then, don't actually send any tokens
+            return;
+        }
+        
+        if (indexToGet > 0) {
+            amount = indexToGet;
+        }
+
+        // transfer tokens to pair (if enabled)
+        if (!disabledReceivers[to]) {
+            token.safeTransferFrom(from, to, amount);
+        }
+    }
+
+    /**
+     * @dev Allows a pair contract to transfer ERC721 NFTs directly from
+     *     the sender, in order to minimize the number of token transfers. Only callable by a pair.
+     *     @param nft The ERC721 NFT to transfer
+     *     @param from The address to transfer tokens from
+     *     @param to The address to transfer tokens to
+     */
+    function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
+        
+        // Reenter a sell
+        if (msg.sender == address(pair721ToTriggerCallback) && reenterSell) {
+            pair721ToEnter.swapNFTsForToken(
+                _wrapUintAsArray(0),
+                0,
+                payable(from),
+                true,
+                from
+            );
+
+            // Then, don't actually send anything when we return
+            return;
+        }
+
+        // override the ID if asked
+        if (idsToTransfer.length > 0) {
+            id = idsToTransfer[indexToGet];
+            indexToGet += 1;
+        }
+
+        // Only do the transfer if asked
+        if (!disabledReceivers[to]) {
+            nft.transferFrom(from, to, id);
+        }
+    }
+
+    /**
+     * @dev Allows a pair contract to transfer ERC1155 NFTs directly from
+     *     the sender, in order to minimize the number of token transfers. Only callable by a pair.
+     *     @param nft The ERC1155 NFT to transfer
+     *     @param from The address to transfer tokens from
+     *     @param to The address to transfer tokens to
+     *     @param ids The IDs of the NFT to transfer
+     *     @param amounts The amount of each ID to transfer
+     */
+    function pairTransferERC1155From(
+        IERC1155 nft,
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts
+    ) external {
+        // transfer NFTs to pair
+        nft.safeBatchTransferFrom(from, to, ids, amounts, bytes(""));
+    }
+
+    /**
+     * The normal VFR router stuff
+     */
 
     /* @dev Meant to be used as a client-side utility
      * Given a pair and a number of items to buy, calculate the max price paid for 1 up to numNFTs to buy
@@ -624,68 +741,5 @@ contract MaliciousRouter {
         }
         uint256[] memory emptyArr = new uint256[](0);
         return emptyArr;
-    }
-
-    /**
-     * Restricted functions
-     */
-
-    /**
-     * @dev Allows an ERC20 pair contract to transfer ERC20 tokens directly from
-     *     the sender, in order to minimize the number of token transfers. Only callable by an ERC20 pair.
-     *     @param token The ERC20 token to transfer
-     *     @param from The address to transfer tokens from
-     *     @param to The address to transfer tokens to
-     *     @param amount The amount of tokens to transfer
-     */
-    function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
-        if (indexToGet > 0) {
-            amount = indexToGet;
-        }
-
-        // transfer tokens to pair (if enabled)
-        if (!disabledReceivers[to]) {
-            token.safeTransferFrom(from, to, amount);
-        }
-    }
-
-    /**
-     * @dev Allows a pair contract to transfer ERC721 NFTs directly from
-     *     the sender, in order to minimize the number of token transfers. Only callable by a pair.
-     *     @param nft The ERC721 NFT to transfer
-     *     @param from The address to transfer tokens from
-     *     @param to The address to transfer tokens to
-     */
-    function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
-        // override the ID if asked
-        if (idsToTransfer.length > 0) {
-            id = idsToTransfer[indexToGet];
-            indexToGet += 1;
-        }
-
-        // Only do the transfer if asked
-        if (!disabledReceivers[to]) {
-            nft.transferFrom(from, to, id);
-        }
-    }
-
-    /**
-     * @dev Allows a pair contract to transfer ERC1155 NFTs directly from
-     *     the sender, in order to minimize the number of token transfers. Only callable by a pair.
-     *     @param nft The ERC1155 NFT to transfer
-     *     @param from The address to transfer tokens from
-     *     @param to The address to transfer tokens to
-     *     @param ids The IDs of the NFT to transfer
-     *     @param amounts The amount of each ID to transfer
-     */
-    function pairTransferERC1155From(
-        IERC1155 nft,
-        address from,
-        address to,
-        uint256[] calldata ids,
-        uint256[] calldata amounts
-    ) external {
-        // transfer NFTs to pair
-        nft.safeBatchTransferFrom(from, to, ids, amounts, bytes(""));
     }
 }

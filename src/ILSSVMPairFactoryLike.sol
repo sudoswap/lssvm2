@@ -47,4 +47,8 @@ interface ILSSVMPairFactoryLike {
     function getPairNFTType(address pairAddress) external pure returns (PairNFTType);
 
     function getPairTokenType(address pairAddress) external pure returns (PairTokenType);
+
+    function openLock() external;
+
+    function closeLock() external;
 }

@@ -67,6 +67,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     mapping(LSSVMRouter => RouterStatus) public override routerStatus;
 
+    address private constant _NOT_ENTERED = address(1);
+    address private _caller;
+
     event NewERC721Pair(address indexed poolAddress);
     event NewERC1155Pair(address indexed poolAddress);
     event ERC20Deposit(address indexed poolAddress, uint256 amount);
@@ -94,6 +97,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         protocolFeeRecipient = _protocolFeeRecipient;
         require(_protocolFeeMultiplier <= MAX_PROTOCOL_FEE, "Fee too large");
         protocolFeeMultiplier = _protocolFeeMultiplier;
+        _caller = _NOT_ENTERED;
     }
 
     /**
@@ -321,6 +325,15 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     function getPairTokenType(address pairAddress) public pure returns (PairTokenType) {
         PairVariant variant = LSSVMPair(pairAddress).pairVariant();
         return PairTokenType(uint8(variant) % 2);
+    }
+
+    function openLock() public {
+        _caller = msg.sender;
+    }
+
+    function closeLock() public {
+        require(_caller == msg.sender, "ReentrancyGuard: reentrant call");
+        _caller = _NOT_ENTERED;
     }
 
     /**
