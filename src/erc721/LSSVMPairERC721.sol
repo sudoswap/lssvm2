@@ -49,7 +49,10 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         uint256 protocolFee;
         uint256 tradeFee;
         (tradeFee, protocolFee, inputAmount) =
-            _calculateBuyInfoAndUpdatePoolParams(nftIds.length, maxExpectedTokenInput, _bondingCurve, _factory);
+            _calculateBuyInfoAndUpdatePoolParams(nftIds.length, _bondingCurve, _factory);
+
+        // Revert if required input is more than expected
+        require(inputAmount <= maxExpectedTokenInput, "In too few tokens");
 
         _pullTokenInputAndPayProtocolFee(
             nftIds[0],

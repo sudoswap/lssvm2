@@ -330,8 +330,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
     /**
      * @notice Calculates the amount needed to be sent into the pair for a buy and adjusts spot price or delta if necessary
      *     @param numNFTs The amount of NFTs to purchase from the pair
-     *     @param maxExpectedTokenInput The maximum acceptable cost from the sender. If the actual
-     *     amount is greater than this value, the transaction will be reverted.
      *     @param _bondingCurve The bonding curve to use for price calculation
      *     @param _factory The factory to use for protocol fee lookup
      *     @return tradeFee The amount of tokens to send as trade fee
@@ -340,7 +338,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      */
     function _calculateBuyInfoAndUpdatePoolParams(
         uint256 numNFTs,
-        uint256 maxExpectedTokenInput,
         ICurve _bondingCurve,
         ILSSVMPairFactoryLike _factory
     ) internal returns (uint256 tradeFee, uint256 protocolFee, uint256 inputAmount) {
@@ -357,9 +354,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         if (error != CurveErrorCodes.Error.OK) {
             revert BondingCurveError(error);
         }
-
-        // Revert if required input is more than expected
-        require(inputAmount <= maxExpectedTokenInput, "In too few tokens");
 
         // Consolidate writes to save gas
         if (currentSpotPrice != newSpotPrice || currentDelta != newDelta) {
@@ -394,8 +388,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         CurveErrorCodes.Error error;
         // Save on 2 SLOADs by caching
         uint128 currentSpotPrice = spotPrice;
-        uint128 newSpotPrice;
         uint128 currentDelta = delta;
+        uint128 newSpotPrice;
         uint128 newDelta;
         (error, newSpotPrice, newDelta, outputAmount, /*tradeFee*/, protocolFee) =
             _bondingCurve.getSellInfo(currentSpotPrice, currentDelta, numNFTs, fee, _factory.protocolFeeMultiplier());
@@ -444,8 +438,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
 
     /**
      * @notice Sends excess tokens back to the caller (if applicable)
-     *     @dev We send ETH back to the caller even when called from LSSVMRouter because we do an aggregate slippage check for certain bulk swaps. (Instead of sending directly back to the router caller)
-     *     Excess ETH sent for one swap can then be used to help pay for the next swap.
+     * @dev Swap callers interacting with an ETH pair must be able to receive ETH (e.g. if the caller sends too much ETH)
      */
     function _refundTokenToSender(uint256 inputAmount) internal virtual;
 
