@@ -16,3 +16,6 @@ lcov.info
 
 # Dotenv file
 .env
+
+# Misc files
+.DS_Store
