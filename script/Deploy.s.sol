@@ -4,6 +4,8 @@ pragma solidity ^0.8.13;
 import {LSSVMPair} from "../src/LSSVMPair.sol";
 import {LSSVMRouter} from "../src/LSSVMRouter.sol";
 import {CREATE3Script} from "./base/CREATE3Script.sol";
+import {RoyaltyEngine} from "../src/RoyaltyEngine.sol";
+import {VeryFastRouter} from "../src/VeryFastRouter.sol";
 import {XykCurve} from "../src/bonding-curves/XykCurve.sol";
 import {LSSVMPairFactory} from "../src/LSSVMPairFactory.sol";
 import {LinearCurve} from "../src/bonding-curves/LinearCurve.sol";
@@ -20,10 +22,11 @@ contract DeployScript is CREATE3Script {
         external
         returns (
             LSSVMPairFactory factory,
-            LSSVMRouter router,
+            VeryFastRouter router,
             LinearCurve linearCurve,
             ExponentialCurve exponentialCurve,
-            XykCurve xykCurve
+            XykCurve xykCurve,
+            RoyaltyEngine royaltyEngine
         )
     {
         uint256 deployerPrivateKey = uint256(vm.envBytes32("PRIVATE_KEY"));
@@ -34,6 +37,12 @@ contract DeployScript is CREATE3Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
+        royaltyEngine = RoyaltyEngine(
+          create3.deploy(
+            getCreate3ContractSalt("RoyaltyEngine"), 
+            bytes.concat(type(RoyaltyEngine).creationCode, abi.encode(address(royaltyRegistry)))
+        ));
+
         // deploy factory
         bytes memory factoryConstructorArgs;
         {
@@ -41,28 +50,28 @@ contract DeployScript is CREATE3Script {
                 payable(
                     create3.deploy(
                         getCreate3ContractSalt("LSSVMPairERC721ETH"),
-                        bytes.concat(type(LSSVMPairERC721ETH).creationCode, abi.encode(royaltyRegistry))
+                        bytes.concat(type(LSSVMPairERC721ETH).creationCode, abi.encode(address(royaltyEngine)))
                     )
                 )
             );
             LSSVMPairERC721ERC20 erc721ERC20Template = LSSVMPairERC721ERC20(
                 create3.deploy(
                     getCreate3ContractSalt("LSSVMPairERC721ERC20"),
-                    bytes.concat(type(LSSVMPairERC721ERC20).creationCode, abi.encode(royaltyRegistry))
+                    bytes.concat(type(LSSVMPairERC721ERC20).creationCode, abi.encode(address(royaltyEngine)))
                 )
             );
             LSSVMPairERC1155ETH erc1155ETHTemplate = LSSVMPairERC1155ETH(
                 payable(
                     create3.deploy(
                         getCreate3ContractSalt("LSSVMPairERC1155ETH"),
-                        bytes.concat(type(LSSVMPairERC1155ETH).creationCode, abi.encode(royaltyRegistry))
+                        bytes.concat(type(LSSVMPairERC1155ETH).creationCode, abi.encode(address(royaltyEngine)))
                     )
                 )
             );
             LSSVMPairERC1155ERC20 erc1155ERC20Template = LSSVMPairERC1155ERC20(
                 create3.deploy(
                     getCreate3ContractSalt("LSSVMPairERC1155ERC20"),
-                    bytes.concat(type(LSSVMPairERC1155ERC20).creationCode, abi.encode(royaltyRegistry))
+                    bytes.concat(type(LSSVMPairERC1155ERC20).creationCode, abi.encode(address(royaltyEngine)))
                 )
             );
             address deployer = vm.addr(deployerPrivateKey);
@@ -97,18 +106,18 @@ contract DeployScript is CREATE3Script {
         factory.setBondingCurveAllowed(exponentialCurve, true);
         factory.setBondingCurveAllowed(xykCurve, true);
 
-        // deploy routers
-        router = LSSVMRouter(
+        // deploy router
+        router = VeryFastRouter(
             payable(
                 create3.deploy(
-                    getCreate3ContractSalt("LSSVMRouter"),
-                    bytes.concat(type(LSSVMRouter).creationCode, abi.encode(factory))
+                    getCreate3ContractSalt("VeryFastRouter"),
+                    bytes.concat(type(VeryFastRouter).creationCode, abi.encode(factory))
                 )
             )
         );
 
-        // whitelist routers
-        factory.setRouterAllowed(router, true);
+        // whitelist router
+        factory.setRouterAllowed(LSSVMRouter(payable(address(router))), true);
 
         // transfer factory ownership
         {
