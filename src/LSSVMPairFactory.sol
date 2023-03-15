@@ -135,7 +135,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
         pair = LSSVMPairERC721ETH(
             payable(
-                address(erc721ETHTemplate).cloneERC721ETHPair(this, _bondingCurve, _nft, uint8(_poolType), _propertyChecker)
+                address(erc721ETHTemplate).cloneERC721ETHPair(
+                    this, _bondingCurve, _nft, uint8(_poolType), _propertyChecker
+                )
             )
         );
 

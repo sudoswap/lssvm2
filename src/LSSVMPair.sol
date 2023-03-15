@@ -336,11 +336,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      *     @return protocolFee The amount of tokens to send as protocol fee
      *     @return inputAmount The amount of tokens total tokens receive
      */
-    function _calculateBuyInfoAndUpdatePoolParams(
-        uint256 numNFTs,
-        ICurve _bondingCurve,
-        ILSSVMPairFactoryLike _factory
-    ) internal returns (uint256 tradeFee, uint256 protocolFee, uint256 inputAmount) {
+    function _calculateBuyInfoAndUpdatePoolParams(uint256 numNFTs, ICurve _bondingCurve, ILSSVMPairFactoryLike _factory)
+        internal
+        returns (uint256 tradeFee, uint256 protocolFee, uint256 inputAmount)
+    {
         CurveErrorCodes.Error error;
         // Save on 2 SLOADs by caching
         uint128 currentSpotPrice = spotPrice;

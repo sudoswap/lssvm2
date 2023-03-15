@@ -21,8 +21,8 @@ abstract contract ConfigurableWithRoyalties is Configurable, Test {
     }
 
     function setupRoyaltyEngine() public returns (RoyaltyEngine royaltyEngine) {
-        RoyaltyRegistry royaltyRegistry = new RoyaltyRegistry();
-        royaltyRegistry.initialize();
+        RoyaltyRegistry royaltyRegistry = new RoyaltyRegistry(address(0));
+        royaltyRegistry.initialize(address(this));
         royaltyEngine = new RoyaltyEngine(address(royaltyRegistry));
     }
 

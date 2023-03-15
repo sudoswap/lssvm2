@@ -39,8 +39,8 @@ contract XykCurveTest is Test, ERC721Holder {
     receive() external payable {}
 
     function setUp() public {
-        RoyaltyRegistry royaltyRegistry = new RoyaltyRegistry();
-        royaltyRegistry.initialize();
+        RoyaltyRegistry royaltyRegistry = new RoyaltyRegistry(address(0));
+        royaltyRegistry.initialize(address(this));
         royaltyEngine = new RoyaltyEngine(address(royaltyRegistry));
 
         factory = setupFactory(payable(address(0)));

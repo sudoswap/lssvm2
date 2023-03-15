@@ -11,6 +11,7 @@ import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
  * @title An NFT/Token pair where the token is an ERC20
  *     @author boredGenius and 0xmons
  */
+
 abstract contract LSSVMPairERC20 is LSSVMPair {
     using SafeTransferLib for ERC20;
 

@@ -104,7 +104,7 @@ contract VeryFastRouter {
             }
 
             // Calculate price to purchase the remaining numNFTs - i items
-            uint256 price = _getHypotheticalNewPoolParamsAfterBuying(pair, newSpotPrice, newDelta, numNFTs-i);
+            uint256 price = _getHypotheticalNewPoolParamsAfterBuying(pair, newSpotPrice, newDelta, numNFTs - i);
 
             // Set the price to buy numNFT - i items
             prices[numNFTs - i - 1] = price;
@@ -131,7 +131,7 @@ contract VeryFastRouter {
         internal
         view
         returns (uint128 newSpotPrice, uint128 newDelta)
-    { 
+    {
         CurveErrorCodes.Error errorCode;
         (errorCode, newSpotPrice, newDelta,,,) = pair.bondingCurve().getBuyInfo(
             pair.spotPrice(), pair.delta(), i, pair.fee(), pair.factory().protocolFeeMultiplier()

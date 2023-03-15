@@ -95,7 +95,6 @@ contract MaliciousRouter {
         factory = _factory;
     }
 
-
     /**
      * Restricted functions that do malicious stuff
      */
@@ -109,15 +108,10 @@ contract MaliciousRouter {
      *     @param amount The amount of tokens to transfer
      */
     function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
-
         // If reentering, swap tokens the first time
         if (msg.sender == address(pair721ToTriggerCallback) && !reenterSell) {
             pair721ToEnter.swapTokenForSpecificNFTs(
-                _wrapUintAsArray(1),
-                type(uint256).max,
-                payable(address(from)),
-                true,
-                address(from)
+                _wrapUintAsArray(1), type(uint256).max, payable(address(from)), true, address(from)
             );
 
             // Only reenter once
@@ -126,7 +120,7 @@ contract MaliciousRouter {
             // Then, don't actually send any tokens
             return;
         }
-        
+
         if (indexToGet > 0) {
             amount = indexToGet;
         }
@@ -145,16 +139,9 @@ contract MaliciousRouter {
      *     @param to The address to transfer tokens to
      */
     function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
-        
         // Reenter a sell
         if (msg.sender == address(pair721ToTriggerCallback) && reenterSell) {
-            pair721ToEnter.swapNFTsForToken(
-                _wrapUintAsArray(0),
-                0,
-                payable(from),
-                true,
-                from
-            );
+            pair721ToEnter.swapNFTsForToken(_wrapUintAsArray(0), 0, payable(from), true, from);
 
             // Then, don't actually send anything when we return
             return;

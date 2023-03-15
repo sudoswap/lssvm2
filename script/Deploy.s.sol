@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
+
+import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+
 import {LSSVMPair} from "../src/LSSVMPair.sol";
 import {LSSVMRouter} from "../src/LSSVMRouter.sol";
 import {CREATE3Script} from "./base/CREATE3Script.sol";
@@ -37,11 +41,13 @@ contract DeployScript is CREATE3Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
+        require(ERC165Checker.supportsInterface(royaltyRegistry, type(IRoyaltyRegistry).interfaceId));
         royaltyEngine = RoyaltyEngine(
-          create3.deploy(
-            getCreate3ContractSalt("RoyaltyEngine"), 
-            bytes.concat(type(RoyaltyEngine).creationCode, abi.encode(address(royaltyRegistry)))
-        ));
+            create3.deploy(
+                getCreate3ContractSalt("RoyaltyEngine"),
+                bytes.concat(type(RoyaltyEngine).creationCode, abi.encode(royaltyRegistry))
+            )
+        );
 
         // deploy factory
         bytes memory factoryConstructorArgs;

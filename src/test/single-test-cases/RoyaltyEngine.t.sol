@@ -41,8 +41,8 @@ contract RoyaltyEngineTest is Test {
         bps[0] = 750;
         royaltyLookup2 = new TestManifold(receivers, bps);
 
-        registry = new RoyaltyRegistry();
-        registry.initialize();
+        registry = new RoyaltyRegistry(address(0));
+        registry.initialize(address(this));
         registry.setRoyaltyLookupAddress(address(nft2), address(royaltyLookup1));
         engine = new RoyaltyEngine(address(registry));
     }

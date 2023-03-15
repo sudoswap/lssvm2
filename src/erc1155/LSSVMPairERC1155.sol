@@ -58,8 +58,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         // Call bonding curve for pricing information
         uint256 tradeFee;
         uint256 protocolFee;
-        (tradeFee, protocolFee, inputAmount) =
-            _calculateBuyInfoAndUpdatePoolParams(numNFTs[0], _bondingCurve, _factory);
+        (tradeFee, protocolFee, inputAmount) = _calculateBuyInfoAndUpdatePoolParams(numNFTs[0], _bondingCurve, _factory);
 
         // Revert if required input is more than expected
         require(inputAmount <= maxExpectedTokenInput, "In too few tokens");

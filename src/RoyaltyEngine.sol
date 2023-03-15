@@ -12,8 +12,6 @@ pragma solidity ^0.8.0;
  */
 
 import {ERC165, IERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {SuperRareContracts} from "manifoldxyz/libraries/SuperRareContracts.sol";
 import {IManifold} from "manifoldxyz/specs/IManifold.sol";
@@ -30,7 +28,7 @@ import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
 /**
  * @dev Engine to lookup royalty configurations
  */
-contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
+contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
     // int16 values copied over from the manifold contract.
     // Anything <= NOT_CONFIGURED is considered not configured
     int16 private constant NONE = -1;
@@ -50,7 +48,6 @@ contract RoyaltyEngine is ERC165, Ownable, IRoyaltyEngineV1 {
     address public immutable ROYALTY_REGISTRY;
 
     constructor(address royaltyRegistry_) {
-        require(ERC165Checker.supportsInterface(royaltyRegistry_, type(IRoyaltyRegistry).interfaceId));
         ROYALTY_REGISTRY = royaltyRegistry_;
     }
 

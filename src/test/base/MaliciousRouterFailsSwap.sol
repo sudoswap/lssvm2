@@ -138,11 +138,11 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
             })
         );
     }
-    
+
     function setUpPairERC721ForSale(
         LSSVMPair.PoolType poolType,
         IERC721 nft,
-        address ,
+        address,
         uint256 depositAmount,
         address _propertyChecker,
         uint256[] memory nftIdsToDeposit
@@ -175,7 +175,8 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
         // Set up pair with no tokens
         uint256[] memory emptyList = new uint256[](0);
-        LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, ROUTER_CALLER, 0, propertyCheckerAddress, emptyList);
+        LSSVMPair pair =
+            setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, ROUTER_CALLER, 0, propertyCheckerAddress, emptyList);
 
         // Get array of all NFT IDs we want to sell
         uint256[] memory nftIds = _getArray(START_INDEX, NUM_ITEMS_TO_SWAP);
@@ -231,7 +232,8 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
         // Set up pair with no tokens
         uint256[] memory emptyList = new uint256[](0);
-        LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, ROUTER_CALLER, 0, propertyCheckerAddress, emptyList);
+        LSSVMPair pair =
+            setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, ROUTER_CALLER, 0, propertyCheckerAddress, emptyList);
 
         // Get array of all NFT IDs we want to sell
         uint256[] memory nftIds = _getArray(START_INDEX, NUM_ITEMS_TO_SWAP);
@@ -474,27 +476,15 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
             vm.stopPrank();
         }
     }
-    
-    function test_reenterSellSwap() public {  
+
+    function test_reenterSellSwap() public {
         IERC721 nft = _setUpERC721(ROUTER_CALLER, ROUTER_CALLER, ROUTER_CALLER);
 
         // Create 2 pairs willing to buy at the same price
-        LSSVMPair pair1 = setUpPairERC721ForSale(
-            LSSVMPair.PoolType.TOKEN,
-            nft,
-            address(this),
-            0,
-            address(0),
-            new uint256[](0)
-        );
-        LSSVMPair pair2 = setUpPairERC721ForSale(
-            LSSVMPair.PoolType.TOKEN,
-            nft,
-            address(this),
-            0,
-            address(0),
-            new uint256[](0)
-        ); 
+        LSSVMPair pair1 =
+            setUpPairERC721ForSale(LSSVMPair.PoolType.TOKEN, nft, address(this), 0, address(0), new uint256[](0));
+        LSSVMPair pair2 =
+            setUpPairERC721ForSale(LSSVMPair.PoolType.TOKEN, nft, address(this), 0, address(0), new uint256[](0));
 
         // Get the amount needed to put in the pair to support selling 1 NFT
         (,,, uint256 outputAmount,, uint256 protocolFee) = pair1.bondingCurve().getSellInfo(
@@ -502,7 +492,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         );
 
         // Send that many tokens to both pairs
-        sendTokens(pair1, outputAmount + protocolFee);        
+        sendTokens(pair1, outputAmount + protocolFee);
         sendTokens(pair2, outputAmount + protocolFee);
 
         bool isETHSell = true;
@@ -532,12 +522,10 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
             minExpectedOutputPerNumNFTs: new uint256[](1)
         });
 
-        MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders =
-                new MaliciousRouter.SellOrderWithPartialFill[](1);
-            sellOrders[0] = sellOrder;
+        MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders = new MaliciousRouter.SellOrderWithPartialFill[](1);
+        sellOrders[0] = sellOrder;
 
-        MaliciousRouter.BuyOrderWithPartialFill[] memory buyOrders =
-                new MaliciousRouter.BuyOrderWithPartialFill[](0);
+        MaliciousRouter.BuyOrderWithPartialFill[] memory buyOrders = new MaliciousRouter.BuyOrderWithPartialFill[](0);
 
         // Set up the actual VFR swap
         MaliciousRouter.Order memory swapOrder = MaliciousRouter.Order({
@@ -556,7 +544,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         router.swap{value: 0}(swapOrder);
     }
 
-    function test_reenterBuySwap() public {  
+    function test_reenterBuySwap() public {
         IERC721 nft = _setUpERC721(address(this), address(this), ROUTER_CALLER);
 
         uint256[] memory id1 = new uint256[](1);
@@ -565,30 +553,15 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         id2[0] = 1;
 
         // Create 2 pairs willing to buy at the same price
-        LSSVMPair pair1 = setUpPairERC721ForSale(
-            LSSVMPair.PoolType.NFT,
-            nft,
-            address(this),
-            0,
-            address(0),
-            id1
-        );
-        LSSVMPair pair2 = setUpPairERC721ForSale(
-            LSSVMPair.PoolType.NFT,
-            nft,
-            address(this),
-            0,
-            address(0),
-            id2
-        );
+        LSSVMPair pair1 = setUpPairERC721ForSale(LSSVMPair.PoolType.NFT, nft, address(this), 0, address(0), id1);
+        LSSVMPair pair2 = setUpPairERC721ForSale(LSSVMPair.PoolType.NFT, nft, address(this), 0, address(0), id2);
 
         bool isETHSell = true;
         address tokenAddress = getTokenAddress();
         // Only do call for ERC20 pairs
         if (tokenAddress != address(0)) {
             isETHSell = false;
-        }
-        else {
+        } else {
             return;
         }
 
@@ -601,11 +574,9 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         router.setPair721ToTriggerCallback(pair1);
         router.setPair721ToEnter(pair2);
 
-        MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders =
-                new MaliciousRouter.SellOrderWithPartialFill[](0);
+        MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders = new MaliciousRouter.SellOrderWithPartialFill[](0);
 
-        MaliciousRouter.BuyOrderWithPartialFill[] memory buyOrders =
-                new MaliciousRouter.BuyOrderWithPartialFill[](1);
+        MaliciousRouter.BuyOrderWithPartialFill[] memory buyOrders = new MaliciousRouter.BuyOrderWithPartialFill[](1);
 
         uint256[] memory maxCost = new uint256[](1);
         maxCost[0] = type(uint256).max;
