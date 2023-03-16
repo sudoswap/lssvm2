@@ -489,7 +489,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         view
         returns (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal)
     {
-        if (recipients.length != 0) {
+        // cache to save gas
+        uint256 numRecipients = recipients.length;
+
+        if (numRecipients != 0) {
             // If a pair has custom Settings, use the overridden royalty amount and only use the first receiver
             (bool settingsEnabled, uint96 bps) = factory().getSettingsForPair(address(this));
             if (settingsEnabled) {
@@ -497,23 +500,47 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
                 royaltyRecipients[0] = recipients[0];
                 royaltyAmounts = new uint256[](1);
                 royaltyAmounts[0] = (saleAmount * bps) / 10000;
+
+                // update numRecipients to match new recipients list
+                numRecipients = 1;
             } else {
                 royaltyRecipients = recipients;
                 royaltyAmounts = amounts;
             }
         }
 
-        for (uint256 i; i < royaltyRecipients.length;) {
+        for (uint256 i; i < numRecipients;) {
             royaltyTotal += royaltyAmounts[i];
             unchecked {
                 ++i;
             }
         }
 
-        // Validate royalty total is at most 25% of the sale amount
+        // Ensure royalty total is at most 25% of the sale amount
         // This defends against a rogue Manifold registry that charges extremely
         // high royalties
-        require(royaltyTotal <= saleAmount >> 2, "Royalty exceeds max");
+        uint256 maxRoyalty = saleAmount >> 2;
+        if (royaltyTotal > maxRoyalty) {
+            // cache & reset royalty total
+            uint256 oldRoyaltyTotal = royaltyTotal;
+            royaltyTotal = 0;
+
+            // recompute individual royalty amounts
+            uint256 royalty; // cache for saving gas
+            for (uint256 i; i < numRecipients;) {
+                // compute new royalty
+                royalty = royaltyAmounts[i];
+                royalty = royalty.mulDivDown(maxRoyalty, oldRoyaltyTotal);
+
+                // update result
+                royaltyAmounts[i] = royalty;
+                royaltyTotal += royalty;
+
+                unchecked {
+                    ++i;
+                }
+            }
+        }
     }
 
     /**

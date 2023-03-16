@@ -312,9 +312,12 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
      * @return The royalty lookup address
      */
     function _getRoyaltyLookupAddress(address tokenAddress) internal view returns (address) {
-        try IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddress) returns (address royaltyAddress) {
-            return royaltyAddress;
-        } catch {
+        (bool success, bytes memory result) = ROYALTY_REGISTRY.staticcall(
+            abi.encodeWithSelector(IRoyaltyRegistry.getRoyaltyLookupAddress.selector, tokenAddress)
+        );
+        if (success && result.length == 32) {
+            return abi.decode(result, (address));
+        } else {
             // In the case where the Manifold registry stops working/goes rogue, we default to using the token address
             // as the royalty lookup address to continue supporting ERC2981 NFTs
             return tokenAddress;

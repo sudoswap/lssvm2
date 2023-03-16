@@ -536,6 +536,135 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         assertEq(test1155.balanceOf(address(pair1155), id), amount, "didn't deposit ERC1155 NFTs");
     }
 
+    function test_royaltyCannotExceedMax_ERC721() public {
+        // increase royalty to large value
+        uint96 bps = 9999;
+        Test2981 test2981 = new Test2981(ROYALTY_RECEIVER, bps);
+        RoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test721), address(test2981));
+
+        // set reasonable delta and spot price
+        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
+        pair.changeDelta(delta_);
+        pair.changeSpotPrice(spotPrice_);
+
+        // fetch buy info
+        (,,, uint256 inputAmount,, uint256 protocolFee) =
+            bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
+        uint256 saleAmount = inputAmount - protocolFee;
+
+        // buy specific NFT
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = 1;
+        uint256 beforeBalance = getBalance(ROYALTY_RECEIVER);
+        pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            nftIds, inputAmount, address(this), false, address(0)
+        );
+
+        // check royalty received
+        uint256 royaltyReceived = getBalance(ROYALTY_RECEIVER) - beforeBalance;
+        assertEqDecimal(royaltyReceived, saleAmount >> 2, 18, "royalty amount wasn't capped at 25%");
+    }
+
+    function test_royaltyCannotExceedMax_ERC1155() public {
+        // increase royalty to large value
+        uint96 bps = 9999;
+        Test2981 test2981 = new Test2981(ROYALTY_RECEIVER, bps);
+        RoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test1155), address(test2981));
+
+        // set reasonable delta and spot price
+        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
+        pair1155.changeDelta(delta_);
+        pair1155.changeSpotPrice(spotPrice_);
+
+        // fetch buy info
+        (,,, uint256 inputAmount,, uint256 protocolFee) =
+            bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
+        uint256 saleAmount = inputAmount - protocolFee;
+
+        // buy specific NFT
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = 1;
+        uint256 beforeBalance = getBalance(ROYALTY_RECEIVER);
+        pair1155.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            nftIds, inputAmount, address(this), false, address(0)
+        );
+
+        // check royalty received
+        uint256 royaltyReceived = getBalance(ROYALTY_RECEIVER) - beforeBalance;
+        assertEqDecimal(royaltyReceived, saleAmount >> 2, 18, "royalty amount wasn't capped at 25%");
+    }
+
+    function test_brokenRegistryDoesNotBreakSwaps_ERC721() public {
+        // setup contracts using broken registry
+        royaltyEngine = new RoyaltyEngine(address(0x69));
+        factory = setupFactory(royaltyEngine, feeRecipient, protocolFeeMultiplier);
+        factory.setBondingCurveAllowed(bondingCurve, true);
+        test721.setApprovalForAll(address(factory), true);
+        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
+        IERC721Mintable(address(test721)).mint(address(this), numItems + 1);
+        uint256[] memory idList_ = new uint256[](1);
+        idList_[0] = numItems + 1;
+        pair = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
+            factory,
+            test721,
+            bondingCurve,
+            payable(address(0)),
+            LSSVMPair.PoolType.TRADE,
+            delta_,
+            0,
+            spotPrice_,
+            idList_,
+            tokenAmount,
+            address(0)
+        );
+
+        // fetch buy info
+        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
+
+        // buy specific NFT
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = numItems + 1;
+        pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            nftIds, inputAmount, address(this), false, address(0)
+        );
+    }
+
+    function test_brokenRegistryDoesNotBreakSwaps_ERC1155() public {
+        // setup contracts using broken registry
+        royaltyEngine = new RoyaltyEngine(address(0x69));
+        factory = setupFactory(royaltyEngine, feeRecipient, protocolFeeMultiplier);
+        factory.setBondingCurveAllowed(bondingCurve, true);
+        test1155.setApprovalForAll(address(factory), true);
+        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
+        test1155.mint(address(this), startingId, numItems);
+        pair1155 = this.setupPairERC1155{value: modifyInputAmount(tokenAmount)}(
+            CreateERC1155PairParams(
+                factory,
+                test1155,
+                bondingCurve,
+                payable(address(0)),
+                LSSVMPair.PoolType.TRADE,
+                delta_,
+                0,
+                spotPrice_,
+                startingId,
+                numItems,
+                tokenAmount,
+                address(0)
+            )
+        );
+
+        // fetch buy info
+        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
+
+        // buy specific NFT
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = 1;
+        pair1155.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            nftIds, inputAmount, address(this), false, address(0)
+        );
+    }
+
     /**
      * Test failure conditions
      */
