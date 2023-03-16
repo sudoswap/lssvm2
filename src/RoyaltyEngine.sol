@@ -306,10 +306,10 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
     }
 
     /**
-        @dev Fetches the royalty lookup address from the Manifold registry. Has error handling to keep things working
-        in case the Manifold registry ever stops working (since it's an upgradeable contract).
-        @param tokenAddress The NFT address to look up
-        @return The royalty lookup address
+     * @dev Fetches the royalty lookup address from the Manifold registry. Has error handling to keep things working
+     * in case the Manifold registry ever stops working (since it's an upgradeable contract).
+     * @param tokenAddress The NFT address to look up
+     * @return The royalty lookup address
      */
     function _getRoyaltyLookupAddress(address tokenAddress) internal view returns (address) {
         try IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddress) returns (address royaltyAddress) {

@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {IRoyaltyEngineV1} from "manifoldxyz/IRoyaltyEngineV1.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -28,6 +29,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      */
 
     using Address for address;
+    using FixedPointMathLib for uint256;
 
     /**
      *  Enums
@@ -43,7 +45,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      * Constants
      */
 
-    // 50%, must <= 1 - MAX_PROTOCOL_FEE (set in LSSVMPairFactory)
+    /// @dev 50%, must <= 1 - MAX_PROTOCOL_FEE (set in LSSVMPairFactory)
     uint256 internal constant MAX_TRADE_FEE = 0.5e18;
 
     /**
@@ -507,8 +509,11 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
                 ++i;
             }
         }
-        // validate royalty total
-        require(saleAmount >= royaltyTotal, "Royalty exceeds sale price");
+
+        // Validate royalty total is at most 25% of the sale amount
+        // This defends against a rogue Manifold registry that charges extremely
+        // high royalties
+        require(royaltyTotal <= saleAmount >> 2, "Royalty exceeds max");
     }
 
     /**

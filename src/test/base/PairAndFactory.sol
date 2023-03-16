@@ -624,38 +624,6 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         spotPrice = uint56(newSpotPrice);
     }
 
-    function test_pullTokenInputAndPayProtocolFeeGivesEnoughTradeFee() public {
-        // skip test if the pair uses ERC20
-        if (factory.getPairTokenType(address(pair)) == ILSSVMPairFactoryLike.PairTokenType.ERC20) {
-            return;
-        }
-
-        // increase trade fee to large value
-        uint96 fee = 0.49 ether;
-        pair.changeFee(fee);
-
-        // increase royalty to large value
-        uint96 bps = 9999;
-        Test2981 test2981 = new Test2981(ROYALTY_RECEIVER, bps);
-        RoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test721), address(test2981));
-
-        // set reasonable delta and spot price
-        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
-        pair.changeDelta(delta_);
-        pair.changeSpotPrice(spotPrice_);
-
-        // fetch buy info
-        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, fee, protocolFeeMultiplier);
-
-        // buy specific NFT
-        uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = 1;
-        vm.expectRevert("Not enough trade fee");
-        pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
-            nftIds, inputAmount, address(this), false, address(0)
-        );
-    }
-
     /**
      * Test Admin functions
      */
