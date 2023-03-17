@@ -17,6 +17,9 @@ import {IPropertyChecker} from "../property-checking/IPropertyChecker.sol";
 /// @author boredGenius and 0xmons
 /// @notice An NFT/Token pair for an ERC721 NFT
 abstract contract LSSVMPairERC721 is LSSVMPair {
+    error LSSVMPairERC721__PropertyCheckFailed();
+    error LSSVMPairERC721__NeedPropertyChecking();
+
     /**
      * External state-changing functions
      */
@@ -41,8 +44,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         // Input validation
         {
             PoolType _poolType = poolType();
-            require(_poolType == PoolType.NFT || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require((nftIds.length != 0), "Must swap > 0 NFTs");
+            if (_poolType == PoolType.TOKEN) revert LSSVMPair__WrongPoolType();
+            if (nftIds.length == 0) revert LSSVMPair__ZeroSwapAmount();
         }
 
         // Call bonding curve for pricing information
@@ -52,7 +55,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
             _calculateBuyInfoAndUpdatePoolParams(nftIds.length, _bondingCurve, _factory);
 
         // Revert if required input is more than expected
-        require(inputAmount <= maxExpectedTokenInput, "In too few tokens");
+        if (inputAmount > maxExpectedTokenInput) revert LSSVMPair__DemandedInputTooLarge();
 
         _pullTokenInputAndPayProtocolFee(
             nftIds[0],
@@ -84,7 +87,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         address routerCaller
     ) external virtual override returns (uint256 outputAmount) {
         {
-            require(propertyChecker() == address(0), "Verify property");
+            if (propertyChecker() != address(0)) revert LSSVMPairERC721__NeedPropertyChecking();
         }
 
         return _swapNFTsForToken(nftIds, minExpectedTokenOutput, tokenRecipient, isRouter, routerCaller);
@@ -112,11 +115,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         address routerCaller,
         bytes calldata propertyCheckerParams
     ) external virtual returns (uint256 outputAmount) {
-        {
-            require(
-                IPropertyChecker(propertyChecker()).hasProperties(nftIds, propertyCheckerParams),
-                "Property check failed"
-            );
+        if (!IPropertyChecker(propertyChecker()).hasProperties(nftIds, propertyCheckerParams)) {
+            revert LSSVMPairERC721__PropertyCheckFailed();
         }
 
         return _swapNFTsForToken(nftIds, minExpectedTokenOutput, tokenRecipient, isRouter, routerCaller);
@@ -155,8 +155,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         // Input validation
         {
             PoolType _poolType = poolType();
-            require(_poolType == PoolType.TOKEN || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(nftIds.length != 0, "Must swap > 0 NFTs");
+            if (_poolType == PoolType.NFT) revert LSSVMPair__WrongPoolType();
+            if (nftIds.length == 0) revert LSSVMPair__ZeroSwapAmount();
         }
 
         // Call bonding curve for pricing information
@@ -173,7 +173,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
             outputAmount -= royaltyTotal;
         }
 
-        require(outputAmount >= minExpectedTokenOutput, "Out too few tokens");
+        if (outputAmount < minExpectedTokenOutput) revert LSSVMPair__OutputTooSmall();
 
         _takeNFTsFromSender(IERC721(nft()), nftIds, _factory, isRouter, routerCaller);
 
@@ -240,7 +240,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
                 // Verify if router is allowed
                 LSSVMRouter router = LSSVMRouter(payable(msg.sender));
                 (bool routerAllowed,) = _factory.routerStatus(router);
-                require(routerAllowed, "Not router");
+                if (!routerAllowed) revert LSSVMPair__NotRouter();
 
                 // Call router to pull NFTs
                 // If more than 1 NFT is being transfered, and there is no property checker, we can do a balance check instead of an ownership check, as pools are indifferent between NFTs from the same collection
@@ -253,13 +253,15 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
                             ++i;
                         }
                     }
-                    require((_nft.balanceOf(_assetRecipient) - beforeBalance) == numNFTs, "NFTs not transferred");
+                    if (_nft.balanceOf(_assetRecipient) - beforeBalance != numNFTs) {
+                        revert LSSVMPair__NftNotTransferred();
+                    }
                 }
                 // Otherwise we need to pull each asset 1 at a time and verify ownership
                 else {
                     for (uint256 i; i < numNFTs;) {
                         router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i]);
-                        require(_nft.ownerOf(nftIds[i]) == _assetRecipient, "NFT not transferred");
+                        if (_nft.ownerOf(nftIds[i]) != _assetRecipient) revert LSSVMPair__NftNotTransferred();
                         unchecked {
                             ++i;
                         }

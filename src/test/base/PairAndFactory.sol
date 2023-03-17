@@ -384,12 +384,12 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeCall(pair.transferOwnership, (address(69), ""));
         calls[1] = abi.encodeCall(pair.changeDelta, (2 ether));
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.multicall(calls, true);
 
         MockOwnershipTransferReceiver receiver = new MockOwnershipTransferReceiver();
         calls[0] = abi.encodeCall(pair.transferOwnership, (address(receiver), ""));
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.multicall(calls, true);
     }
 
@@ -397,12 +397,12 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeCall(pair1155.transferOwnership, (address(69), ""));
         calls[1] = abi.encodeCall(pair1155.changeDelta, (2 ether));
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair1155.multicall(calls, true);
 
         MockOwnershipTransferReceiver receiver = new MockOwnershipTransferReceiver();
         calls[0] = abi.encodeCall(pair1155.transferOwnership, (address(receiver), ""));
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair1155.multicall(calls, true);
     }
 
@@ -431,16 +431,16 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
 
         bytes memory data =
             abi.encodeWithSelector(IOwnershipTransferReceiver.onOwnershipTransferred.selector, address(this), "");
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.call(payable(address(pairManager)), data);
 
         data =
             abi.encodeWithSelector(LSSVMRouter.pairTransferERC20From.selector, vm.addr(1), vm.addr(2), vm.addr(3), 1000);
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.call(payable(address(pairManager)), data);
 
         data = abi.encodeWithSelector(LSSVMRouter.pairTransferNFTFrom.selector, vm.addr(1), vm.addr(2), vm.addr(3), 10);
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.call(payable(address(pairManager)), data);
 
         uint256[] memory idsAndAmounts = new uint256[](0);
@@ -452,21 +452,21 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
             idsAndAmounts,
             idsAndAmounts
         );
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.call(payable(address(pairManager)), data);
     }
 
     function test_callBannedTarget721() public {
         factory.setCallAllowed(payable(address(test721)), true);
         bytes memory data = abi.encodeWithSelector(Test721.mint.selector, address(this), 1000);
-        vm.expectRevert("Banned target");
+        vm.expectRevert(LSSVMPair.LSSVMPair__TargetNotAllowed.selector);
         pair.call(payable(address(test721)), data);
     }
 
     function test_callBannedTarget1155() public {
         factory.setCallAllowed(payable(address(test1155)), true);
         bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 0, 2, "");
-        vm.expectRevert("Banned target");
+        vm.expectRevert(LSSVMPair.LSSVMPair__TargetNotAllowed.selector);
         pair1155.call(payable(address(test1155)), data);
     }
 
@@ -475,7 +475,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         if (getTokenAddress() != address(0)) {
             factory.setCallAllowed(payable(getTokenAddress()), true);
             bytes memory data = abi.encodeWithSelector(Test20.mint.selector, address(this), 1000);
-            vm.expectRevert("Banned target");
+            vm.expectRevert(LSSVMPair.LSSVMPair__TargetNotAllowed.selector);
             pair.call(payable(getTokenAddress()), data);
         }
     }

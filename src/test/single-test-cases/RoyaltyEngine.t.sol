@@ -109,7 +109,7 @@ contract RoyaltyEngineTest is Test {
         values[0] = 1 ether;
         values[1] = 1 ether;
 
-        vm.expectRevert("Invalid royalty amount");
+        vm.expectRevert(RoyaltyEngine.RoyaltyEngine__InvalidRoyaltyAmount.selector);
         engine.bulkCacheSpecs(tokenAddresses, tokenIds, values);
         assertEq(engine.getCachedRoyaltySpec(address(nft1)), NOT_CONFIGURED);
         assertEq(engine.getCachedRoyaltySpec(address(nft2)), NOT_CONFIGURED);

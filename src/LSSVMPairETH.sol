@@ -15,6 +15,8 @@ abstract contract LSSVMPairETH is LSSVMPair {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
+    error LSSVMPairETH__InsufficientInput();
+
     /// @inheritdoc LSSVMPair
     function _pullTokenInputAndPayProtocolFee(
         uint256 assetId,
@@ -25,7 +27,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
         ILSSVMPairFactoryLike _factory,
         uint256 protocolFee
     ) internal override {
-        require(msg.value >= inputAmount, "Sent too little ETH");
+        if (msg.value < inputAmount) revert LSSVMPairETH__InsufficientInput();
 
         // Compute royalties
         uint256 saleAmount = inputAmount - protocolFee;

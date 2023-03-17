@@ -51,8 +51,8 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         // Input validation
         {
             PoolType _poolType = poolType();
-            require(_poolType == PoolType.NFT || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(numNFTs.length == 1 && numNFTs[0] != 0, "Must swap > 0 NFTs");
+            if (_poolType == PoolType.TOKEN) revert LSSVMPair__WrongPoolType();
+            if (numNFTs.length != 1 || numNFTs[0] == 0) revert LSSVMPair__ZeroSwapAmount();
         }
 
         // Call bonding curve for pricing information
@@ -61,7 +61,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         (tradeFee, protocolFee, inputAmount) = _calculateBuyInfoAndUpdatePoolParams(numNFTs[0], _bondingCurve, _factory);
 
         // Revert if required input is more than expected
-        require(inputAmount <= maxExpectedTokenInput, "In too few tokens");
+        if (inputAmount > maxExpectedTokenInput) revert LSSVMPair__DemandedInputTooLarge();
 
         _pullTokenInputAndPayProtocolFee(
             nftId(), inputAmount, 2 * tradeFee, isRouter, routerCaller, _factory, protocolFee
@@ -106,8 +106,8 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         // Input validation
         {
             PoolType _poolType = poolType();
-            require(_poolType == PoolType.TOKEN || _poolType == PoolType.TRADE, "Wrong Pool type");
-            require(numNFTs.length == 1 && numNFTs[0] != 0, "Must swap > 0 NFTs");
+            if (_poolType == PoolType.NFT) revert LSSVMPair__WrongPoolType();
+            if (numNFTs.length != 1 || numNFTs[0] == 0) revert LSSVMPair__ZeroSwapAmount();
         }
 
         // Call bonding curve for pricing information
@@ -124,7 +124,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
             outputAmount -= royaltyTotal;
         }
 
-        require(outputAmount >= minExpectedTokenOutput, "Out too few tokens");
+        if (outputAmount < minExpectedTokenOutput) revert LSSVMPair__OutputTooSmall();
 
         _takeNFTsFromSender(IERC1155(nft()), numNFTs[0], _factory, isRouter, routerCaller);
 
@@ -195,7 +195,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
             // Verify if router is allowed
             LSSVMRouter router = LSSVMRouter(payable(msg.sender));
             (bool routerAllowed,) = factory.routerStatus(router);
-            require(routerAllowed, "Not router");
+            if (!routerAllowed) revert LSSVMPair__NotRouter();
 
             uint256 _nftId = nftId();
             uint256 beforeBalance = _nft.balanceOf(_assetRecipient, _nftId);
@@ -204,7 +204,9 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
             uint256[] memory amounts = new uint256[](1);
             amounts[0] = numNFTs;
             router.pairTransferERC1155From(_nft, routerCaller, _assetRecipient, ids, amounts);
-            require((_nft.balanceOf(_assetRecipient, _nftId) - beforeBalance) == numNFTs, "NFTs not transferred");
+            if (_nft.balanceOf(_assetRecipient, _nftId) - beforeBalance != numNFTs) {
+                revert LSSVMPair__NftNotTransferred();
+            }
         } else {
             // Pull NFTs directly from sender
             _nft.safeTransferFrom(msg.sender, _assetRecipient, nftId(), numNFTs, bytes(""));

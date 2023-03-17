@@ -32,6 +32,7 @@ import {LSSVMPair} from "../../LSSVMPair.sol";
 import {ILSSVMPair} from "../../ILSSVMPair.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
+import {LSSVMPairERC20} from "../../LSSVMPairERC20.sol";
 import {VeryFastRouter} from "../../VeryFastRouter.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 
@@ -167,7 +168,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
     function _getSellOrderIgnorePropertyCheck()
         public
-        returns (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, string memory revertMsg)
+        returns (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, bytes4 revertMsg)
     {
         // Only accept IDs from START_INDEX to NUM_ITEMS_TO_SWAP
         address propertyCheckerAddress =
@@ -219,12 +220,12 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
                 )
         });
 
-        revertMsg = "NFT not transferred";
+        revertMsg = LSSVMPair.LSSVMPair__NftNotTransferred.selector;
     }
 
     function _getSellOrderIgnoreNFTTransfer()
         public
-        returns (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, string memory revertMsg)
+        returns (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, bytes4 revertMsg)
     {
         // Only accept IDs from START_INDEX to NUM_ITEMS_TO_SWAP
         address propertyCheckerAddress =
@@ -273,12 +274,12 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
                 )
         });
 
-        revertMsg = "NFT not transferred";
+        revertMsg = LSSVMPair.LSSVMPair__NftNotTransferred.selector;
     }
 
     function _getBuyOrderIgnoreERC20Transfer()
         public
-        returns (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, string memory revertMsg)
+        returns (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, bytes4 revertMsg)
     {
         // Set up pair with empty property checker as PAIR_CREATOR
         uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
@@ -307,13 +308,13 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
         // Only set revert message if ERC20 pair
         if (getTokenAddress() != address(0)) {
-            revertMsg = "Asset recipient not paid";
+            revertMsg = LSSVMPairERC20.LSSVMPairERC20__AssetRecipientNotPaid.selector;
         }
     }
 
     function _getBuyOrderIgnoreERC20RoyaltyPayment()
         public
-        returns (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, string memory revertMsg)
+        returns (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, bytes4 revertMsg)
     {
         // Set up pair with empty property checker as PAIR_CREATOR
         uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
@@ -342,13 +343,13 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
         // Only set revert message if ERC20 pair
         if (getTokenAddress() != address(0)) {
-            revertMsg = "Royalty recipient not paid";
+            revertMsg = LSSVMPairERC20.LSSVMPairERC20__RoyaltyNotPaid.selector;
         }
     }
 
     function _getBuyOrderSendLessERC20()
         public
-        returns (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, string memory revertMsg)
+        returns (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, bytes4 revertMsg)
     {
         // Set up pair with empty property checker as PAIR_CREATOR
         uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
@@ -375,13 +376,13 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
         // Only set revert message if ERC20 pair
         if (getTokenAddress() != address(0)) {
-            revertMsg = "Asset recipient not paid";
+            revertMsg = LSSVMPairERC20.LSSVMPairERC20__AssetRecipientNotPaid.selector;
         }
     }
 
     function _getSellOrder(SellSwap swapType)
         public
-        returns (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, string memory revertMsg)
+        returns (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, bytes4 revertMsg)
     {
         if (swapType == SellSwap.IGNORE_PROPERTY_CHECK) {
             return _getSellOrderIgnorePropertyCheck();
@@ -392,7 +393,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
     function _getBuyOrder(BuySwap swapType)
         public
-        returns (MaliciousRouter.BuyOrderWithPartialFill memory sellOrder, string memory revertMsg)
+        returns (MaliciousRouter.BuyOrderWithPartialFill memory sellOrder, bytes4 revertMsg)
     {
         if (swapType == BuySwap.IGNORE_TRANSFER_ERC20) {
             return _getBuyOrderIgnoreERC20Transfer();
@@ -405,7 +406,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
     function test_maliciousRouterSwap() public {
         for (uint256 i = 0; i < uint256(type(SellSwap).max) + 1; i++) {
-            (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, string memory revertMsg) =
+            (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, bytes4 revertMsg) =
                 _getSellOrder(SellSwap(i));
 
             MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders =
@@ -435,12 +436,12 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
             }
 
             // Perform the swap
-            vm.expectRevert(bytes(revertMsg));
+            vm.expectRevert(revertMsg);
             router.swap{value: 0}(swapOrder);
             vm.stopPrank();
         }
         for (uint256 i = 0; i < uint256(type(BuySwap).max) + 1; i++) {
-            (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, string memory revertMsg) =
+            (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, bytes4 revertMsg) =
                 _getBuyOrder(BuySwap(i));
 
             MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders =
@@ -469,7 +470,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
                 IMintable(tokenAddress).mint(ROUTER_CALLER, 1e18 ether);
 
                 // Perform the swap only for ERC20 pairs
-                vm.expectRevert(bytes(revertMsg));
+                vm.expectRevert(revertMsg);
                 router.swap{value: 0}(swapOrder);
             }
 
@@ -540,7 +541,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         vm.startPrank(ROUTER_CALLER);
 
         // Expect revert on malicious call
-        vm.expectRevert("ReentrancyGuard: reentrant call");
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__ReentrantCall.selector);
         router.swap{value: 0}(swapOrder);
     }
 
@@ -607,7 +608,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         IMintable(tokenAddress).mint(ROUTER_CALLER, 1e18 ether);
 
         // Perform the swap
-        vm.expectRevert("ReentrancyGuard: reentrant call");
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__ReentrantCall.selector);
         router.swap{value: 0}(swapOrder);
     }
 }

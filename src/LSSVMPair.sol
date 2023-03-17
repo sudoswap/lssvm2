@@ -14,7 +14,6 @@ import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155
 
 import {LSSVMRouter} from "./LSSVMRouter.sol";
 import {ICurve} from "./bonding-curves/ICurve.sol";
-import {ReentrancyGuard} from "./lib/ReentrancyGuard.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
 import {IOwnershipTransferReceiver} from "./lib/IOwnershipTransferReceiver.sol";
@@ -99,7 +98,21 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      *  Errors
      */
 
-    error BondingCurveError(CurveErrorCodes.Error error);
+    error LSSVMPair__CallFailed();
+    error LSSVMPair__InvalidDelta();
+    error LSSVMPair__WrongPoolType();
+    error LSSVMPair__OutputTooSmall();
+    error LSSVMPair__ZeroSwapAmount();
+    error LSSVMPair__TradeFeeTooLarge();
+    error LSSVMPair__InvalidSpotPrice();
+    error LSSVMPair__TargetNotAllowed();
+    error LSSVMPair__AlreadyInitialized();
+    error LSSVMPair__FunctionNotAllowed();
+    error LSSVMPair__DemandedInputTooLarge();
+    error LSSVMPair__NonTradePoolWithTradeFee();
+    error LSSVMPair__BondingCurveError(CurveErrorCodes.Error error);
+    error LSSVMPair__NftNotTransferred();
+    error LSSVMPair__NotRouter();
 
     constructor(IRoyaltyEngineV1 royaltyEngine) {
         ROYALTY_ENGINE = royaltyEngine;
@@ -124,16 +137,16 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         uint96 _fee,
         uint128 _spotPrice
     ) external {
-        require(owner() == address(0), "Initialized");
+        if (owner() != address(0)) revert LSSVMPair__AlreadyInitialized();
         __Ownable_init(_owner);
 
         ICurve _bondingCurve = bondingCurve();
         PoolType _poolType = poolType();
 
-        if ((_poolType == PoolType.TOKEN) || (_poolType == PoolType.NFT)) {
-            require(_fee == 0, "Only Trade Pools can have nonzero fee");
-        } else if (_poolType == PoolType.TRADE) {
-            require(_fee < MAX_TRADE_FEE, "Trade fee must be less than 90%");
+        if (_poolType != PoolType.TRADE) {
+            if (_fee != 0) revert LSSVMPair__NonTradePoolWithTradeFee();
+        } else {
+            if (_fee > MAX_TRADE_FEE) revert LSSVMPair__TradeFeeTooLarge();
             fee = _fee;
         }
 
@@ -142,8 +155,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
             assetRecipient = _assetRecipient;
         }
 
-        require(_bondingCurve.validateDelta(_delta), "Invalid delta for curve");
-        require(_bondingCurve.validateSpotPrice(_spotPrice), "Invalid new spot price for curve");
+        if (!_bondingCurve.validateDelta(_delta)) revert LSSVMPair__InvalidDelta();
+        if (!_bondingCurve.validateSpotPrice(_spotPrice)) revert LSSVMPair__InvalidSpotPrice();
         delta = _delta;
         spotPrice = _spotPrice;
     }
@@ -353,7 +366,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
 
         // Revert if bonding curve had an error
         if (error != CurveErrorCodes.Error.OK) {
-            revert BondingCurveError(error);
+            revert LSSVMPair__BondingCurveError(error);
         }
 
         // Consolidate writes to save gas
@@ -397,7 +410,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
 
         // Revert if bonding curve had an error
         if (error != CurveErrorCodes.Error.OK) {
-            revert BondingCurveError(error);
+            revert LSSVMPair__BondingCurveError(error);
         }
 
         // Consolidate writes to save gas
@@ -575,7 +588,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      */
     function changeSpotPrice(uint128 newSpotPrice) external onlyOwner {
         ICurve _bondingCurve = bondingCurve();
-        require(_bondingCurve.validateSpotPrice(newSpotPrice), "Invalid new spot price for curve");
+        if (!_bondingCurve.validateSpotPrice(newSpotPrice)) revert LSSVMPair__InvalidSpotPrice();
         if (spotPrice != newSpotPrice) {
             spotPrice = newSpotPrice;
             emit SpotPriceUpdate(newSpotPrice);
@@ -588,7 +601,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      */
     function changeDelta(uint128 newDelta) external onlyOwner {
         ICurve _bondingCurve = bondingCurve();
-        require(_bondingCurve.validateDelta(newDelta), "Invalid delta for curve");
+        if (!_bondingCurve.validateDelta(newDelta)) revert LSSVMPair__InvalidDelta();
         if (delta != newDelta) {
             delta = newDelta;
             emit DeltaUpdate(newDelta);
@@ -603,8 +616,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      */
     function changeFee(uint96 newFee) external onlyOwner {
         PoolType _poolType = poolType();
-        require(_poolType == PoolType.TRADE, "Only for Trade pools");
-        require(newFee < MAX_TRADE_FEE, "Trade fee must be less than 50%");
+        if (_poolType != PoolType.TRADE) revert LSSVMPair__NonTradePoolWithTradeFee();
+        if (newFee > MAX_TRADE_FEE) revert LSSVMPair__TradeFeeTooLarge();
         if (fee != newFee) {
             fee = newFee;
             emit FeeUpdate(newFee);
@@ -633,7 +646,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      */
     function call(address payable target, bytes calldata data) external onlyOwner {
         ILSSVMPairFactoryLike _factory = factory();
-        require(_factory.callAllowed(target), "Target must be whitelisted");
+        if (!_factory.callAllowed(target)) revert LSSVMPair__TargetNotAllowed();
 
         // Ensure the call isn't calling a banned function
         bytes4 sig = bytes4(data[:4]);
@@ -642,17 +655,17 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
                 || sig == LSSVMRouter.pairTransferERC20From.selector || sig == LSSVMRouter.pairTransferNFTFrom.selector
                 || sig == LSSVMRouter.pairTransferERC1155From.selector
         ) {
-            revert("Banned function");
+            revert LSSVMPair__FunctionNotAllowed();
         }
 
         // Prevent calling the pair's underlying nft
         // (We ban calling the underlying NFT/ERC20 to avoid maliciously transferring assets approved for the pair to spend)
-        require(target != nft(), "Banned target");
+        if (target == nft()) revert LSSVMPair__TargetNotAllowed();
 
         _preCallCheck(target);
 
-        (bool result,) = target.call{value: 0}(data);
-        require(result, "Call failed");
+        (bool success,) = target.call{value: 0}(data);
+        if (!success) revert LSSVMPair__CallFailed();
     }
 
     /**
@@ -666,7 +679,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         for (uint256 i; i < calls.length;) {
             bytes4 sig = bytes4(calls[i][:4]);
             // We ban calling transferOwnership when ownership
-            require(sig != transferOwnership.selector, "Banned function");
+            if (sig == transferOwnership.selector) revert LSSVMPair__FunctionNotAllowed();
 
             (bool success, bytes memory result) = address(this).delegatecall(calls[i]);
             if (!success && revertOnFail) {

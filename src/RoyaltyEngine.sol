@@ -47,6 +47,8 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
 
     address public immutable ROYALTY_REGISTRY;
 
+    error RoyaltyEngine__InvalidRoyaltyAmount();
+
     constructor(address royaltyRegistry_) {
         ROYALTY_REGISTRY = royaltyRegistry_;
     }
@@ -347,6 +349,6 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
         for (uint256 i = 0; i < numRoyalties; ++i) {
             totalRoyalties += royalties[i];
         }
-        require(totalRoyalties <= saleAmount, "Invalid royalty amount");
+        if (totalRoyalties > saleAmount) revert RoyaltyEngine__InvalidRoyaltyAmount();
     }
 }

@@ -52,7 +52,7 @@ contract SettingsWithMockCurve is Test, ERC721Holder, ConfigurableWithRoyalties,
     StandardSettings settings;
     MockCurve mockCurve;
 
-    error BondingCurveError(CurveErrorCodes.Error error);
+    error StandardSettings__BondingCurveError(CurveErrorCodes.Error error);
 
     function setUp() public {
         bondingCurve = setupCurve();
@@ -116,7 +116,7 @@ contract SettingsWithMockCurve is Test, ERC721Holder, ConfigurableWithRoyalties,
         pair721.transferOwnership(address(newSettings), "");
 
         // Changing price up won't work due to curve error on getBuyInfo
-        vm.expectRevert(abi.encodeWithSelector(BondingCurveError.selector, 1));
+        vm.expectRevert(abi.encodeWithSelector(StandardSettings__BondingCurveError.selector, 1));
         newSettings.changeSpotPriceAndDelta(address(pair721), 100, 10, 1);
     }
 
@@ -133,7 +133,7 @@ contract SettingsWithMockCurve is Test, ERC721Holder, ConfigurableWithRoyalties,
         pair721.transferOwnership(address(newSettings), "");
 
         // Changing price up won't work due to curve error on getSellInfo
-        vm.expectRevert(abi.encodeWithSelector(BondingCurveError.selector, 2));
+        vm.expectRevert(abi.encodeWithSelector(StandardSettings__BondingCurveError.selector, 2));
         newSettings.changeSpotPriceAndDelta(address(pair721), spotPrice, 10, 1);
     }
 }

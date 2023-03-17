@@ -31,7 +31,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
     Splitter immutable splitterImplementation;
     ILSSVMPairFactoryLike immutable pairFactory;
 
-    error BondingCurveError(CurveErrorCodes.Error error);
+    error StandardSettings__BondingCurveError(CurveErrorCodes.Error error);
 
     event SettingsAddedForPair(address indexed pairAddress);
     event SettingsRemovedForPair(address indexed pairAddress);
@@ -247,7 +247,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
             ,
         ) = pair.bondingCurve().getBuyInfo(newSpotPrice, newDelta, 1, pair.fee(), pairFactory.protocolFeeMultiplier());
         if (error != CurveErrorCodes.Error.OK) {
-            revert BondingCurveError(error);
+            revert StandardSettings__BondingCurveError(error);
         }
 
         uint256 nftBalance;
@@ -280,7 +280,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
             ,
         ) = pair.bondingCurve().getSellInfo(newSpotPrice, newDelta, 1, pair.fee(), pairFactory.protocolFeeMultiplier());
         if (error != CurveErrorCodes.Error.OK) {
-            revert BondingCurveError(error);
+            revert StandardSettings__BondingCurveError(error);
         }
 
         // Get token balance of the pair (ETH or ERC20)

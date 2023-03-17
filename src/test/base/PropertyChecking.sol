@@ -99,7 +99,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
 
-        vm.expectRevert("Verify property");
+        vm.expectRevert(LSSVMPairERC721.LSSVMPairERC721__NeedPropertyChecking.selector);
 
         pair.swapNFTsForToken(specificIdToSell, outputAmount, payable(address(this)), false, address(this));
 
@@ -141,7 +141,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         uint256[] memory specificIdToSell = new uint256[](1);
         specificIdToSell[0] = 1;
 
-        vm.expectRevert("Property check failed");
+        vm.expectRevert(LSSVMPairERC721.LSSVMPairERC721__PropertyCheckFailed.selector);
 
         pair.swapNFTsForToken(
             specificIdToSell,
@@ -190,7 +190,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         tokenIds[1] = 10;
         tokenIds[2] = 11; // This tokenId falls out of the range
 
-        vm.expectRevert("Property check failed");
+        vm.expectRevert(LSSVMPairERC721.LSSVMPairERC721__PropertyCheckFailed.selector);
 
         pair.swapNFTsForToken(
             tokenIds,
@@ -295,7 +295,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
 
         // A sell for 3 will fail
         specificIdToSell[0] = 3;
-        vm.expectRevert("Property check failed");
+        vm.expectRevert(LSSVMPairERC721.LSSVMPairERC721__PropertyCheckFailed.selector);
         pair.swapNFTsForToken(
             specificIdToSell, outputAmount, payable(address(this)), false, address(this), proofListEncoded
         );
@@ -359,7 +359,7 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
         // A sell for [1,3] will fail because 3 is not part of the merkle tree
         idsToSell[0] = 1;
         idsToSell[1] = 3;
-        vm.expectRevert("Property check failed");
+        vm.expectRevert(LSSVMPairERC721.LSSVMPairERC721__PropertyCheckFailed.selector);
         pair.swapNFTsForToken(
             idsToSell, outputAmount, payable(address(this)), false, address(this), abi.encode(proofList)
         );
