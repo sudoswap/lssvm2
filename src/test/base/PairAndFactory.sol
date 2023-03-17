@@ -548,21 +548,15 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         pair.changeSpotPrice(spotPrice_);
 
         // fetch buy info
-        (,,, uint256 inputAmount,, uint256 protocolFee) =
-            bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
-        uint256 saleAmount = inputAmount - protocolFee;
+        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
 
         // buy specific NFT
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = 1;
-        uint256 beforeBalance = getBalance(ROYALTY_RECEIVER);
+        vm.expectRevert(LSSVMPair.LSSVMPair__RoyaltyTooLarge.selector);
         pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             nftIds, inputAmount, address(this), false, address(0)
         );
-
-        // check royalty received
-        uint256 royaltyReceived = getBalance(ROYALTY_RECEIVER) - beforeBalance;
-        assertEqDecimal(royaltyReceived, saleAmount >> 2, 18, "royalty amount wasn't capped at 25%");
     }
 
     function test_royaltyCannotExceedMax_ERC1155() public {
@@ -577,21 +571,15 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         pair1155.changeSpotPrice(spotPrice_);
 
         // fetch buy info
-        (,,, uint256 inputAmount,, uint256 protocolFee) =
-            bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
-        uint256 saleAmount = inputAmount - protocolFee;
+        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
 
         // buy specific NFT
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = 1;
-        uint256 beforeBalance = getBalance(ROYALTY_RECEIVER);
+        vm.expectRevert(LSSVMPair.LSSVMPair__RoyaltyTooLarge.selector);
         pair1155.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             nftIds, inputAmount, address(this), false, address(0)
         );
-
-        // check royalty received
-        uint256 royaltyReceived = getBalance(ROYALTY_RECEIVER) - beforeBalance;
-        assertEqDecimal(royaltyReceived, saleAmount >> 2, 18, "royalty amount wasn't capped at 25%");
     }
 
     function test_brokenRegistryDoesNotBreakSwaps_ERC721() public {

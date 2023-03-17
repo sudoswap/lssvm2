@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {IRoyaltyEngineV1} from "manifoldxyz/IRoyaltyEngineV1.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -28,7 +27,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      */
 
     using Address for address;
-    using FixedPointMathLib for uint256;
 
     /**
      *  Enums
@@ -98,21 +96,22 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      *  Errors
      */
 
+    error LSSVMPair__NotRouter();
     error LSSVMPair__CallFailed();
     error LSSVMPair__InvalidDelta();
     error LSSVMPair__WrongPoolType();
     error LSSVMPair__OutputTooSmall();
     error LSSVMPair__ZeroSwapAmount();
+    error LSSVMPair__RoyaltyTooLarge();
     error LSSVMPair__TradeFeeTooLarge();
     error LSSVMPair__InvalidSpotPrice();
     error LSSVMPair__TargetNotAllowed();
+    error LSSVMPair__NftNotTransferred();
     error LSSVMPair__AlreadyInitialized();
     error LSSVMPair__FunctionNotAllowed();
     error LSSVMPair__DemandedInputTooLarge();
     error LSSVMPair__NonTradePoolWithTradeFee();
     error LSSVMPair__BondingCurveError(CurveErrorCodes.Error error);
-    error LSSVMPair__NftNotTransferred();
-    error LSSVMPair__NotRouter();
 
     constructor(IRoyaltyEngineV1 royaltyEngine) {
         ROYALTY_ENGINE = royaltyEngine;
@@ -532,27 +531,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         // Ensure royalty total is at most 25% of the sale amount
         // This defends against a rogue Manifold registry that charges extremely
         // high royalties
-        uint256 maxRoyalty = saleAmount >> 2;
-        if (royaltyTotal > maxRoyalty) {
-            // cache & reset royalty total
-            uint256 oldRoyaltyTotal = royaltyTotal;
-            royaltyTotal = 0;
-
-            // recompute individual royalty amounts
-            uint256 royalty; // cache for saving gas
-            for (uint256 i; i < numRecipients;) {
-                // compute new royalty
-                royalty = royaltyAmounts[i];
-                royalty = royalty.mulDivDown(maxRoyalty, oldRoyaltyTotal);
-
-                // update result
-                royaltyAmounts[i] = royalty;
-                royaltyTotal += royalty;
-
-                unchecked {
-                    ++i;
-                }
-            }
+        if (royaltyTotal > saleAmount >> 2) {
+            revert LSSVMPair__RoyaltyTooLarge();
         }
     }
 

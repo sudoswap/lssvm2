@@ -406,8 +406,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
     function test_maliciousRouterSwap() public {
         for (uint256 i = 0; i < uint256(type(SellSwap).max) + 1; i++) {
-            (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, bytes4 revertMsg) =
-                _getSellOrder(SellSwap(i));
+            (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, bytes4 revertMsg) = _getSellOrder(SellSwap(i));
 
             MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders =
                 new MaliciousRouter.SellOrderWithPartialFill[](1);
@@ -441,8 +440,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
             vm.stopPrank();
         }
         for (uint256 i = 0; i < uint256(type(BuySwap).max) + 1; i++) {
-            (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, bytes4 revertMsg) =
-                _getBuyOrder(BuySwap(i));
+            (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, bytes4 revertMsg) = _getBuyOrder(BuySwap(i));
 
             MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders =
                 new MaliciousRouter.SellOrderWithPartialFill[](0);
