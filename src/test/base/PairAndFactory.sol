@@ -780,4 +780,21 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         factory.changeProtocolFeeMultiplier(5e15);
         assertEq(factory.protocolFeeMultiplier(), 5e15);
     }
+
+    function test_cannotAddBothRouterAndCallTarget() public {
+
+        address payable callTarget = payable(address(348324239));
+        factory.setCallAllowed(callTarget, true);
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__CannotCallRouter.selector);
+        factory.setRouterAllowed(LSSVMRouter(callTarget), true);
+
+        address payable routerTarget = payable(address(348139));
+        factory.setRouterAllowed(LSSVMRouter(routerTarget), true);
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__CannotCallRouter.selector);
+        factory.setCallAllowed(routerTarget, true);
+
+        factory.setRouterAllowed(LSSVMRouter(routerTarget), false);
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__CannotCallRouter.selector);
+        factory.setCallAllowed(routerTarget, true);
+    }
 }
