@@ -61,7 +61,8 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
 
     enum SellSwap {
         IGNORE_PROPERTY_CHECK,
-        IGNORE_TRANSFER_ERC721
+        IGNORE_TRANSFER_ERC721,
+        IGNORE_TRANSFER_ERC721_NO_PROPERTY_CHECK
     }
 
     enum BuySwap {
@@ -223,14 +224,10 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         revertMsg = LSSVMPair.LSSVMPair__NftNotTransferred.selector;
     }
 
-    function _getSellOrderIgnoreNFTTransfer()
+    function _getSellOrderIgnoreNFTTransfer(address propertyCheckerAddress)
         public
         returns (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, bytes4 revertMsg)
     {
-        // Only accept IDs from START_INDEX to NUM_ITEMS_TO_SWAP
-        address propertyCheckerAddress =
-            address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, NUM_ITEMS_TO_SWAP));
-
         // Set up pair with no tokens
         uint256[] memory emptyList = new uint256[](0);
         LSSVMPair pair =
@@ -265,7 +262,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
             isETHSell: isETHSell,
             isERC721: true,
             nftIds: nftIds,
-            doPropertyCheck: true,
+            doPropertyCheck: (propertyCheckerAddress != address(0)),
             propertyCheckParams: "",
             expectedSpotPrice: pair.spotPrice() + 1, // Trigger partial fill calculation
             minExpectedOutput: expectedOutput,
@@ -387,7 +384,12 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         if (swapType == SellSwap.IGNORE_PROPERTY_CHECK) {
             return _getSellOrderIgnorePropertyCheck();
         } else if (swapType == SellSwap.IGNORE_TRANSFER_ERC721) {
-            return _getSellOrderIgnoreNFTTransfer();
+            // Only accept IDs from START_INDEX to NUM_ITEMS_TO_SWAP
+            address propertyCheckerAddress =
+            address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, NUM_ITEMS_TO_SWAP));
+            return _getSellOrderIgnoreNFTTransfer(propertyCheckerAddress);
+        } else if (swapType == SellSwap.IGNORE_TRANSFER_ERC721_NO_PROPERTY_CHECK) {
+            return _getSellOrderIgnoreNFTTransfer(address(0));
         }
     }
 
