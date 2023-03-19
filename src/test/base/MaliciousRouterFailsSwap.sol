@@ -386,7 +386,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         } else if (swapType == SellSwap.IGNORE_TRANSFER_ERC721) {
             // Only accept IDs from START_INDEX to NUM_ITEMS_TO_SWAP
             address propertyCheckerAddress =
-            address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, NUM_ITEMS_TO_SWAP));
+                address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, NUM_ITEMS_TO_SWAP));
             return _getSellOrderIgnoreNFTTransfer(propertyCheckerAddress);
         } else if (swapType == SellSwap.IGNORE_TRANSFER_ERC721_NO_PROPERTY_CHECK) {
             return _getSellOrderIgnoreNFTTransfer(address(0));

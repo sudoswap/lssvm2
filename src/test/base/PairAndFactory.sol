@@ -782,7 +782,6 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
     }
 
     function test_cannotAddBothRouterAndCallTarget() public {
-
         address payable callTarget = payable(address(348324239));
         factory.setCallAllowed(callTarget, true);
         vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__CannotCallRouter.selector);
