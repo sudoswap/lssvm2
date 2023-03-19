@@ -174,7 +174,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
 
         // Verify that the caller is the previous pair owner or admin of the NFT collection
         if (msg.sender == pairInfo.prevOwner || pairFactory.authAllowedForToken(address(pair.nft()), msg.sender)) {
-            // If previous owner, verify that the current time is past the unlock time
+            // Verify that the current time is past the unlock time
             require(block.timestamp > pairInfo.unlockTime, "Lockup not over");
         } else {
             revert("Not prev owner or authed");
