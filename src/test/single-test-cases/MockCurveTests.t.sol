@@ -19,6 +19,8 @@ import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ILSSVMPairFactoryLike} from "../../ILSSVMPairFactoryLike.sol";
 import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
+import {VeryFastRouter} from "../../VeryFastRouter.sol";
+import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
 
 import {StandardSettings} from "../../settings/StandardSettings.sol";
@@ -51,6 +53,7 @@ contract MockCurveTests is Test, ERC721Holder, ConfigurableWithRoyalties, UsingM
     StandardSettingsFactory settingsFactory;
     StandardSettings settings;
     MockCurve mockCurve;
+    VeryFastRouter router;
 
     error StandardSettings__BondingCurveError(CurveErrorCodes.Error error);
 
@@ -101,6 +104,9 @@ contract MockCurveTests is Test, ERC721Holder, ConfigurableWithRoyalties, UsingM
         );
 
         settings = settingsFactory.createSettings(feeRecipient, settingsFee, settingsLockup, 5, 500);
+
+        router = new VeryFastRouter(ILSSVMPairFactoryLike(address(factory)));
+        factory.setRouterAllowed(LSSVMRouter(payable(address(router))), true);
     }
 
     function test_changeSettingsSpotPriceBuyCurveError() public {
@@ -156,5 +162,15 @@ contract MockCurveTests is Test, ERC721Holder, ConfigurableWithRoyalties, UsingM
         id[0] = numItems + 1;
         vm.expectRevert(abi.encodeWithSelector(LSSVMPair.LSSVMPair__BondingCurveError.selector, 2));
         pair721.swapNFTsForToken(id, 0, payable(address(this)), false, address(0));
+    }
+
+    function test_veryFastRouterQuoteErrorsOut() public {
+        mockCurve.setBuyError(1);
+        vm.expectRevert(abi.encodeWithSelector(VeryFastRouter.VeryFastRouter__BondingCurveQuoteError.selector));
+        router.getNFTQuoteForBuyOrderWithPartialFill(pair721, 1, 0);
+
+        mockCurve.setSellError(2);
+        vm.expectRevert(abi.encodeWithSelector(VeryFastRouter.VeryFastRouter__BondingCurveQuoteError.selector));
+        router.getNFTQuoteForSellOrderWithPartialFill(pair721, 1, 0, 0);
     }
 }
