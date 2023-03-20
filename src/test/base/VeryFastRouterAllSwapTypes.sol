@@ -63,8 +63,7 @@ abstract contract VeryFastRouterAllSwapTypes is
     uint128 spotPrice;
 
     /**
-     * Swap Order types:
-     * (@dev no recycle ETH, save that for other test)
+     * Swap Order types
      */
     enum BuySwap {
         ITEM_PARTIAL_PRICE_FULL_721,

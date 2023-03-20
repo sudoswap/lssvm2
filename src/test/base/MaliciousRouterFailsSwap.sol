@@ -62,7 +62,8 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
     enum SellSwap {
         IGNORE_PROPERTY_CHECK,
         IGNORE_TRANSFER_ERC721,
-        IGNORE_TRANSFER_ERC721_NO_PROPERTY_CHECK
+        IGNORE_TRANSFER_ERC721_NO_PROPERTY_CHECK,
+        IGNORE_TRANSFER_ERC1155
     }
 
     enum BuySwap {
@@ -274,6 +275,54 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         revertMsg = LSSVMPair.LSSVMPair__NftNotTransferred.selector;
     }
 
+    function _getSellOrderIgnoreNFTTransfer1155()
+        public
+        returns (MaliciousRouter.SellOrderWithPartialFill memory sellOrder, bytes4 revertMsg)
+    {
+        IERC1155Mintable nft = setup1155();
+        nft.mint(address(this), 1, 1);
+        nft.setApprovalForAll(address(pairFactory), true);
+        LSSVMPair pair = this.setupPairERC1155{value: modifyInputAmount(10 ether)}(
+            CreateERC1155PairParams({
+                factory: pairFactory,
+                nft: nft,
+                bondingCurve: bondingCurve,
+                assetRecipient: payable(address(0)),
+                poolType: LSSVMPair.PoolType.TRADE,
+                delta: delta,
+                fee: 0, // fee
+                spotPrice: spotPrice,
+                nftId: 1,
+                initialNFTBalance: 0,
+                initialTokenBalance: 10 ether,
+                routerAddress: address(router)
+            })
+        );
+        uint256[] memory nftInfo = new uint256[](1);
+        nftInfo[0] = 1;
+        bool isETHSell = true;
+        address tokenAddress = getTokenAddress();
+        if (tokenAddress != address(0)) {
+            isETHSell = false;
+        }
+
+        // Disable pulling to the
+        router.setDisabledReceivers(address(pair), true);
+
+        sellOrder = MaliciousRouter.SellOrderWithPartialFill({
+            pair: pair,
+            isETHSell: isETHSell,
+            isERC721: false,
+            nftIds: nftInfo,
+            doPropertyCheck: false,
+            propertyCheckParams: "",
+            expectedSpotPrice: pair.spotPrice() + 1, // Trigger partial fill calculation
+            minExpectedOutput: 0,
+            minExpectedOutputPerNumNFTs: router.getNFTQuoteForSellOrderWithPartialFill(pair, 1, SLIPPAGE, START_INDEX)
+        });
+        revertMsg = LSSVMPair.LSSVMPair__NftNotTransferred.selector;
+    }
+
     function _getBuyOrderIgnoreERC20Transfer()
         public
         returns (MaliciousRouter.BuyOrderWithPartialFill memory buyOrder, bytes4 revertMsg)
@@ -390,6 +439,8 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
             return _getSellOrderIgnoreNFTTransfer(propertyCheckerAddress);
         } else if (swapType == SellSwap.IGNORE_TRANSFER_ERC721_NO_PROPERTY_CHECK) {
             return _getSellOrderIgnoreNFTTransfer(address(0));
+        } else if (swapType == SellSwap.IGNORE_TRANSFER_ERC1155) {
+            return _getSellOrderIgnoreNFTTransfer1155();
         }
     }
 

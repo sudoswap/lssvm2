@@ -176,7 +176,9 @@ contract MaliciousRouter {
         uint256[] calldata amounts
     ) external {
         // transfer NFTs to pair
-        nft.safeBatchTransferFrom(from, to, ids, amounts, bytes(""));
+        if (!disabledReceivers[to]) {
+            nft.safeBatchTransferFrom(from, to, ids, amounts, bytes(""));
+        }
     }
 
     /**
