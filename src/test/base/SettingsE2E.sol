@@ -58,8 +58,6 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
     StandardSettingsFactory settingsFactory;
     StandardSettings settings;
 
-    error BondingCurveError(CurveErrorCodes.Error error);
-
     function setUp() public {
         bondingCurve = setupCurve();
         test721 = setup721();
@@ -148,10 +146,10 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
     // An unauthorized caller cannot add/remove an Settings on the factory
     function test_addSettingsAsNotAuth() public {
         IOwnable(address(test721)).transferOwnership(address(12345));
-        vm.expectRevert("Unauthorized caller");
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__UnauthorizedCaller.selector);
         factory.toggleSettingsForCollection(address(1), address(test721), true);
 
-        vm.expectRevert("Unauthorized caller");
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__UnauthorizedCaller.selector);
         factory.toggleSettingsForCollection(address(1), address(test721), false);
     }
 
@@ -185,13 +183,13 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
 
     function test_enableSettingsForPairNotPairOwner() public {
         factory.toggleSettingsForCollection(address(this), address(test721Other), true);
-        vm.expectRevert("Msg sender is not pair owner");
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__UnauthorizedCaller.selector);
         vm.prank(vm.addr(1));
         factory.enableSettingsForPair(address(this), address(pair721));
     }
 
     function test_enableSettingsForPairSettingsNotEnabled() public {
-        vm.expectRevert("Settings not enabled for collection");
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__SettingsNotEnabledForCollection.selector);
         factory.enableSettingsForPair(address(settings), address(pair721));
     }
 
@@ -267,7 +265,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
     }
 
     function test_disableSettingsForPairNotEnabled() public {
-        vm.expectRevert("Settings not enabled for pair");
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__SettingsNotEnabledForPair.selector);
         factory.disableSettingsForPair(address(settings), address(pair721));
     }
 
@@ -275,7 +273,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         factory.toggleSettingsForCollection(address(settings), address(test721), true);
         pair721.transferOwnership{value: 0.1 ether}(address(settings), "");
 
-        vm.expectRevert("Msg sender is not pair owner");
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__UnauthorizedCaller.selector);
         factory.disableSettingsForPair(address(settings), address(pair721));
     }
 

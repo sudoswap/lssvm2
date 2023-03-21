@@ -74,12 +74,12 @@ contract VeryFastRouterWithMockCurve is Test, ConfigurableWithRoyalties, UsingMo
 
         // Ensure it reverts on buy quote
         mockCurve.setBuyError(1);
-        vm.expectRevert("Bonding curve quote error");
+        vm.expectRevert(VeryFastRouter.VeryFastRouter__BondingCurveQuoteError.selector);
         router.getNFTQuoteForBuyOrderWithPartialFill(pair721, 1, 0);
 
         // Ensure it reverts on sell quote
         mockCurve.setSellError(1);
-        vm.expectRevert("Bonding curve quote error");
+        vm.expectRevert(VeryFastRouter.VeryFastRouter__BondingCurveQuoteError.selector);
         router.getNFTQuoteForSellOrderWithPartialFill(pair721, 1, 0, 0);
     }
 }

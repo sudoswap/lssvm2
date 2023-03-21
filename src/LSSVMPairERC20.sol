@@ -15,6 +15,10 @@ import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 abstract contract LSSVMPairERC20 is LSSVMPair {
     using SafeTransferLib for ERC20;
 
+    error LSSVMPairERC20__RoyaltyNotPaid();
+    error LSSVMPairERC20__MsgValueNotZero();
+    error LSSVMPairERC20__AssetRecipientNotPaid();
+
     /**
      * @notice Returns the ERC20 token associated with the pair
      *     @dev See LSSVMPairCloner for an explanation on how this works
@@ -36,7 +40,7 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
         ILSSVMPairFactoryLike _factory,
         uint256 protocolFee
     ) internal override {
-        require(msg.value == 0, "ERC20 pair");
+        if (msg.value != 0) revert LSSVMPairERC20__MsgValueNotZero();
 
         ERC20 _token = token();
         address _assetRecipient = getAssetRecipient();
@@ -60,7 +64,7 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
             // Locally scoped to avoid stack too deep
             {
                 (bool routerAllowed,) = _factory.routerStatus(router);
-                require(routerAllowed, "Not router");
+                if (!routerAllowed) revert LSSVMPair__NotRouter();
             }
 
             // Cache state and then call router to transfer tokens from user
@@ -68,16 +72,17 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
             router.pairTransferERC20From(_token, routerCaller, _assetRecipient, saleAmount);
 
             // Verify token transfer (protect pair against malicious router)
-            require(_token.balanceOf(_assetRecipient) - beforeBalance == saleAmount, "Asset recipient not paid");
+            if (_token.balanceOf(_assetRecipient) - beforeBalance != saleAmount) {
+                revert LSSVMPairERC20__AssetRecipientNotPaid();
+            }
 
             // Transfer royalties (if it exists)
             for (uint256 i; i < royaltyRecipients.length;) {
                 beforeBalance = _token.balanceOf(royaltyRecipients[i]);
                 router.pairTransferERC20From(_token, routerCaller, royaltyRecipients[i], royaltyAmounts[i]);
-                require(
-                    _token.balanceOf(royaltyRecipients[i]) - beforeBalance == royaltyAmounts[i],
-                    "Royalty recipient not paid"
-                );
+                if (_token.balanceOf(royaltyRecipients[i]) - beforeBalance != royaltyAmounts[i]) {
+                    revert LSSVMPairERC20__RoyaltyNotPaid();
+                }
                 unchecked {
                     ++i;
                 }
@@ -137,6 +142,6 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
     }
 
     function _preCallCheck(address target) internal pure override {
-        require(target != address(token()), "Banned target");
+        if (target == address(token())) revert LSSVMPair__TargetNotAllowed();
     }
 }

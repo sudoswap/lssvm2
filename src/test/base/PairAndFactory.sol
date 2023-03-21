@@ -384,12 +384,12 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeCall(pair.transferOwnership, (address(69), ""));
         calls[1] = abi.encodeCall(pair.changeDelta, (2 ether));
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.multicall(calls, true);
 
         MockOwnershipTransferReceiver receiver = new MockOwnershipTransferReceiver();
         calls[0] = abi.encodeCall(pair.transferOwnership, (address(receiver), ""));
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.multicall(calls, true);
     }
 
@@ -397,12 +397,12 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeCall(pair1155.transferOwnership, (address(69), ""));
         calls[1] = abi.encodeCall(pair1155.changeDelta, (2 ether));
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair1155.multicall(calls, true);
 
         MockOwnershipTransferReceiver receiver = new MockOwnershipTransferReceiver();
         calls[0] = abi.encodeCall(pair1155.transferOwnership, (address(receiver), ""));
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair1155.multicall(calls, true);
     }
 
@@ -431,16 +431,16 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
 
         bytes memory data =
             abi.encodeWithSelector(IOwnershipTransferReceiver.onOwnershipTransferred.selector, address(this), "");
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.call(payable(address(pairManager)), data);
 
         data =
             abi.encodeWithSelector(LSSVMRouter.pairTransferERC20From.selector, vm.addr(1), vm.addr(2), vm.addr(3), 1000);
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.call(payable(address(pairManager)), data);
 
         data = abi.encodeWithSelector(LSSVMRouter.pairTransferNFTFrom.selector, vm.addr(1), vm.addr(2), vm.addr(3), 10);
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.call(payable(address(pairManager)), data);
 
         uint256[] memory idsAndAmounts = new uint256[](0);
@@ -452,21 +452,21 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
             idsAndAmounts,
             idsAndAmounts
         );
-        vm.expectRevert("Banned function");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.call(payable(address(pairManager)), data);
     }
 
     function test_callBannedTarget721() public {
         factory.setCallAllowed(payable(address(test721)), true);
         bytes memory data = abi.encodeWithSelector(Test721.mint.selector, address(this), 1000);
-        vm.expectRevert("Banned target");
+        vm.expectRevert(LSSVMPair.LSSVMPair__TargetNotAllowed.selector);
         pair.call(payable(address(test721)), data);
     }
 
     function test_callBannedTarget1155() public {
         factory.setCallAllowed(payable(address(test1155)), true);
         bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 0, 2, "");
-        vm.expectRevert("Banned target");
+        vm.expectRevert(LSSVMPair.LSSVMPair__TargetNotAllowed.selector);
         pair1155.call(payable(address(test1155)), data);
     }
 
@@ -475,7 +475,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         if (getTokenAddress() != address(0)) {
             factory.setCallAllowed(payable(getTokenAddress()), true);
             bytes memory data = abi.encodeWithSelector(Test20.mint.selector, address(this), 1000);
-            vm.expectRevert("Banned target");
+            vm.expectRevert(LSSVMPair.LSSVMPair__TargetNotAllowed.selector);
             pair.call(payable(getTokenAddress()), data);
         }
     }
@@ -534,6 +534,123 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         test1155.setApprovalForAll(address(factory), true);
         factory.depositERC1155(test1155, id, address(pair1155), amount);
         assertEq(test1155.balanceOf(address(pair1155), id), amount, "didn't deposit ERC1155 NFTs");
+    }
+
+    function test_royaltyCannotExceedMax_ERC721() public {
+        // increase royalty to large value
+        uint96 bps = 9999;
+        Test2981 test2981 = new Test2981(ROYALTY_RECEIVER, bps);
+        RoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test721), address(test2981));
+
+        // set reasonable delta and spot price
+        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
+        pair.changeDelta(delta_);
+        pair.changeSpotPrice(spotPrice_);
+
+        // fetch buy info
+        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
+
+        // buy specific NFT
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = 1;
+        vm.expectRevert(LSSVMPair.LSSVMPair__RoyaltyTooLarge.selector);
+        pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            nftIds, inputAmount, address(this), false, address(0)
+        );
+    }
+
+    function test_royaltyCannotExceedMax_ERC1155() public {
+        // increase royalty to large value
+        uint96 bps = 9999;
+        Test2981 test2981 = new Test2981(ROYALTY_RECEIVER, bps);
+        RoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test1155), address(test2981));
+
+        // set reasonable delta and spot price
+        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
+        pair1155.changeDelta(delta_);
+        pair1155.changeSpotPrice(spotPrice_);
+
+        // fetch buy info
+        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
+
+        // buy specific NFT
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = 1;
+        vm.expectRevert(LSSVMPair.LSSVMPair__RoyaltyTooLarge.selector);
+        pair1155.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            nftIds, inputAmount, address(this), false, address(0)
+        );
+    }
+
+    function test_brokenRegistryDoesNotBreakSwaps_ERC721() public {
+        // setup contracts using broken registry
+        royaltyEngine = new RoyaltyEngine(address(0x69));
+        factory = setupFactory(royaltyEngine, feeRecipient, protocolFeeMultiplier);
+        factory.setBondingCurveAllowed(bondingCurve, true);
+        test721.setApprovalForAll(address(factory), true);
+        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
+        IERC721Mintable(address(test721)).mint(address(this), numItems + 1);
+        uint256[] memory idList_ = new uint256[](1);
+        idList_[0] = numItems + 1;
+        pair = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
+            factory,
+            test721,
+            bondingCurve,
+            payable(address(0)),
+            LSSVMPair.PoolType.TRADE,
+            delta_,
+            0,
+            spotPrice_,
+            idList_,
+            tokenAmount,
+            address(0)
+        );
+
+        // fetch buy info
+        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
+
+        // buy specific NFT
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = numItems + 1;
+        pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            nftIds, inputAmount, address(this), false, address(0)
+        );
+    }
+
+    function test_brokenRegistryDoesNotBreakSwaps_ERC1155() public {
+        // setup contracts using broken registry
+        royaltyEngine = new RoyaltyEngine(address(0x69));
+        factory = setupFactory(royaltyEngine, feeRecipient, protocolFeeMultiplier);
+        factory.setBondingCurveAllowed(bondingCurve, true);
+        test1155.setApprovalForAll(address(factory), true);
+        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
+        test1155.mint(address(this), startingId, numItems);
+        pair1155 = this.setupPairERC1155{value: modifyInputAmount(tokenAmount)}(
+            CreateERC1155PairParams(
+                factory,
+                test1155,
+                bondingCurve,
+                payable(address(0)),
+                LSSVMPair.PoolType.TRADE,
+                delta_,
+                0,
+                spotPrice_,
+                startingId,
+                numItems,
+                tokenAmount,
+                address(0)
+            )
+        );
+
+        // fetch buy info
+        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, 0, protocolFeeMultiplier);
+
+        // buy specific NFT
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = 1;
+        pair1155.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            nftIds, inputAmount, address(this), false, address(0)
+        );
     }
 
     /**
@@ -624,38 +741,6 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         spotPrice = uint56(newSpotPrice);
     }
 
-    function test_pullTokenInputAndPayProtocolFeeGivesEnoughTradeFee() public {
-        // skip test if the pair uses ERC20
-        if (factory.getPairTokenType(address(pair)) == ILSSVMPairFactoryLike.PairTokenType.ERC20) {
-            return;
-        }
-
-        // increase trade fee to large value
-        uint96 fee = 0.49 ether;
-        pair.changeFee(fee);
-
-        // increase royalty to large value
-        uint96 bps = 9999;
-        Test2981 test2981 = new Test2981(ROYALTY_RECEIVER, bps);
-        RoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test721), address(test2981));
-
-        // set reasonable delta and spot price
-        (uint128 delta_, uint128 spotPrice_) = getReasonableDeltaAndSpotPrice();
-        pair.changeDelta(delta_);
-        pair.changeSpotPrice(spotPrice_);
-
-        // fetch buy info
-        (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice_, delta_, 1, fee, protocolFeeMultiplier);
-
-        // buy specific NFT
-        uint256[] memory nftIds = new uint256[](1);
-        nftIds[0] = 1;
-        vm.expectRevert("Not enough trade fee");
-        pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
-            nftIds, inputAmount, address(this), false, address(0)
-        );
-    }
-
     /**
      * Test Admin functions
      */
@@ -694,5 +779,21 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
     function test_changeFeeMultiplier() public {
         factory.changeProtocolFeeMultiplier(5e15);
         assertEq(factory.protocolFeeMultiplier(), 5e15);
+    }
+
+    function test_cannotAddBothRouterAndCallTarget() public {
+        address payable callTarget = payable(address(348324239));
+        factory.setCallAllowed(callTarget, true);
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__CannotCallRouter.selector);
+        factory.setRouterAllowed(LSSVMRouter(callTarget), true);
+
+        address payable routerTarget = payable(address(348139));
+        factory.setRouterAllowed(LSSVMRouter(routerTarget), true);
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__CannotCallRouter.selector);
+        factory.setCallAllowed(routerTarget, true);
+
+        factory.setRouterAllowed(LSSVMRouter(routerTarget), false);
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__CannotCallRouter.selector);
+        factory.setCallAllowed(routerTarget, true);
     }
 }

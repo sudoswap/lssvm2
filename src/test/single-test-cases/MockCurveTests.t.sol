@@ -32,7 +32,7 @@ import {TestManifold} from "../../mocks/TestManifold.sol";
 import {UsingMockCurve} from "../../test/mixins/UsingMockCurve.sol";
 import {UsingETH} from "../mixins/UsingETH.sol";
 
-contract SettingsWithMockCurve is Test, ERC721Holder, ConfigurableWithRoyalties, UsingMockCurve, UsingETH {
+contract MockCurveTests is Test, ERC721Holder, ConfigurableWithRoyalties, UsingMockCurve, UsingETH {
     uint128 delta = 1.1 ether;
     uint128 spotPrice = 20 ether;
     uint256 tokenAmount = 100 ether;
@@ -52,7 +52,7 @@ contract SettingsWithMockCurve is Test, ERC721Holder, ConfigurableWithRoyalties,
     StandardSettings settings;
     MockCurve mockCurve;
 
-    error BondingCurveError(CurveErrorCodes.Error error);
+    error StandardSettings__BondingCurveError(CurveErrorCodes.Error error);
 
     function setUp() public {
         bondingCurve = setupCurve();
@@ -116,7 +116,7 @@ contract SettingsWithMockCurve is Test, ERC721Holder, ConfigurableWithRoyalties,
         pair721.transferOwnership(address(newSettings), "");
 
         // Changing price up won't work due to curve error on getBuyInfo
-        vm.expectRevert(abi.encodeWithSelector(BondingCurveError.selector, 1));
+        vm.expectRevert(abi.encodeWithSelector(StandardSettings__BondingCurveError.selector, 1));
         newSettings.changeSpotPriceAndDelta(address(pair721), 100, 10, 1);
     }
 
@@ -133,7 +133,28 @@ contract SettingsWithMockCurve is Test, ERC721Holder, ConfigurableWithRoyalties,
         pair721.transferOwnership(address(newSettings), "");
 
         // Changing price up won't work due to curve error on getSellInfo
-        vm.expectRevert(abi.encodeWithSelector(BondingCurveError.selector, 2));
+        vm.expectRevert(abi.encodeWithSelector(StandardSettings__BondingCurveError.selector, 2));
         newSettings.changeSpotPriceAndDelta(address(pair721), spotPrice, 10, 1);
+    }
+
+    function test_swapFailsIfBondingCurveError() public {
+        // Set quote error
+        mockCurve.setBuyError(1);
+
+        // Ensure we have enough ETH
+        vm.deal(address(this), spotPrice);
+
+        // Expect a bonding curve error on swap
+        vm.expectRevert(abi.encodeWithSelector(LSSVMPair.LSSVMPair__BondingCurveError.selector, 1));
+
+        // Send spotPrice amount of ETH in because that's what the MockCurve returns on error
+        pair721.swapTokenForSpecificNFTs{value: spotPrice}(idList, spotPrice, address(this), false, address(0));
+
+        mockCurve.setSellError(2);
+        IERC721Mintable(address(test721)).mint(address(this), numItems + 1);
+        uint256[] memory id = new uint256[](1);
+        id[0] = numItems + 1;
+        vm.expectRevert(abi.encodeWithSelector(LSSVMPair.LSSVMPair__BondingCurveError.selector, 2));
+        pair721.swapNFTsForToken(id, 0, payable(address(this)), false, address(0));
     }
 }

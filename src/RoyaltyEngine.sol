@@ -47,6 +47,8 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
 
     address public immutable ROYALTY_REGISTRY;
 
+    error RoyaltyEngine__InvalidRoyaltyAmount();
+
     constructor(address royaltyRegistry_) {
         ROYALTY_REGISTRY = royaltyRegistry_;
     }
@@ -62,7 +64,7 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
      * @dev View function to get the cached spec of a token
      */
     function getCachedRoyaltySpec(address tokenAddress) public view returns (int16) {
-        address royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddress);
+        address royaltyAddress = _getRoyaltyLookupAddress(tokenAddress);
         return _specCache[royaltyAddress];
     }
 
@@ -78,7 +80,7 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
         uint256 numTokens = tokenAddresses.length;
         for (uint256 i = 0; i < numTokens;) {
             // Invalidate cached value
-            address royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddresses[i]);
+            address royaltyAddress = _getRoyaltyLookupAddress(tokenAddresses[i]);
             delete _specCache[royaltyAddress];
 
             (, uint256[] memory royaltyAmounts, int16 newSpec,,) =
@@ -144,7 +146,7 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
             bool addToCache
         )
     {
-        royaltyAddress = IRoyaltyRegistry(ROYALTY_REGISTRY).getRoyaltyLookupAddress(tokenAddress);
+        royaltyAddress = _getRoyaltyLookupAddress(tokenAddress);
         spec = _specCache[royaltyAddress];
 
         if (spec <= NOT_CONFIGURED) {
@@ -306,6 +308,25 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
     }
 
     /**
+     * @dev Fetches the royalty lookup address from the Manifold registry. Has error handling to keep things working
+     * in case the Manifold registry ever stops working (since it's an upgradeable contract).
+     * @param tokenAddress The NFT address to look up
+     * @return The royalty lookup address
+     */
+    function _getRoyaltyLookupAddress(address tokenAddress) internal view returns (address) {
+        (bool success, bytes memory result) = ROYALTY_REGISTRY.staticcall(
+            abi.encodeWithSelector(IRoyaltyRegistry.getRoyaltyLookupAddress.selector, tokenAddress)
+        );
+        if (success && result.length == 32) {
+            return abi.decode(result, (address));
+        } else {
+            // In the case where the Manifold registry stops working/goes rogue, we default to using the token address
+            // as the royalty lookup address to continue supporting ERC2981 NFTs
+            return tokenAddress;
+        }
+    }
+
+    /**
      * Compute royalty amounts
      */
     function _computeAmounts(uint256 value, uint256[] memory bps) private pure returns (uint256[] memory amounts) {
@@ -328,6 +349,6 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
         for (uint256 i = 0; i < numRoyalties; ++i) {
             totalRoyalties += royalties[i];
         }
-        require(totalRoyalties <= saleAmount, "Invalid royalty amount");
+        if (totalRoyalties > saleAmount) revert RoyaltyEngine__InvalidRoyaltyAmount();
     }
 }

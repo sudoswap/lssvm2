@@ -81,6 +81,16 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     event CallTargetStatusUpdate(address indexed target, bool isAllowed);
     event RouterStatusUpdate(LSSVMRouter indexed router, bool isAllowed);
 
+    error LSSVMPairFactory__FeeTooLarge();
+    error LSSVMPairFactory__BondingCurveNotWhitelisted();
+    error LSSVMPairFactory__ReentrantCall();
+    error LSSVMPairFactory__ZeroAddress();
+    error LSSVMPairFactory__CannotCallRouter();
+    error LSSVMPairFactory__UnauthorizedCaller();
+    error LSSVMPairFactory__InvalidPair();
+    error LSSVMPairFactory__SettingsNotEnabledForCollection();
+    error LSSVMPairFactory__SettingsNotEnabledForPair();
+
     constructor(
         LSSVMPairERC721ETH _erc721ETHTemplate,
         LSSVMPairERC721ERC20 _erc721ERC20Template,
@@ -95,7 +105,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         erc1155ETHTemplate = _erc1155ETHTemplate;
         erc1155ERC20Template = _erc1155ERC20Template;
         protocolFeeRecipient = _protocolFeeRecipient;
-        require(_protocolFeeMultiplier <= MAX_PROTOCOL_FEE, "Fee too large");
+        if (_protocolFeeMultiplier > MAX_PROTOCOL_FEE) revert LSSVMPairFactory__FeeTooLarge();
         protocolFeeMultiplier = _protocolFeeMultiplier;
         _caller = _NOT_ENTERED;
     }
@@ -131,7 +141,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         address _propertyChecker,
         uint256[] calldata _initialNFTIDs
     ) external payable returns (LSSVMPairERC721ETH pair) {
-        require(bondingCurveAllowed[_bondingCurve], "Bonding curve not whitelisted");
+        if (!bondingCurveAllowed[_bondingCurve]) revert LSSVMPairFactory__BondingCurveNotWhitelisted();
 
         pair = LSSVMPairERC721ETH(
             payable(
@@ -181,7 +191,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         external
         returns (LSSVMPairERC721ERC20 pair)
     {
-        require(bondingCurveAllowed[params.bondingCurve], "Bonding curve not whitelisted");
+        if (!bondingCurveAllowed[params.bondingCurve]) revert LSSVMPairFactory__BondingCurveNotWhitelisted();
 
         pair = LSSVMPairERC721ERC20(
             payable(
@@ -232,7 +242,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint256 _nftId,
         uint256 _initialNFTBalance
     ) external payable returns (LSSVMPairERC1155ETH pair) {
-        require(bondingCurveAllowed[_bondingCurve], "Bonding curve not whitelisted");
+        if (!bondingCurveAllowed[_bondingCurve]) revert LSSVMPairFactory__BondingCurveNotWhitelisted();
 
         pair = LSSVMPairERC1155ETH(
             payable(
@@ -279,7 +289,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         external
         returns (LSSVMPairERC1155ERC20 pair)
     {
-        require(bondingCurveAllowed[params.bondingCurve], "Bonding curve not whitelisted");
+        if (!bondingCurveAllowed[params.bondingCurve]) revert LSSVMPairFactory__BondingCurveNotWhitelisted();
 
         pair = LSSVMPairERC1155ERC20(
             payable(
@@ -334,7 +344,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     }
 
     function closeLock() public {
-        require(_caller == msg.sender, "ReentrancyGuard: reentrant call");
+        if (_caller != msg.sender) revert LSSVMPairFactory__ReentrantCall();
         _caller = _NOT_ENTERED;
     }
 
@@ -424,7 +434,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *     @param _protocolFeeRecipient The new fee recipient
      */
     function changeProtocolFeeRecipient(address payable _protocolFeeRecipient) external onlyOwner {
-        require(_protocolFeeRecipient != address(0), "0 address");
+        if (_protocolFeeRecipient == address(0)) revert LSSVMPairFactory__ZeroAddress();
         protocolFeeRecipient = _protocolFeeRecipient;
         emit ProtocolFeeRecipientUpdate(_protocolFeeRecipient);
     }
@@ -434,7 +444,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *     @param _protocolFeeMultiplier The new fee multiplier, 18 decimals
      */
     function changeProtocolFeeMultiplier(uint256 _protocolFeeMultiplier) external onlyOwner {
-        require(_protocolFeeMultiplier <= MAX_PROTOCOL_FEE, "Fee too large");
+        if (_protocolFeeMultiplier > MAX_PROTOCOL_FEE) revert LSSVMPairFactory__FeeTooLarge();
         protocolFeeMultiplier = _protocolFeeMultiplier;
         emit ProtocolFeeMultiplierUpdate(_protocolFeeMultiplier);
     }
@@ -458,7 +468,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     function setCallAllowed(address payable target, bool isAllowed) external onlyOwner {
         // ensure target is not / was not ever a router
         if (isAllowed) {
-            require(!routerStatus[LSSVMRouter(target)].wasEverTouched, "Can't call router");
+            if (routerStatus[LSSVMRouter(target)].wasEverTouched) revert LSSVMPairFactory__CannotCallRouter();
         }
 
         callAllowed[target] = isAllowed;
@@ -473,7 +483,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     function setRouterAllowed(LSSVMRouter _router, bool isAllowed) external onlyOwner {
         // ensure target is not arbitrarily callable by pairs
         if (isAllowed) {
-            require(!callAllowed[address(_router)], "Can't call router");
+            if (callAllowed[address(_router)]) revert LSSVMPairFactory__CannotCallRouter();
         }
         routerStatus[_router] = RouterStatus({allowed: isAllowed, wasEverTouched: true});
 
@@ -500,7 +510,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *      @param enable Bool to determine whether to disable or enable the settings
      */
     function toggleSettingsForCollection(address settings, address collectionAddress, bool enable) public {
-        require(authAllowedForToken(collectionAddress, msg.sender), "Unauthorized caller");
+        if (!authAllowedForToken(collectionAddress, msg.sender)) revert LSSVMPairFactory__UnauthorizedCaller();
         if (enable) {
             settingsForCollection[collectionAddress][settings] = true;
         } else {
@@ -516,10 +526,12 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *      @param pairAddress The address of the Pair contract
      */
     function enableSettingsForPair(address settings, address pairAddress) public {
-        require(isValidPair(pairAddress), "Invalid pair address");
+        if (!isValidPair(pairAddress)) revert LSSVMPairFactory__InvalidPair();
         LSSVMPair pair = LSSVMPair(pairAddress);
-        require(pair.owner() == msg.sender, "Msg sender is not pair owner");
-        require(settingsForCollection[address(pair.nft())][settings], "Settings not enabled for collection");
+        if (pair.owner() != msg.sender) revert LSSVMPairFactory__UnauthorizedCaller();
+        if (!settingsForCollection[address(pair.nft())][settings]) {
+            revert LSSVMPairFactory__SettingsNotEnabledForCollection();
+        }
         settingsForPair[pairAddress] = settings;
     }
 
@@ -531,10 +543,10 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      *      @param pairAddress The address of the Pair contract
      */
     function disableSettingsForPair(address settings, address pairAddress) public {
-        require(isValidPair(pairAddress), "Invalid pair address");
-        require(settingsForPair[pairAddress] == settings, "Settings not enabled for pair");
+        if (!isValidPair(pairAddress)) revert LSSVMPairFactory__InvalidPair();
+        if (settingsForPair[pairAddress] != settings) revert LSSVMPairFactory__SettingsNotEnabledForPair();
         LSSVMPair pair = LSSVMPair(pairAddress);
-        require(pair.owner() == msg.sender, "Msg sender is not pair owner");
+        if (pair.owner() != msg.sender) revert LSSVMPairFactory__UnauthorizedCaller();
         delete settingsForPair[pairAddress];
     }
 

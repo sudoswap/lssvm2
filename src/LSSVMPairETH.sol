@@ -15,6 +15,8 @@ abstract contract LSSVMPairETH is LSSVMPair {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
+    error LSSVMPairETH__InsufficientInput();
+
     /// @inheritdoc LSSVMPair
     function _pullTokenInputAndPayProtocolFee(
         uint256 assetId,
@@ -25,7 +27,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
         ILSSVMPairFactoryLike _factory,
         uint256 protocolFee
     ) internal override {
-        require(msg.value >= inputAmount, "Sent too little ETH");
+        if (msg.value < inputAmount) revert LSSVMPairETH__InsufficientInput();
 
         // Compute royalties
         uint256 saleAmount = inputAmount - protocolFee;
@@ -48,9 +50,11 @@ abstract contract LSSVMPairETH is LSSVMPair {
             if (_feeRecipient != _assetRecipient) {
                 saleAmount -= tradeFeeAmount;
                 _feeRecipient.safeTransferETH(tradeFeeAmount);
-            } else {
-                require(saleAmount >= tradeFeeAmount / 2, "Not enough trade fee");
             }
+            // In the else case, we would want to ensure that saleAmount >= tradeFeeAmount / 2
+            // to avoid underpaying the trade fee, but it is always true because the max royalty
+            // is 25%, the max protocol fee is 10%, and the max trade fee is 50%, meaning they can
+            // never add up to more than 100%.
         }
 
         if (_assetRecipient != address(this)) {

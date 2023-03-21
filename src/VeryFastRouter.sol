@@ -80,6 +80,9 @@ contract VeryFastRouter {
         uint256 priceToFillAt;
     }
 
+    error VeryFastRouter__InvalidPair();
+    error VeryFastRouter__BondingCurveQuoteError();
+
     constructor(ILSSVMPairFactoryLike _factory) {
         factory = _factory;
     }
@@ -137,7 +140,7 @@ contract VeryFastRouter {
             pair.spotPrice(), pair.delta(), i, pair.fee(), pair.factory().protocolFeeMultiplier()
         );
         if (errorCode != CurveErrorCodes.Error.OK) {
-            revert("Bonding curve quote error");
+            revert VeryFastRouter__BondingCurveQuoteError();
         }
     }
 
@@ -152,7 +155,7 @@ contract VeryFastRouter {
             newSpotPrice, newDelta, num, pair.fee(), pair.factory().protocolFeeMultiplier()
         );
         if (errorCode != CurveErrorCodes.Error.OK) {
-            revert("Bonding curve quote error");
+            revert VeryFastRouter__BondingCurveQuoteError();
         }
     }
 
@@ -228,7 +231,7 @@ contract VeryFastRouter {
             pair.spotPrice(), pair.delta(), i, pair.fee(), pair.factory().protocolFeeMultiplier()
         );
         if (errorCode != CurveErrorCodes.Error.OK) {
-            revert("Bonding curve quote error");
+            revert VeryFastRouter__BondingCurveQuoteError();
         }
     }
 
@@ -243,7 +246,7 @@ contract VeryFastRouter {
             newSpotPrice, newDelta, num, pair.fee(), pair.factory().protocolFeeMultiplier()
         );
         if (errorCode != CurveErrorCodes.Error.OK) {
-            revert("Bonding curve quote error");
+            revert VeryFastRouter__BondingCurveQuoteError();
         }
     }
 
@@ -694,11 +697,14 @@ contract VeryFastRouter {
      */
     function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
         // verify caller is a trusted ERC20 pair contract
-        require(
-            factory.isValidPair(msg.sender)
-                && factory.getPairTokenType(msg.sender) == ILSSVMPairFactoryLike.PairTokenType.ERC20,
-            "Invalid ERC20 pair"
-        );
+        if (
+            !(
+                factory.isValidPair(msg.sender)
+                    && factory.getPairTokenType(msg.sender) == ILSSVMPairFactoryLike.PairTokenType.ERC20
+            )
+        ) {
+            revert VeryFastRouter__InvalidPair();
+        }
 
         // transfer tokens to pair
         token.safeTransferFrom(from, to, amount);
@@ -714,11 +720,14 @@ contract VeryFastRouter {
      */
     function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
         // verify caller is a trusted pair contract
-        require(
-            factory.isValidPair(msg.sender)
-                && factory.getPairNFTType(msg.sender) == ILSSVMPairFactoryLike.PairNFTType.ERC721,
-            "Invalid ERC721 pair"
-        );
+        if (
+            !(
+                factory.isValidPair(msg.sender)
+                    && factory.getPairNFTType(msg.sender) == ILSSVMPairFactoryLike.PairNFTType.ERC721
+            )
+        ) {
+            revert VeryFastRouter__InvalidPair();
+        }
 
         // transfer NFTs to pair
         nft.transferFrom(from, to, id);
@@ -741,11 +750,14 @@ contract VeryFastRouter {
         uint256[] calldata amounts
     ) external {
         // verify caller is a trusted pair contract
-        require(
-            factory.isValidPair(msg.sender)
-                && factory.getPairNFTType(msg.sender) == ILSSVMPairFactoryLike.PairNFTType.ERC1155,
-            "Invalid ERC1155 pair"
-        );
+        if (
+            !(
+                factory.isValidPair(msg.sender)
+                    && factory.getPairNFTType(msg.sender) == ILSSVMPairFactoryLike.PairNFTType.ERC1155
+            )
+        ) {
+            revert VeryFastRouter__InvalidPair();
+        }
 
         // transfer NFTs to pair
         nft.safeBatchTransferFrom(from, to, ids, amounts, bytes(""));
