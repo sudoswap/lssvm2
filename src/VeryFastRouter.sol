@@ -117,7 +117,7 @@ contract VeryFastRouter {
             }
         }
         // Scale up by slippage amount
-        if (slippageScaling > 0) {
+        if (slippageScaling != 0) {
             for (uint256 i = 0; i < prices.length;) {
                 prices[i] = prices[i] + (prices[i] * slippageScaling / 1e18);
 
@@ -209,7 +209,7 @@ contract VeryFastRouter {
             }
         }
         // Scale down by slippage amount
-        if (slippageScaling > 0) {
+        if (slippageScaling != 0) {
             for (uint256 i = 0; i < outputAmounts.length;) {
                 outputAmounts[i] = outputAmounts[i] - (outputAmounts[i] * slippageScaling / 1e18);
 

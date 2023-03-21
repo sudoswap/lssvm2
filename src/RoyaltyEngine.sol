@@ -346,8 +346,11 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
     function _checkAmountsDoesNotExceedValue(uint256 saleAmount, uint256[] memory royalties) private pure {
         uint256 numRoyalties = royalties.length;
         uint256 totalRoyalties;
-        for (uint256 i = 0; i < numRoyalties; ++i) {
+        for (uint256 i = 0; i < numRoyalties;) {
             totalRoyalties += royalties[i];
+            unchecked {
+                ++i;
+            }
         }
         if (totalRoyalties > saleAmount) revert RoyaltyEngine__InvalidRoyaltyAmount();
     }

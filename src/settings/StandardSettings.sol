@@ -134,7 +134,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         require(msg.value == getSettingsCost(), "Insufficient payment");
 
         // Transfer the ETH to the fee recipient
-        if (msg.value > 0) {
+        if (msg.value != 0) {
             settingsFeeRecipient.safeTransferETH(msg.value);
         }
 

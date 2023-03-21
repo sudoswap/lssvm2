@@ -141,7 +141,6 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
 
         ICurve _bondingCurve = bondingCurve();
         PoolType _poolType = poolType();
-
         if (_poolType != PoolType.TRADE) {
             if (_fee != 0) revert LSSVMPair__NonTradePoolWithTradeFee();
         } else {

@@ -190,7 +190,7 @@ contract LSSVMRouter {
      */
 
     /**
-     * @dev We assume msg.value >= sum of values in maxCostPerPair
+     * @dev Ensure msg.value >= sum of values in maxCostPerPair to make sure the transaction doesn't revert
      *     @param swapList The list of pairs to trade with and the IDs of the NFTs to buy from each.
      *     @param ethRecipient The address that will receive the unspent ETH input
      *     @param nftRecipient The address that will receive the NFT output

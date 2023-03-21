@@ -567,7 +567,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
 
         // transfer initial ETH to pair
-        if (msg.value > 0) payable(address(_pair)).safeTransferETH(msg.value);
+        if (msg.value != 0) payable(address(_pair)).safeTransferETH(msg.value);
 
         // transfer initial NFTs from sender to pair
         uint256 numNFTs = _initialNFTIDs.length;
@@ -624,7 +624,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
 
         // transfer initial ETH to pair
-        if (msg.value > 0) payable(address(_pair)).safeTransferETH(msg.value);
+        if (msg.value != 0) payable(address(_pair)).safeTransferETH(msg.value);
 
         // transfer initial NFTs from sender to pair
         if (_initialNFTBalance != 0) {
