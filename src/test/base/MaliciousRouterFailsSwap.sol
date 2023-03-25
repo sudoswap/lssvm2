@@ -558,7 +558,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         pair2.changeAssetRecipient(payable(PAIR_RECIPIENT));
 
         // Set the malicious router configs
-        router.setReenterSell(true);
+        router.setReenter(true);
         router.setPair721ToTriggerCallback(pair1);
         router.setPair721ToEnter(pair2);
 
@@ -622,7 +622,7 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         pair2.changeAssetRecipient(payable(PAIR_RECIPIENT));
 
         // Set the malicious router configs
-        router.setReenterSell(false);
+        router.setReenter(true);
         router.setPair721ToTriggerCallback(pair1);
         router.setPair721ToEnter(pair2);
 
@@ -638,6 +638,67 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
             maxInputAmount: type(uint256).max,
             ethAmount: 0,
             expectedSpotPrice: pair1.spotPrice(),
+            isERC721: true,
+            maxCostPerNumNFTs: maxCost
+        });
+
+        // Set up the actual VFR swap
+        MaliciousRouter.Order memory swapOrder = MaliciousRouter.Order({
+            buyOrders: buyOrders,
+            sellOrders: sellOrders,
+            tokenRecipient: payable(address(TOKEN_RECIPIENT)),
+            nftRecipient: NFT_RECIPIENT,
+            recycleETH: false
+        });
+
+        // Prank as the router caller and do the swap
+        vm.startPrank(ROUTER_CALLER);
+
+        // Set approval
+        ERC20(tokenAddress).approve(address(router), 1e18 ether);
+        IMintable(tokenAddress).mint(ROUTER_CALLER, 1e18 ether);
+
+        // Perform the swap
+        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__ReentrantCall.selector);
+        router.swap{value: 0}(swapOrder);
+    }
+
+    function test_reenterBuySwapSamePair() public {
+        IERC721 nft = _setUpERC721(address(this), address(this), ROUTER_CALLER);
+
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = 0;
+        ids[1] = 1;
+
+        // Create pair
+        LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.NFT, nft, address(this), 0, address(0), ids);
+
+        bool isETHSell = true;
+        address tokenAddress = getTokenAddress();
+        // Only do call for ERC20 pairs
+        if (tokenAddress != address(0)) {
+            isETHSell = false;
+        } else {
+            return;
+        }
+
+        // Set the malicious router configs
+        router.setReenter(true);
+        router.setPair721ToTriggerCallback(pair);
+        router.setPair721ToEnter(pair);
+
+        MaliciousRouter.SellOrderWithPartialFill[] memory sellOrders = new MaliciousRouter.SellOrderWithPartialFill[](0);
+
+        MaliciousRouter.BuyOrderWithPartialFill[] memory buyOrders = new MaliciousRouter.BuyOrderWithPartialFill[](1);
+
+        uint256[] memory maxCost = new uint256[](1);
+        maxCost[0] = type(uint256).max;
+        buyOrders[0] = MaliciousRouter.BuyOrderWithPartialFill({
+            pair: pair,
+            nftIds: new uint256[](1),
+            maxInputAmount: type(uint256).max,
+            ethAmount: 0,
+            expectedSpotPrice: pair.spotPrice(),
             isERC721: true,
             maxCostPerNumNFTs: maxCost
         });

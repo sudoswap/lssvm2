@@ -633,6 +633,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
             sig == IOwnershipTransferReceiver.onOwnershipTransferred.selector
                 || sig == LSSVMRouter.pairTransferERC20From.selector || sig == LSSVMRouter.pairTransferNFTFrom.selector
                 || sig == LSSVMRouter.pairTransferERC1155From.selector
+                || sig == ILSSVMPairFactoryLike.openLock.selector
+                || sig == ILSSVMPairFactoryLike.closeLock.selector
         ) {
             revert LSSVMPair__FunctionNotAllowed();
         }

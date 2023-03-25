@@ -454,6 +454,13 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         );
         vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
         pair.call(payable(address(pairManager)), data);
+
+        factory.setCallAllowed(payable(address(factory)), true);
+        data = abi.encodeWithSelector(ILSSVMPairFactoryLike.openLock.selector, address(this), "");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);        pair.call(payable(address(factory)), data);
+
+        data = abi.encodeWithSelector(ILSSVMPairFactoryLike.closeLock.selector, address(this), "");
+        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);        pair.call(payable(address(factory)), data);
     }
 
     function test_callBannedTarget721() public {

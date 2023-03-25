@@ -31,7 +31,7 @@ contract MaliciousRouter {
 
     LSSVMPair pair721ToTriggerCallback;
     LSSVMPair pair721ToEnter;
-    bool reenterSell;
+    bool isReenter;
 
     function setIdsToTransfer(uint256[] calldata ids) public {
         idsToTransfer = ids;
@@ -57,8 +57,8 @@ contract MaliciousRouter {
         pair721ToTriggerCallback = pair;
     }
 
-    function setReenterSell(bool isSell) public {
-        reenterSell = isSell;
+    function setReenter(bool _isReenter) public {
+        isReenter = _isReenter;
     }
 
     struct BuyOrderWithPartialFill {
@@ -109,13 +109,13 @@ contract MaliciousRouter {
      */
     function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
         // If reentering, swap tokens the first time
-        if (msg.sender == address(pair721ToTriggerCallback) && !reenterSell) {
+        if (msg.sender == address(pair721ToTriggerCallback) && isReenter) {
             pair721ToEnter.swapTokenForSpecificNFTs(
                 _wrapUintAsArray(1), type(uint256).max, payable(address(from)), true, address(from)
             );
 
             // Only reenter once
-            reenterSell = true;
+            isReenter = false;
 
             // Then, don't actually send any tokens
             return;
@@ -140,7 +140,7 @@ contract MaliciousRouter {
      */
     function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
         // Reenter a sell
-        if (msg.sender == address(pair721ToTriggerCallback) && reenterSell) {
+        if (msg.sender == address(pair721ToTriggerCallback) && isReenter) {
             pair721ToEnter.swapNFTsForToken(_wrapUintAsArray(0), 0, payable(from), true, from);
 
             // Then, don't actually send anything when we return

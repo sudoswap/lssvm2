@@ -340,6 +340,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     }
 
     function openLock() public {
+        if (_caller == msg.sender) revert LSSVMPairFactory__ReentrantCall();
         _caller = msg.sender;
     }
 
