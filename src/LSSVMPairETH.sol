@@ -18,47 +18,39 @@ abstract contract LSSVMPairETH is LSSVMPair {
     error LSSVMPairETH__InsufficientInput();
 
     /// @inheritdoc LSSVMPair
-    function _pullTokenInputAndPayProtocolFee(
-        uint256 assetId,
-        uint256 inputAmount,
+    function _pullTokenInputs(
+        uint256 inputAmountExcludingRoyalty,
+        uint256[] memory royaltyAmounts,
+        address payable[] memory royaltyRecipients,
+        uint256 royaltyTotal,
         uint256 tradeFeeAmount,
         bool, /*isRouter*/
         address, /*routerCaller*/
-        ILSSVMPairFactoryLike _factory,
         uint256 protocolFee
     ) internal override {
-        if (msg.value < inputAmount) revert LSSVMPairETH__InsufficientInput();
+        // Require that the input amount is sufficient to pay for the sale amount and royalties
+        if (msg.value < (royaltyTotal + inputAmountExcludingRoyalty)) revert LSSVMPairETH__InsufficientInput();
 
-        // Compute royalties
-        uint256 saleAmount = inputAmount - protocolFee;
-        (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal) =
-            _calculateRoyalties(assetId, saleAmount);
-
-        // Deduct royalties from sale amount
-        unchecked {
-            // Safe because we already require saleAmount >= royaltyTotal in _calculateRoyalties()
-            saleAmount -= royaltyTotal;
-        }
-
-        // Transfer saleAmount ETH to assetRecipient if it's been set
+        // Transfer inputAmountExcludingRoyalty ETH to assetRecipient if it's been set
         address payable _assetRecipient = getAssetRecipient();
 
-        // Transfer trade fees only if TRADE pool and they exist
+        // Attempt to transfer trade fees only if TRADE pool and they exist
         if (poolType() == PoolType.TRADE && tradeFeeAmount != 0) {
             address payable _feeRecipient = getFeeRecipient();
-            // Only send and deduct inputAmount if the fee recipient is not the asset recipient (i.e. the pool)
+
+            // Only send and deduct tradeFeeAmount if the fee recipient is not the asset recipient (i.e. the pool)
             if (_feeRecipient != _assetRecipient) {
-                saleAmount -= tradeFeeAmount;
+                inputAmountExcludingRoyalty -= tradeFeeAmount;
                 _feeRecipient.safeTransferETH(tradeFeeAmount);
             }
-            // In the else case, we would want to ensure that saleAmount >= tradeFeeAmount / 2
+            // In the else case, we would want to ensure that inputAmountExcludingRoyalty >= tradeFeeAmount / 2
             // to avoid underpaying the trade fee, but it is always true because the max royalty
             // is 25%, the max protocol fee is 10%, and the max trade fee is 50%, meaning they can
             // never add up to more than 100%.
         }
 
         if (_assetRecipient != address(this)) {
-            _assetRecipient.safeTransferETH(saleAmount);
+            _assetRecipient.safeTransferETH(inputAmountExcludingRoyalty - protocolFee);
         }
 
         // Transfer royalties
@@ -71,7 +63,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
 
         // Take protocol fee
         if (protocolFee != 0) {
-            payable(address(_factory)).safeTransferETH(protocolFee);
+            payable(address(factory())).safeTransferETH(protocolFee);
         }
     }
 

@@ -30,7 +30,7 @@ interface ILSSVMPair {
 
     function changeDelta(uint128 newDelta) external;
 
-    function getBuyNFTQuote(uint256 numItems)
+    function getBuyNFTQuote(uint256 assetId, uint256 numItems)
         external
         view
         returns (
@@ -38,7 +38,8 @@ interface ILSSVMPair {
             uint256 newSpotPrice,
             uint256 newDelta,
             uint256 inputAmount,
-            uint256 protocolFee
+            uint256 protocolFee,
+            uint256 royaltyAmount
         );
 
     function getSellNFTQuote(uint256 assetId, uint256 numNFTs)

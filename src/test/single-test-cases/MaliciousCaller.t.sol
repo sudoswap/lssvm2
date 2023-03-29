@@ -26,60 +26,53 @@ import {MerklePropertyChecker} from "../../property-checking/MerklePropertyCheck
 import {PropertyCheckerFactory} from "../../property-checking/PropertyCheckerFactory.sol";
 
 import {UsingETH} from "../mixins/UsingETH.sol";
-import {UsingMockCurve} from "../../test/mixins/UsingMockCurve.sol";
+import {UsingLinearCurve} from "../../test/mixins/UsingLinearCurve.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
 import {LSSVMPair} from "../../LSSVMPair.sol";
+import {LSSVMPairETH} from "../../LSSVMPairETH.sol";
 import {ILSSVMPair} from "../../ILSSVMPair.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {VeryFastRouter} from "../../VeryFastRouter.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 
-contract VeryFastRouterWithMockCurve is Test, ConfigurableWithRoyalties, UsingMockCurve, UsingETH {
+contract MaliciousCaller is Test, ConfigurableWithRoyalties, UsingLinearCurve, UsingETH {
     ICurve bondingCurve;
-    MockCurve mockCurve;
     RoyaltyEngine royaltyEngine;
     LSSVMPairFactory pairFactory;
-    PropertyCheckerFactory propertyCheckerFactory;
-    VeryFastRouter router;
     IERC721 test721;
+
+    address payable ASSET_RECIPIENT = payable(address(69));
 
     function setUp() public {
         bondingCurve = setupCurve();
-        mockCurve = MockCurve(address(bondingCurve));
-
         royaltyEngine = setupRoyaltyEngine();
         pairFactory = setupFactory(royaltyEngine, payable(address(0)));
         pairFactory.setBondingCurveAllowed(bondingCurve, true);
-
-        router = new VeryFastRouter(pairFactory);
         test721 = setup721();
+        pairFactory.changeProtocolFeeMultiplier(0.01 ether);
     }
 
-    function test_clientSideQuoteRevert() public {
-        LSSVMPair pair721 = this.setupPairERC721(
+    function test_callETHPoolSwapTokensWithNoETH() public {
+        Test721(address(test721)).mint(address(this), 1);
+        test721.setApprovalForAll(address(pairFactory), true);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        LSSVMPair pair721 = this.setupPairERC721{value: 10 ether}(
             pairFactory,
             test721,
             bondingCurve,
-            payable(address(0)), // asset recipient
+            ASSET_RECIPIENT,
             LSSVMPair.PoolType.TRADE,
-            0,
-            0, // 0% for trade fee
-            0,
-            new uint256[](0),
-            0,
+            0.1 ether, // delta
+            0.1 ether, // 10% for trade fee
+            1 ether, // spot price
+            ids,
+            10 ether,
             address(0)
         );
-
-        // Ensure it reverts on buy quote
-        mockCurve.setBuyError(1);
-        vm.expectRevert(VeryFastRouter.VeryFastRouter__BondingCurveQuoteError.selector);
-        router.getNFTQuoteForBuyOrderWithPartialFill(pair721, 1, 0, 0);
-
-        // Ensure it reverts on sell quote
-        mockCurve.setSellError(1);
-        vm.expectRevert(VeryFastRouter.VeryFastRouter__BondingCurveQuoteError.selector);
-        router.getNFTQuoteForSellOrderWithPartialFill(pair721, 1, 0, 0);
+        vm.expectRevert(LSSVMPairETH.LSSVMPairETH__InsufficientInput.selector);
+        pair721.swapTokenForSpecificNFTs(ids, 10 ether, address(this), false, address(0));
     }
 }

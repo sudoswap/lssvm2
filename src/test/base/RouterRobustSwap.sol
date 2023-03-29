@@ -136,8 +136,8 @@ abstract contract RouterRobustSwap is Test, ERC721Holder, ConfigurableWithRoyalt
         nftIds3[0] = 20;
         nftIds3[1] = 21;
 
-        (,,, uint256 pair1InputAmount,) = pair1.getBuyNFTQuote(2);
-        (,,, uint256 pair2InputAmount,) = pair2.getBuyNFTQuote(2);
+        (,,, uint256 pair1InputAmount,,) = pair1.getBuyNFTQuote(nftIds1[0], 2);
+        (,,, uint256 pair2InputAmount,,) = pair2.getBuyNFTQuote(nftIds2[0], 2);
 
         LSSVMRouter.RobustPairSwapSpecific[] memory swapList = new LSSVMRouter.RobustPairSwapSpecific[](3);
         swapList[0] = LSSVMRouter.RobustPairSwapSpecific({
@@ -265,7 +265,7 @@ abstract contract RouterRobustSwap is Test, ERC721Holder, ConfigurableWithRoyalt
         assertEq(test721.ownerOf(32), address(this));
         assertEq(test721.ownerOf(33), address(this));
 
-        (,,, uint256 pair1InputAmount,) = pair1.getBuyNFTQuote(2);
+        (,,, uint256 pair1InputAmount,,) = pair1.getBuyNFTQuote(0, 2);
         uint256[] memory nftIds1 = new uint256[](2);
         nftIds1[0] = 0;
         nftIds1[1] = 1;

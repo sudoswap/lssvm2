@@ -326,7 +326,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         require(pair721.getFeeRecipient() != address(pair721), "Splitter not deployed");
 
         // Perform a buy for item #1
-        (,,, uint256 inputAmount,) = pair721.getBuyNFTQuote(1);
+        (,,, uint256 inputAmount,, uint256 buyRoyaltyAmount) = pair721.getBuyNFTQuote(1, 1);
         uint256[] memory specificIdToBuy = new uint256[](1);
         specificIdToBuy[0] = 1;
         pair721.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
@@ -334,7 +334,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         );
 
         uint256 royaltyBalance = getBalance(ROYALTY_RECEIVER);
-        assertEq(royaltyBalance, calcRoyalty(inputAmount, newRoyaltyBps));
+        assertEq(royaltyBalance, buyRoyaltyAmount);
 
         // Perform a sell for item #1
         uint256[] memory specificIdToSell = new uint256[](1);
@@ -391,7 +391,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         );
 
         // Perform a buy for item #1
-        (,,, uint256 inputAmount,) = pair721.getBuyNFTQuote(1);
+        (,,, uint256 inputAmount,, uint256 royaltyAmount) = pair721.getBuyNFTQuote(1, 1);
         uint256[] memory specificIdToBuy = new uint256[](1);
         specificIdToBuy[0] = 1;
         pair721.swapTokenForSpecificNFTs{value: this.modifyInputAmount(inputAmount)}(
@@ -399,7 +399,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
         );
 
         // Ensure that the payout is 5% not 7.5%
-        assertEq(getBalance(ROYALTY_RECEIVER), calcRoyalty(inputAmount, newRoyaltyBps));
+        assertEq(getBalance(ROYALTY_RECEIVER), royaltyAmount);
         assertEq(getBalance(secondReceiver), 0);
     }
 

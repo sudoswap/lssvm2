@@ -79,7 +79,7 @@ abstract contract RouterMultiPool is Test, ERC721Holder, ConfigurableWithRoyalti
         uint256 totalInputAmount = 0;
         for (uint256 i = 0; i < 5; i++) {
             uint256 inputAmount;
-            (,,, inputAmount,) = pairs[i + 1].getBuyNFTQuote(1);
+            (,,, inputAmount,,) = pairs[i + 1].getBuyNFTQuote(i + 1, 1);
             totalInputAmount += inputAmount;
             uint256[] memory nftIds = new uint256[](1);
             nftIds[0] = i + 1;

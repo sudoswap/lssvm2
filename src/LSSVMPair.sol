@@ -176,7 +176,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      *     ETH pairs.
      *     @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
      *     ETH pairs.
-     *     @return inputAmount The amount of token used for purchase
+     *     @return - The amount of token used for purchase
      */
     function swapTokenForSpecificNFTs(
         uint256[] calldata nftIds,
@@ -184,7 +184,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         address nftRecipient,
         bool isRouter,
         address routerCaller
-    ) external payable virtual returns (uint256 inputAmount);
+    ) external payable virtual returns (uint256);
 
     /**
      * @notice Sends a set of NFTs to the pair in exchange for token
@@ -215,7 +215,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      * @dev Used as read function to query the bonding curve for buy pricing info
      *     @param numNFTs The number of NFTs to buy from the pair
      */
-    function getBuyNFTQuote(uint256 numNFTs)
+    function getBuyNFTQuote(uint256 assetId, uint256 numNFTs)
         external
         view
         returns (
@@ -223,11 +223,23 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
             uint256 newSpotPrice,
             uint256 newDelta,
             uint256 inputAmount,
-            uint256 protocolFee
+            uint256 protocolFee,
+            uint256 royaltyAmount
         )
     {
-        (error, newSpotPrice, newDelta, inputAmount, /* tradeFee */, protocolFee) =
+        uint256 tradeFee;
+        (error, newSpotPrice, newDelta, inputAmount, tradeFee, protocolFee) =
             bondingCurve().getBuyInfo(spotPrice, delta, numNFTs, fee, factory().protocolFeeMultiplier());
+
+        if (numNFTs != 0) {
+            // Calculate the inputAmount minus tradeFee and protocolFee
+            uint256 inputAmountMinusFees = inputAmount - tradeFee - protocolFee;
+
+            // Compute royalties
+            (,, royaltyAmount) = calculateRoyaltiesView(assetId, inputAmountMinusFees);
+
+            inputAmount += royaltyAmount;
+        }
     }
 
     /**
@@ -429,22 +441,24 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
     }
 
     /**
-     * @notice Pulls the token input of a trade from the trader and pays the protocol fee.
-     *     @param assetId The first ID of the asset to be swapped for
-     *     @param inputAmount The amount of tokens to be sent
+     * @notice Pulls the token input of a trade from the trader (including all royalties and fees)
+     *     @param inputAmountExcludingRoyalty The amount of tokens to be sent, excluding the royalty (includes protocol fee)
+     *     @param royaltyAmounts The amounts of tokens to be sent as royalties
+     *     @param royaltyRecipients The recipients of the royalties
+     *     @param royaltyTotal The sum of all royaltyAmounts
      *     @param tradeFeeAmount The amount of tokens to be sent as trade fee (if applicable)
      *     @param isRouter Whether or not the caller is LSSVMRouter
      *     @param routerCaller If called from LSSVMRouter, store the original caller
-     *     @param _factory The LSSVMPairFactory which stores LSSVMRouter allowlist info
      *     @param protocolFee The protocol fee to be paid
      */
-    function _pullTokenInputAndPayProtocolFee(
-        uint256 assetId,
-        uint256 inputAmount,
+    function _pullTokenInputs(
+        uint256 inputAmountExcludingRoyalty,
+        uint256[] memory royaltyAmounts,
+        address payable[] memory royaltyRecipients,
+        uint256 royaltyTotal,
         uint256 tradeFeeAmount,
         bool isRouter,
         address routerCaller,
-        ILSSVMPairFactoryLike _factory,
         uint256 protocolFee
     ) internal virtual;
 
@@ -632,8 +646,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         if (
             sig == IOwnershipTransferReceiver.onOwnershipTransferred.selector
                 || sig == LSSVMRouter.pairTransferERC20From.selector || sig == LSSVMRouter.pairTransferNFTFrom.selector
-                || sig == LSSVMRouter.pairTransferERC1155From.selector
-                || sig == ILSSVMPairFactoryLike.openLock.selector
+                || sig == LSSVMRouter.pairTransferERC1155From.selector || sig == ILSSVMPairFactoryLike.openLock.selector
                 || sig == ILSSVMPairFactoryLike.closeLock.selector
         ) {
             revert LSSVMPair__FunctionNotAllowed();

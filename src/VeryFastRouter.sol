@@ -90,11 +90,12 @@ contract VeryFastRouter {
     /* @dev Meant to be used as a client-side utility
      * Given a pair and a number of items to buy, calculate the max price paid for 1 up to numNFTs to buy
      */
-    function getNFTQuoteForBuyOrderWithPartialFill(LSSVMPair pair, uint256 numNFTs, uint256 slippageScaling)
-        external
-        view
-        returns (uint256[] memory)
-    {
+    function getNFTQuoteForBuyOrderWithPartialFill(
+        LSSVMPair pair,
+        uint256 numNFTs,
+        uint256 slippageScaling,
+        uint256 assetId
+    ) external view returns (uint256[] memory) {
         uint256[] memory prices = new uint256[](numNFTs);
 
         for (uint256 i; i < numNFTs;) {
@@ -108,6 +109,9 @@ contract VeryFastRouter {
 
             // Calculate price to purchase the remaining numNFTs - i items
             uint256 price = _getHypotheticalNewPoolParamsAfterBuying(pair, newSpotPrice, newDelta, numNFTs - i);
+
+            (,, uint256 royaltyTotal) = pair.calculateRoyaltiesView(assetId, price);
+            price += royaltyTotal;
 
             // Set the price to buy numNFT - i items
             prices[numNFTs - i - 1] = price;
@@ -319,23 +323,24 @@ contract VeryFastRouter {
             }
             // Otherwise we need to do some partial fill calculations first
             else {
-                // Grab nft ID for doing royalty calc
-                uint256 nftId = order.nftIds[0];
-                if (!order.isERC721) {
-                    nftId = LSSVMPairERC1155(address(order.pair)).nftId();
-                }
+                uint256 numItemsToFill;
+                uint256 priceToFillAt;
 
-                // Calculate the max number of items we can sell
-                (uint256 numItemsToFill, uint256 priceToFillAt) = _findMaxFillableAmtForSell(
-                    PartialFillSellArgs({
-                        pair: order.pair,
-                        spotPrice: pairSpotPrice,
-                        maxNumNFTs: (order.isERC721 ? order.nftIds.length : order.nftIds[0]),
-                        minOutputPerNumNFTs: order.minExpectedOutputPerNumNFTs,
-                        protocolFeeMultiplier: protocolFeeMultiplier,
-                        nftId: nftId
-                    })
-                );
+                {
+                    // Grab royalty for calc in _findMaxFillableAmtForSell
+                    (,, uint256 royaltyAmount) = order.pair.calculateRoyaltiesView(
+                        order.isERC721 ? order.nftIds[0] : LSSVMPairERC1155(address(order.pair)).nftId(), BASE
+                    );
+
+                    // Calculate the max number of items we can sell
+                    (numItemsToFill, priceToFillAt) = _findMaxFillableAmtForSell(
+                        order.pair,
+                        pairSpotPrice,
+                        order.minExpectedOutputPerNumNFTs,
+                        protocolFeeMultiplier,
+                        royaltyAmount
+                    );
+                }
 
                 // If we can sell at least 1 item...
                 if (numItemsToFill != 0) {
@@ -400,14 +405,19 @@ contract VeryFastRouter {
             }
             // Otherwise, we need to do some partial fill calculations first
             else {
-                // uint128(inputAmount) is safe because order.pair.spotPrice() returns uint128
-                (uint256 numItemsToFill, uint256 priceToFillAt) = _findMaxFillableAmtForBuy(
-                    order.pair,
-                    uint128(inputAmount),
-                    (order.isERC721 ? order.nftIds.length : order.nftIds[0]),
-                    order.maxCostPerNumNFTs,
-                    protocolFeeMultiplier
-                );
+                uint256 numItemsToFill;
+                uint256 priceToFillAt;
+
+                {
+                    (,, uint256 royaltyAmount) = order.pair.calculateRoyaltiesView(
+                        order.isERC721 ? order.nftIds[0] : LSSVMPairERC1155(address(order.pair)).nftId(), BASE
+                    );
+
+                    // uint128(inputAmount) is safe because order.pair.spotPrice() returns uint128
+                    (numItemsToFill, priceToFillAt) = _findMaxFillableAmtForBuy(
+                        order.pair, uint128(inputAmount), order.maxCostPerNumNFTs, protocolFeeMultiplier, royaltyAmount
+                    );
+                }
 
                 // Set inputAmount to be 0 (assuming we don't fully meet all criteria for a swap)
                 inputAmount = 0;
@@ -436,9 +446,9 @@ contract VeryFastRouter {
                     else {
                         // The amount to buy is the min(numItemsToFill, erc1155.balanceOf(pair))
                         {
-                            address pairAddress = address(order.pair);
-                            uint256 availableNFTs =
-                                IERC1155(order.pair.nft()).balanceOf(pairAddress, LSSVMPairERC1155(pairAddress).nftId());
+                            uint256 availableNFTs = IERC1155(order.pair.nft()).balanceOf(
+                                address(order.pair), LSSVMPairERC1155(address(order.pair)).nftId()
+                            );
                             numItemsToFill = numItemsToFill < availableNFTs ? numItemsToFill : availableNFTs;
                         }
 
@@ -485,21 +495,21 @@ contract VeryFastRouter {
      *   @dev Performs a binary search to find the largest value where maxCostPerNumNFTs is still greater than
      *   the pair's bonding curve's getBuyInfo() value.
      *   @param pair The pair to calculate partial fill values for
-     *   @param maxNumNFTs The maximum number of NFTs to fill / get a quote for
      *   @param maxCostPerNumNFTs The user's specified maximum price to pay for filling a number of NFTs
      *   @param protocolFeeMultiplier The % set as protocol fee
+     *   @param royaltyAmount Royalty amount assuming a cost of BASE, used for cheaper royalty calc
      *   @dev Note that maxPricesPerNumNFTs is 0-indexed
      */
     function _findMaxFillableAmtForBuy(
         LSSVMPair pair,
         uint128 spotPrice,
-        uint256 maxNumNFTs,
         uint256[] memory maxCostPerNumNFTs,
-        uint256 protocolFeeMultiplier
+        uint256 protocolFeeMultiplier,
+        uint256 royaltyAmount
     ) internal view returns (uint256 numItemsToFill, uint256 priceToFillAt) {
         // Set start and end indices
         uint256 start = 1;
-        uint256 end = maxNumNFTs;
+        uint256 end = maxCostPerNumNFTs.length;
 
         // Cache current pair values
         uint128 delta = pair.delta();
@@ -524,6 +534,8 @@ contract VeryFastRouter {
                 spotPrice, delta, (start + end) / 2, feeMultiplier, protocolFeeMultiplier
             );
 
+            currentCost += currentCost * royaltyAmount / BASE;
+
             // If the bonding curve has a math error, or
             // If the current price is too expensive relative to our max cost,
             // then we recurse on the left half (i.e. less items)
@@ -541,97 +553,65 @@ contract VeryFastRouter {
         }
     }
 
-    /**
-     *   @dev Performs a binary search to find the largest value where maxOutputPerNumNFTs is still less than
-     *   the pair's bonding curve's getSellInfo() value.
-     *   @dev Note that maxOutputPerNumNFTs is 0-indexed
-     */
-    function _findMaxFillableAmtForSell(PartialFillSellArgs memory args)
-        internal
-        view
-        returns (uint256 numItemsToFill, uint256 priceToFillAt)
-    {
+    function _findMaxFillableAmtForSell(
+        LSSVMPair pair,
+        uint128 spotPrice,
+        uint256[] memory minOutputPerNumNFTs,
+        uint256 protocolFeeMultiplier,
+        uint256 royaltyAmount
+    ) internal view returns (uint256 numItemsToFill, uint256 priceToFillAt) {
         // Set start and end indices
         uint256 start = 1;
-        uint256 end = args.maxNumNFTs;
+        uint256 end = minOutputPerNumNFTs.length;
 
         // Cache current pair values
-        uint128 delta = args.pair.delta();
-        uint256 feeMultiplier = args.pair.fee();
-
-        // Get current pair balance
-        uint256 pairTokenBalance = getPairBaseQuoteTokenBalance(args.pair);
-
-        // Get royalty % benchmark
-        (,, uint256 royaltyAmount) = args.pair.calculateRoyaltiesView(args.nftId, BASE);
+        uint256 deltaAndFeeMultiplier;
+        {
+            uint128 delta = pair.delta();
+            uint96 feeMultiplier = pair.fee();
+            deltaAndFeeMultiplier = uint256(delta) << 96 | feeMultiplier;
+        }
+        uint256 pairTokenBalance = getPairBaseQuoteTokenBalance(pair);
 
         // Perform binary search
         while (start <= end) {
-            (start, end, numItemsToFill, priceToFillAt) = _findMaxFillableAmtForSellHelper(
-                PartialFillSellHelperArgs({
-                    pair: args.pair,
-                    minOutputPerNumNFTs: args.minOutputPerNumNFTs,
-                    protocolFeeMultiplier: args.protocolFeeMultiplier,
-                    nftId: args.nftId,
-                    start: start,
-                    end: end,
-                    delta: delta,
-                    spotPrice: args.spotPrice,
-                    feeMultiplier: feeMultiplier,
-                    pairTokenBalance: pairTokenBalance,
-                    royaltyAmount: royaltyAmount,
-                    numItemsToFill: numItemsToFill,
-                    priceToFillAt: priceToFillAt
-                })
+            // We check the price to sell index + 1
+            (
+                CurveErrorCodes.Error error,
+                /* newSpotPrice */
+                ,
+                /* newDelta */
+                ,
+                uint256 currentOutput,
+                /* tradeFee */
+                ,
+                /* protocolFee */
+            ) = pair.bondingCurve().getSellInfo(
+                spotPrice,
+                // get delta from deltaAndFeeMultiplier
+                uint128(deltaAndFeeMultiplier >> 96),
+                (start + end) / 2,
+                // get feeMultiplier from deltaAndFeeMultiplier
+                uint96(deltaAndFeeMultiplier),
+                protocolFeeMultiplier
             );
-        }
-    }
-
-    function _findMaxFillableAmtForSellHelper(PartialFillSellHelperArgs memory args)
-        internal
-        view
-        returns (uint256 newStart, uint256 newEnd, uint256 numItemsToFill, uint256 priceToFillAt)
-    {
-        // Set the return values to be the initial values if nothing changes
-        newStart = args.start;
-        newEnd = args.end;
-        numItemsToFill = args.numItemsToFill;
-        priceToFillAt = args.priceToFillAt;
-
-        // We check the price to sell index + 1
-        (
-            CurveErrorCodes.Error error,
-            /* newSpotPrice */
-            ,
-            /* newDelta */
-            ,
-            uint256 currentOutput,
-            /* tradeFee */
-            ,
-            /* protocolFee */
-        ) = args.pair.bondingCurve().getSellInfo(
-            args.spotPrice, args.delta, (args.start + args.end) / 2, args.feeMultiplier, args.protocolFeeMultiplier
-        );
-
-        // Subtract royalty amount
-        currentOutput -= currentOutput * args.royaltyAmount / BASE;
-
-        // If the bonding curve has a math error, or
-        // if the current output is too low relative to our max output, or
-        // if the current output is greater than the pair's token balance,
-        // then we recurse on the left half (i.e. less items)
-        if (
-            error != CurveErrorCodes.Error.OK
-                || currentOutput < args.minOutputPerNumNFTs[(args.start + args.end) / 2 - 1] /* this is the max cost we are willing to pay, zero-indexed */
-                || currentOutput > args.pairTokenBalance
-        ) {
-            newEnd = (args.start + args.end) / 2 - 1;
-        }
-        // Otherwise, we recurse on the right half (i.e. more items)
-        else {
-            numItemsToFill = (args.start + args.end) / 2;
-            newStart = (args.start + args.end) / 2 + 1;
-            priceToFillAt = currentOutput;
+            currentOutput -= currentOutput * royaltyAmount / BASE;
+            // If the bonding curve has a math error, or
+            // if the current output is too low relative to our max output, or
+            // if the current output is greater than the pair's token balance,
+            // then we recurse on the left half (i.e. less items)
+            if (
+                error != CurveErrorCodes.Error.OK || currentOutput < minOutputPerNumNFTs[(start + end) / 2 - 1] /* this is the max cost we are willing to pay, zero-indexed */
+                    || currentOutput > pairTokenBalance
+            ) {
+                end = (start + end) / 2 - 1;
+            }
+            // Otherwise, we recurse on the right half (i.e. more items)
+            else {
+                numItemsToFill = (start + end) / 2;
+                start = (start + end) / 2 + 1;
+                priceToFillAt = currentOutput;
+            }
         }
     }
 

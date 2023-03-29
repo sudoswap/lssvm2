@@ -330,9 +330,9 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         // Set up pair with empty property checker as PAIR_CREATOR
         uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
         LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, address(this), 0, address(0), nftIds);
-        (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(nftIds.length);
+        (,,, uint256 inputAmount,,) = pair.getBuyNFTQuote(START_INDEX, nftIds.length);
         uint256[] memory partialFillAmounts =
-            router.getNFTQuoteForBuyOrderWithPartialFill(pair, nftIds.length, SLIPPAGE);
+            router.getNFTQuoteForBuyOrderWithPartialFill(pair, nftIds.length, SLIPPAGE, nftIds[0]);
 
         // Assert that we are sending as many tokens as needed in the case where we fill everything
         assertApproxEqRel(inputAmount, partialFillAmounts[partialFillAmounts.length - 1], 1e9, "Difference too large");
@@ -365,9 +365,9 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         // Set up pair with empty property checker as PAIR_CREATOR
         uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
         LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, address(this), 0, address(0), nftIds);
-        (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(nftIds.length);
+        (,,, uint256 inputAmount,,) = pair.getBuyNFTQuote(START_INDEX, nftIds.length);
         uint256[] memory partialFillAmounts =
-            router.getNFTQuoteForBuyOrderWithPartialFill(pair, nftIds.length, SLIPPAGE);
+            router.getNFTQuoteForBuyOrderWithPartialFill(pair, nftIds.length, SLIPPAGE, nftIds[0]);
 
         // Assert that we are sending as many tokens as needed in the case where we fill everything
         assertApproxEqRel(inputAmount, partialFillAmounts[partialFillAmounts.length - 1], 1e9, "Difference too large");
@@ -400,9 +400,9 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
         // Set up pair with empty property checker as PAIR_CREATOR
         uint256[] memory nftIds = _getArray(START_INDEX, END_INDEX);
         LSSVMPair pair = setUpPairERC721ForSale(LSSVMPair.PoolType.TRADE, address(this), 0, address(0), nftIds);
-        (,,, uint256 inputAmount,) = pair.getBuyNFTQuote(nftIds.length);
+        (,,, uint256 inputAmount,,) = pair.getBuyNFTQuote(START_INDEX, nftIds.length);
         uint256[] memory partialFillAmounts =
-            router.getNFTQuoteForBuyOrderWithPartialFill(pair, nftIds.length, SLIPPAGE);
+            router.getNFTQuoteForBuyOrderWithPartialFill(pair, nftIds.length, SLIPPAGE, nftIds[0]);
 
         // Assert that we are sending as many tokens as needed in the case where we fill everything
         assertApproxEqRel(inputAmount, partialFillAmounts[partialFillAmounts.length - 1], 1e9, "Difference too large");

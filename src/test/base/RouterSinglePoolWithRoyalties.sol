@@ -118,10 +118,7 @@ abstract contract RouterSinglePoolWithRoyalties is
         nftIds[0] = 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
-        (,,, uint256 inputAmount, uint256 protocolFee) = pair721.getBuyNFTQuote(1);
-
-        // calculate royalty
-        uint256 royaltyAmount = calcRoyalty(inputAmount - protocolFee);
+        (,,, uint256 inputAmount,, uint256 royaltyAmount) = pair721.getBuyNFTQuote(1, 1);
 
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
@@ -136,10 +133,7 @@ abstract contract RouterSinglePoolWithRoyalties is
         numNFTs[0] = 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair1155, nftIds: numNFTs});
-        (,,, uint256 inputAmount, uint256 protocolFee) = pair1155.getBuyNFTQuote(1);
-
-        // calculate royalty
-        uint256 royaltyAmount = calcRoyalty(inputAmount - protocolFee);
+        (,,, uint256 inputAmount,, uint256 royaltyAmount) = pair1155.getBuyNFTQuote(1, 1);
 
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
@@ -286,8 +280,8 @@ abstract contract RouterSinglePoolWithRoyalties is
         LSSVMRouter.PairSwapSpecific[] memory tokenToNFTSwapList = new LSSVMRouter.PairSwapSpecific[](1);
         tokenToNFTSwapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: buyNFTIds});
 
-        (,,, uint256 buyPrice,) = tokenToNFTSwapList[0].pair.getBuyNFTQuote(buyNFTIds.length);
-        totalRoyaltyAmount += calcRoyalty(buyPrice);
+        (,,,,, uint256 royaltyAmount) = tokenToNFTSwapList[0].pair.getBuyNFTQuote(buyNFTIds[0], buyNFTIds.length);
+        totalRoyaltyAmount += royaltyAmount;
 
         // NOTE: We send some tokens (more than enough) to cover the protocol fee
         uint256 inputAmount = 0.01 ether;
@@ -326,10 +320,7 @@ abstract contract RouterSinglePoolWithRoyalties is
         nftIds[4] = 5;
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
         uint256 startBalance = test721.balanceOf(address(this));
-        (,,, uint256 inputAmount, uint256 protocolFee) = pair721.getBuyNFTQuote(5);
-
-        // calculate royalty
-        uint256 royaltyAmount = calcRoyalty(inputAmount - protocolFee);
+        (,,, uint256 inputAmount,, uint256 royaltyAmount) = pair721.getBuyNFTQuote(1, 5);
 
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
@@ -361,7 +352,7 @@ abstract contract RouterSinglePoolWithRoyalties is
         nftIds[0] = 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair721, nftIds: nftIds});
-        (,,, uint256 inputAmount,) = pair721.getBuyNFTQuote(1);
+        (,,, uint256 inputAmount,,) = pair721.getBuyNFTQuote(1, 1);
 
         inputAmount = inputAmount - 1 wei;
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(

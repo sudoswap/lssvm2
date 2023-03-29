@@ -224,6 +224,73 @@ contract MaliciousRouter {
         return prices;
     }
 
+    function getNFTQuoteForBuyOrderWithPartialFill(
+        LSSVMPair pair,
+        uint256 numNFTs,
+        uint256 slippageScaling,
+        uint256 assetId
+    ) external view returns (uint256[] memory) {
+        uint256[] memory prices = new uint256[](numNFTs);
+
+        for (uint256 i; i < numNFTs;) {
+            uint128 newSpotPrice = pair.spotPrice();
+            uint128 newDelta = pair.delta();
+
+            // Assume that i items have been bought and get the new params
+            if (i != 0) {
+                (newSpotPrice, newDelta) = _getNewPoolParamsAfterBuying(pair, i);
+            }
+
+            // Calculate price to purchase the remaining numNFTs - i items
+            uint256 price = _getHypotheticalNewPoolParamsAfterBuying(pair, newSpotPrice, newDelta, numNFTs - i);
+
+            (,, uint256 royaltyTotal) = pair.calculateRoyaltiesView(assetId, price);
+            price += royaltyTotal;
+
+            // Set the price to buy numNFT - i items
+            prices[numNFTs - i - 1] = price;
+
+            unchecked {
+                ++i;
+            }
+        }
+        // Scale up by slippage amount
+        if (slippageScaling != 0) {
+            for (uint256 i = 0; i < prices.length;) {
+                prices[i] = prices[i] + (prices[i] * slippageScaling / 1e18);
+
+                unchecked {
+                    ++i;
+                }
+            }
+        }
+
+        return prices;
+    }
+
+    function _getNewPoolParamsAfterBuying(LSSVMPair pair, uint256 i)
+        internal
+        view
+        returns (uint128 newSpotPrice, uint128 newDelta)
+    {
+        CurveErrorCodes.Error errorCode;
+        (errorCode, newSpotPrice, newDelta,,,) = pair.bondingCurve().getBuyInfo(
+            pair.spotPrice(), pair.delta(), i, pair.fee(), pair.factory().protocolFeeMultiplier()
+        );
+    }
+
+    function _getHypotheticalNewPoolParamsAfterBuying(
+        LSSVMPair pair,
+        uint128 newSpotPrice,
+        uint128 newDelta,
+        uint256 num
+    ) internal view returns (uint256 output) {
+        CurveErrorCodes.Error errorCode;
+        (errorCode,,, output,,) = pair.bondingCurve().getBuyInfo(
+            newSpotPrice, newDelta, num, pair.fee(), pair.factory().protocolFeeMultiplier()
+        );
+    }
+
     function getPairBaseQuoteTokenBalance(LSSVMPair pair) public view returns (uint256 balance) {
         ILSSVMPairFactoryLike.PairVariant variant = pair.pairVariant();
         if (

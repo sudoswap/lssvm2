@@ -8,7 +8,8 @@ RouterMultiPoolWithRoyalties,RMPWR
 RouterSinglePoolWithAssetRecipient,RSPWAR
 RouterRobustSwapWithAssetRecipient,RRSWAR
 RouterRobustSwapWithRoyalties,RRSWR
-SettingsE2E,AE2E
+SettingsE2E,SE2E
 PropertyChecking,PC
 VeryFastRouterAllSwapTypes,VFR
+VeryFastRouterWithRoyalties,VFRWR
 MaliciousRouterFailsSwap,MRFS

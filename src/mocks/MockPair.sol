@@ -43,7 +43,7 @@ contract MockPair is ILSSVMPair, OwnableWithTransferCallback {
 
     function changeDelta(uint128 newDelta) external pure {}
 
-    function getBuyNFTQuote(uint256 numItems)
+    function getBuyNFTQuote(uint256 assetId, uint256 numItems)
         external
         view
         returns (
@@ -51,7 +51,8 @@ contract MockPair is ILSSVMPair, OwnableWithTransferCallback {
             uint256 newSpotPrice,
             uint256 newDelta,
             uint256 inputAmount,
-            uint256 protocolFee
+            uint256 protocolFee,
+            uint256 royaltyAmount
         )
     {}
 

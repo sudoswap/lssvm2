@@ -83,12 +83,8 @@ abstract contract RouterMultiPoolWithRoyalties is Test, ERC721Holder, Configurab
         uint256 totalInputAmount = 0;
         uint256 totalRoyaltyAmount = 0;
         for (uint256 i = 0; i < 5; i++) {
-            (,,, uint256 inputAmount, uint256 protocolFee) = pairs[i + 1].getBuyNFTQuote(1);
-
-            // calculate royalty and add it to the input amount
-            uint256 royaltyAmount = calcRoyalty(inputAmount - protocolFee);
+            (,,, uint256 inputAmount,, uint256 royaltyAmount) = pairs[i + 1].getBuyNFTQuote(i + 1, 1);
             totalRoyaltyAmount += royaltyAmount;
-
             totalInputAmount += inputAmount;
             uint256[] memory nftIds = new uint256[](1);
             nftIds[0] = i + 1;

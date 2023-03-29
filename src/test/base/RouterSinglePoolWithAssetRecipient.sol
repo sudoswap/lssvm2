@@ -103,7 +103,7 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: sellPair, nftIds: nftIds});
         uint256 inputAmount;
-        (,,, inputAmount,) = sellPair.getBuyNFTQuote(1);
+        (,,, inputAmount,,) = sellPair.getBuyNFTQuote(1, 1);
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
         );
@@ -138,7 +138,7 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
         LSSVMRouter.PairSwapSpecific[] memory tokenToNFTSwapList = new LSSVMRouter.PairSwapSpecific[](1);
         tokenToNFTSwapList[0] = LSSVMRouter.PairSwapSpecific({pair: sellPair, nftIds: buyNFTIds});
         uint256 sellAmount;
-        (,,, sellAmount,) = sellPair.getBuyNFTQuote(1);
+        (,,, sellAmount,,) = sellPair.getBuyNFTQuote(numInitialNFTs, 1);
         // Note: we send a little bit of tokens with the call because the exponential curve increases price ever so slightly
         uint256 inputAmount = 0.1 ether;
         this.swapNFTsForSpecificNFTsThroughToken{value: modifyInputAmount(inputAmount)}(
@@ -168,7 +168,7 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: sellPair, nftIds: nftIds});
         uint256 startBalance = test721.balanceOf(address(this));
         uint256 inputAmount;
-        (,,, inputAmount,) = sellPair.getBuyNFTQuote(5);
+        (,,, inputAmount,,) = sellPair.getBuyNFTQuote(1, 5);
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
         );
@@ -215,7 +215,7 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: sellPair, nftIds: nftIds});
         uint256 inputAmount;
-        (,,, inputAmount,) = sellPair.getBuyNFTQuote(1);
+        (,,, inputAmount,,) = sellPair.getBuyNFTQuote(1, 1);
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
         );

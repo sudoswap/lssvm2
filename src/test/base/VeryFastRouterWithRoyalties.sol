@@ -6,7 +6,9 @@ import "forge-std/Test.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import {RoyaltyRegistry} from "manifoldxyz/RoyaltyRegistry.sol";
+import {IRoyaltyRegistry} from "manifoldxyz/IRoyaltyRegistry.sol";
 
+import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -33,12 +35,13 @@ import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {VeryFastRouter} from "../../VeryFastRouter.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 
-abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holder, ConfigurableWithRoyalties {
+abstract contract VeryFastRouterWithRoyalties is Test, ERC721Holder, ERC1155Holder, ConfigurableWithRoyalties {
     ICurve bondingCurve;
     RoyaltyEngine royaltyEngine;
     LSSVMPairFactory pairFactory;
     PropertyCheckerFactory propertyCheckerFactory;
     VeryFastRouter router;
+    ERC2981 test2981;
 
     address constant ROUTER_CALLER = address(1);
     address constant TOKEN_RECIPIENT = address(420);
@@ -50,6 +53,7 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
     uint256 constant END_INDEX = 10;
     uint256 constant SLIPPAGE = 1e8; // small % slippage allowed for partial fill quotes (due to numerical instability)
 
+    uint256 constant END_INDEX_RECYCLE = 0;
     uint256 constant ID_1155 = 0;
 
     uint128 delta;
@@ -113,6 +117,7 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
         royaltyEngine = setupRoyaltyEngine();
         pairFactory = setupFactory(royaltyEngine, payable(address(0)));
         pairFactory.setBondingCurveAllowed(bondingCurve, true);
+        test2981 = setup2981();
 
         MerklePropertyChecker checker1 = new MerklePropertyChecker();
         RangePropertyChecker checker2 = new RangePropertyChecker();
@@ -135,6 +140,8 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
         for (uint256 i = START_INDEX; i <= END_INDEX; i++) {
             nft.mint(nftRecipient, i);
         }
+        // Set royalties
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(nft), address(test2981));
         vm.prank(factoryCaller);
         nft.setApprovalForAll(address(pairFactory), true);
         vm.prank(routerCaller);
@@ -146,6 +153,8 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
         returns (IERC1155Mintable nft)
     {
         nft = setup1155();
+        // Set royalties
+        IRoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(nft), address(test2981));
         nft.mint(nftRecipient, ID_1155, END_INDEX + 1);
         vm.prank(factoryCaller);
         nft.setApprovalForAll(address(pairFactory), true);
@@ -223,6 +232,15 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
                 routerAddress: address(router)
             })
         );
+    }
+
+    function _getEmptyArrayWithLastValue(uint256 numItems, uint256 value)
+        internal
+        pure
+        returns (uint256[] memory arr)
+    {
+        arr = new uint256[](numItems);
+        arr[numItems - 1] = value;
     }
 
     function _getBuyOrderAllItemsAvailable(bool is721)
@@ -1169,16 +1187,16 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
     {
         LSSVMPair pair;
         uint256[] memory nftInfo;
-        uint256 numNFTsTotal = END_INDEX + 1;
+        uint256 numNFTsTotal = END_INDEX_RECYCLE + 1;
         if (is721) {
             address propertyCheckerAddress = address(0);
             if (doPropertyCheck) {
                 propertyCheckerAddress =
-                    address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, END_INDEX));
+                    address(propertyCheckerFactory.createRangePropertyChecker(START_INDEX, END_INDEX_RECYCLE));
             }
             // Set up pair with no tokens
             pair = setUpPairERC721ForSale(0, propertyCheckerAddress, new uint256[](0));
-            nftInfo = _getArray(START_INDEX, END_INDEX);
+            nftInfo = _getArray(START_INDEX, END_INDEX_RECYCLE);
         } else {
             pair = setUpPairERC1155ForSale(0, 0, address(ROUTER_CALLER), address(ROUTER_CALLER), address(ROUTER_CALLER));
             nftInfo = new uint256[](1);
@@ -1194,17 +1212,32 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
         // Send that many tokens to the pair
         sendTokens(pair, outputAmount);
 
+        // Subtract outputAmount down by the royaltyAmount so we can use it later for accurate pricing in
+        // minExpectedTokenOutput
+        {
+            uint256 royaltyTotal;
+            (,, royaltyTotal) = pair.calculateRoyaltiesView(START_INDEX, outputAmount);
+            outputAmount -= royaltyTotal;
+        }
+
         // Calculate the amount needed to buy back numNFTsTotal nfts in the new state
         (,,, uint256 inputAmount,,) = pair.bondingCurve().getBuyInfo(
             newSpotPrice, newDelta, numNFTsTotal, pair.fee(), pair.factory().protocolFeeMultiplier()
         );
 
-        if (inputAmount > outputAmount) {
-            difference = inputAmount - outputAmount;
+        // Add up for the royalty amount
+        // (no need to handle protocol fee, the getBuyInfo already accounts for it)
+        {
+            uint256 royaltyTotal;
+            (,, royaltyTotal) = pair.calculateRoyaltiesView(START_INDEX, inputAmount);
+            inputAmount += royaltyTotal;
         }
 
-        // Ensure that if there is a difference, it is very small
-        assertLt(difference, SLIPPAGE);
+        // Set up additional amount to send to account for royalty amount
+        difference = inputAmount - outputAmount;
+
+        // Scale up slightly to account for numerical issues
+        difference = difference * 1001 / 1000;
 
         // Construct sell order
         sellOrder = VeryFastRouter.SellOrderWithPartialFill({
@@ -1216,10 +1249,11 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
             propertyCheckParams: "",
             expectedSpotPrice: pair.spotPrice(),
             minExpectedOutput: outputAmount,
-            minExpectedOutputPerNumNFTs: router.getNFTQuoteForSellOrderWithPartialFill(
-                pair, numNFTsTotal, SLIPPAGE, START_INDEX
-                )
+            minExpectedOutputPerNumNFTs: _getEmptyArrayWithLastValue(numNFTsTotal, outputAmount)
         });
+
+        uint256[] memory maxCostPerNumNFTs = new uint256[](numNFTsTotal);
+        maxCostPerNumNFTs[numNFTsTotal - 1] = inputAmount;
 
         // Construct buy order
         buyOrder = VeryFastRouter.BuyOrderWithPartialFill({
@@ -1229,7 +1263,7 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
             ethAmount: inputAmount,
             expectedSpotPrice: pair.spotPrice(),
             isERC721: is721,
-            maxCostPerNumNFTs: router.getNFTQuoteForBuyOrderWithPartialFill(pair, numNFTsTotal, SLIPPAGE, START_INDEX)
+            maxCostPerNumNFTs: _getEmptyArrayWithLastValue(numNFTsTotal, inputAmount)
         });
     }
 

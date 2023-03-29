@@ -126,8 +126,8 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 numItemsToBuy = 2;
 
         // act
-        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue,) =
-            ethPair.getBuyNFTQuote(numItemsToBuy);
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue,,) =
+            ethPair.getBuyNFTQuote(0, numItemsToBuy);
 
         // assert
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
@@ -142,8 +142,8 @@ contract XykCurveTest is Test, ERC721Holder {
         ethPair.changeDelta(uint128(nftBalance));
         uint256 numItemsToBuy = 10000000001;
 
-        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue,) =
-            ethPair.getBuyNFTQuote(numItemsToBuy);
+        (CurveErrorCodes.Error error, uint256 newSpotPrice, uint256 newDelta, uint256 inputValue,,) =
+            ethPair.getBuyNFTQuote(0, numItemsToBuy);
         assertEq(
             uint256(error), uint256(CurveErrorCodes.Error.SPOT_PRICE_OVERFLOW), "Error code not SPOT_PRICE_OVERFLOW"
         );
@@ -178,7 +178,7 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 expectedInputValue = (numItemsToBuy * value) / (numNfts - numItemsToBuy);
 
         // act
-        (CurveErrorCodes.Error error,,, uint256 inputValue,) = ethPair.getBuyNFTQuote(numItemsToBuy);
+        (CurveErrorCodes.Error error,,, uint256 inputValue,,) = ethPair.getBuyNFTQuote(0, numItemsToBuy);
 
         // assert
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
@@ -211,7 +211,7 @@ contract XykCurveTest is Test, ERC721Holder {
         uint256 expectedProtocolFee = (2 * ((numItemsToBuy * value) / (numNfts - numItemsToBuy))) / 100;
 
         // act
-        (CurveErrorCodes.Error error,,,, uint256 protocolFee) = ethPair.getBuyNFTQuote(numItemsToBuy);
+        (CurveErrorCodes.Error error,,,, uint256 protocolFee,) = ethPair.getBuyNFTQuote(0, numItemsToBuy);
 
         // assert
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Should not have errored");
@@ -262,7 +262,7 @@ contract XykCurveTest is Test, ERC721Holder {
         factory.changeProtocolFeeMultiplier((2 * 1e18) / 100); // 2%
         ethPair.changeFee((1 * 1e18) / 100); // 1%
 
-        (CurveErrorCodes.Error error,,, uint256 inputValue,) = ethPair.getBuyNFTQuote(numItemsToBuy);
+        (CurveErrorCodes.Error error,,, uint256 inputValue,,) = ethPair.getBuyNFTQuote(0, numItemsToBuy);
 
         // act
         uint256[] memory idList = new uint256[](numItemsToBuy);

@@ -80,7 +80,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 inputAmount;
-        (,,, inputAmount,) = pair.getBuyNFTQuote(1);
+        (,,, inputAmount,,) = pair.getBuyNFTQuote(1, 1);
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
         );
@@ -99,7 +99,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 inputAmount;
-        (,,, inputAmount,) = pair.getBuyNFTQuote(1);
+        (,,, inputAmount,,) = pair.getBuyNFTQuote(1, 1);
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
         );
@@ -169,7 +169,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 startBalance = test721.balanceOf(address(this));
         uint256 inputAmount;
-        (,,, inputAmount,) = pair.getBuyNFTQuote(5);
+        (,,, inputAmount,,) = pair.getBuyNFTQuote(1, 5);
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
         );
@@ -194,7 +194,7 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
         uint256 inputAmount;
-        (,,, inputAmount,) = pair.getBuyNFTQuote(1);
+        (,,, inputAmount,,) = pair.getBuyNFTQuote(1, 1);
         inputAmount = inputAmount - 1 wei;
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount

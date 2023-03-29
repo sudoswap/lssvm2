@@ -211,7 +211,9 @@ contract LSSVMRouter {
         uint256 numSwaps = swapList.length;
         for (uint256 i; i < numSwaps;) {
             // Calculate actual cost per swap
-            (error,,, pairCost,) = swapList[i].swapInfo.pair.getBuyNFTQuote(swapList[i].swapInfo.nftIds.length);
+            (error,,, pairCost,,) = swapList[i].swapInfo.pair.getBuyNFTQuote(
+                swapList[i].swapInfo.nftIds[0], swapList[i].swapInfo.nftIds.length
+            );
 
             // If within our maxCost and no error, proceed
             if (pairCost <= swapList[i].maxCost && error == CurveErrorCodes.Error.OK) {
@@ -256,7 +258,9 @@ contract LSSVMRouter {
         uint256 numSwaps = swapList.length;
         for (uint256 i; i < numSwaps;) {
             // Calculate actual cost per swap
-            (error,,, pairCost,) = swapList[i].swapInfo.pair.getBuyNFTQuote(swapList[i].swapInfo.nftIds.length);
+            (error,,, pairCost,,) = swapList[i].swapInfo.pair.getBuyNFTQuote(
+                swapList[i].swapInfo.nftIds[0], swapList[i].swapInfo.nftIds.length
+            );
 
             // If within our maxCost and no error, proceed
             if (pairCost <= swapList[i].maxCost && error == CurveErrorCodes.Error.OK) {
@@ -346,8 +350,8 @@ contract LSSVMRouter {
             uint256 numSwaps = params.tokenToNFTTrades.length;
             for (uint256 i; i < numSwaps;) {
                 // Calculate actual cost per swap
-                (error,,, pairCost,) = params.tokenToNFTTrades[i].swapInfo.pair.getBuyNFTQuote(
-                    params.tokenToNFTTrades[i].swapInfo.nftIds.length
+                (error,,, pairCost,,) = params.tokenToNFTTrades[i].swapInfo.pair.getBuyNFTQuote(
+                    params.tokenToNFTTrades[i].swapInfo.nftIds[0], params.tokenToNFTTrades[i].swapInfo.nftIds.length
                 );
 
                 // If within our maxCost and no error, proceed
@@ -429,8 +433,8 @@ contract LSSVMRouter {
             uint256 numSwaps = params.tokenToNFTTrades.length;
             for (uint256 i; i < numSwaps;) {
                 // Calculate actual cost per swap
-                (error,,, pairCost,) = params.tokenToNFTTrades[i].swapInfo.pair.getBuyNFTQuote(
-                    params.tokenToNFTTrades[i].swapInfo.nftIds.length
+                (error,,, pairCost,,) = params.tokenToNFTTrades[i].swapInfo.pair.getBuyNFTQuote(
+                    params.tokenToNFTTrades[i].swapInfo.nftIds[0], params.tokenToNFTTrades[i].swapInfo.nftIds.length
                 );
 
                 // If within our maxCost and no error, proceed
@@ -568,7 +572,7 @@ contract LSSVMRouter {
         uint256 numSwaps = swapList.length;
         for (uint256 i; i < numSwaps;) {
             // Calculate the cost per swap first to send exact amount of ETH over, saves gas by avoiding the need to send back excess ETH
-            (error,,, pairCost,) = swapList[i].pair.getBuyNFTQuote(swapList[i].nftIds.length);
+            (error,,, pairCost,,) = swapList[i].pair.getBuyNFTQuote(swapList[i].nftIds[0], swapList[i].nftIds.length);
 
             // Require no errors
             require(error == CurveErrorCodes.Error.OK, "Bonding curve error");

@@ -33,13 +33,9 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         address nftRecipient,
         bool isRouter,
         address routerCaller
-    ) external payable virtual override returns (uint256 inputAmount) {
+    ) external payable virtual override returns (uint256) {
         // Store locally to remove extra calls
-        ILSSVMPairFactoryLike _factory = factory();
-
-        _factory.openLock();
-
-        ICurve _bondingCurve = bondingCurve();
+        factory().openLock();
 
         // Input validation
         {
@@ -51,29 +47,41 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         // Call bonding curve for pricing information
         uint256 protocolFee;
         uint256 tradeFee;
-        (tradeFee, protocolFee, inputAmount) =
-            _calculateBuyInfoAndUpdatePoolParams(nftIds.length, _bondingCurve, _factory);
+        uint256 inputAmountExcludingRoyalty;
+        (tradeFee, protocolFee, inputAmountExcludingRoyalty) =
+            _calculateBuyInfoAndUpdatePoolParams(nftIds.length, bondingCurve(), factory());
 
-        // Revert if required input is more than expected
-        if (inputAmount > maxExpectedTokenInput) revert LSSVMPair__DemandedInputTooLarge();
+        // Calculate royalties
+        (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal) =
+            _calculateRoyalties(nftIds[0], inputAmountExcludingRoyalty - protocolFee - tradeFee);
 
-        _pullTokenInputAndPayProtocolFee(
-            nftIds[0],
-            inputAmount,
-            2 * tradeFee, // We pull twice the trade fee on buys but don't take trade fee on sells if assetRecipient is set
-            isRouter,
-            routerCaller,
-            _factory,
-            protocolFee
-        );
+        // Revert if the input amount is too large
+        if (royaltyTotal + inputAmountExcludingRoyalty > maxExpectedTokenInput) {
+            revert LSSVMPair__DemandedInputTooLarge();
+        }
 
-        _sendSpecificNFTsToRecipient(IERC721(nft()), nftRecipient, nftIds);
+        _pullTokenInputs({
+            inputAmountExcludingRoyalty: inputAmountExcludingRoyalty,
+            royaltyAmounts: royaltyAmounts,
+            royaltyRecipients: royaltyRecipients,
+            royaltyTotal: royaltyTotal,
+            tradeFeeAmount: 2 * tradeFee,
+            isRouter: isRouter,
+            routerCaller: routerCaller,
+            protocolFee: protocolFee
+        });
 
-        _refundTokenToSender(inputAmount);
+        {
+            _sendSpecificNFTsToRecipient(IERC721(nft()), nftRecipient, nftIds);
+        }
 
-        _factory.closeLock();
+        _refundTokenToSender(royaltyTotal + inputAmountExcludingRoyalty);
 
-        emit SwapNFTOutPair(inputAmount, nftIds);
+        factory().closeLock();
+
+        emit SwapNFTOutPair(royaltyTotal + inputAmountExcludingRoyalty, nftIds);
+
+        return (royaltyTotal + inputAmountExcludingRoyalty);
     }
 
     /**

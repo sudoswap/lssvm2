@@ -127,7 +127,7 @@ abstract contract RouterRobustSwapWithAssetRecipient is Test, ERC721Holder, Conf
     // Swapping tokens to a specific NFT with sellPair2 works, but fails silently on sellPair1 if slippage is too tight
     function test_robustSwapTokenForSpecificNFTs() public {
         uint256 sellPair1Price;
-        (,,, sellPair1Price,) = sellPair2.getBuyNFTQuote(1);
+        (,,, sellPair1Price,,) = sellPair2.getBuyNFTQuote(1, 1);
         LSSVMRouter.RobustPairSwapSpecific[] memory swapList = new LSSVMRouter.RobustPairSwapSpecific[](2);
         uint256[] memory nftIds1 = new uint256[](1);
         nftIds1[0] = 1;

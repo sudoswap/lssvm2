@@ -233,7 +233,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 
         // Get current price to buy from pair
-        (CurveErrorCodes.Error error,,, uint256 priceToBuyFromPair,) = pair.getBuyNFTQuote(1);
+        (CurveErrorCodes.Error error,,, uint256 priceToBuyFromPair,,) = pair.getBuyNFTQuote(assetId, 1);
         if (error != CurveErrorCodes.Error.OK) {
             revert StandardSettings__BondingCurveError(error);
         }

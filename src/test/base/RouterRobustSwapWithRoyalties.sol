@@ -141,14 +141,11 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         nftIds3[0] = 20;
         nftIds3[1] = 21;
 
-        (,,, uint256 pair1InputAmount, uint256 pair1ProtocolFee) = pair1.getBuyNFTQuote(2);
-        (,,, uint256 pair2InputAmount, uint256 pair2ProtocolFee) = pair2.getBuyNFTQuote(2);
+        (,,, uint256 pair1InputAmount,, uint256 royaltyAmount1) = pair1.getBuyNFTQuote(nftIds1[0], 2);
+        (,,, uint256 pair2InputAmount,, uint256 royaltyAmount2) = pair2.getBuyNFTQuote(nftIds2[0], 2);
 
         // calculate royalty and add it to the input amount
-        uint256 royaltyAmount = calcRoyalty(pair1InputAmount - pair1ProtocolFee);
-        totalRoyaltyAmount += royaltyAmount;
-        royaltyAmount = calcRoyalty(pair2InputAmount - pair2ProtocolFee);
-        totalRoyaltyAmount += royaltyAmount;
+        totalRoyaltyAmount = royaltyAmount1 + royaltyAmount2;
 
         LSSVMRouter.RobustPairSwapSpecific[] memory swapList = new LSSVMRouter.RobustPairSwapSpecific[](3);
         swapList[0] = LSSVMRouter.RobustPairSwapSpecific({
@@ -284,7 +281,7 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         assertEq(test721.ownerOf(32), address(this));
         assertEq(test721.ownerOf(33), address(this));
 
-        (,,, uint256 pair1InputAmount, uint256 pair1ProtocolFee) = pair1.getBuyNFTQuote(2);
+        (,,, uint256 pair1InputAmount,, uint256 royaltyAmount1) = pair1.getBuyNFTQuote(0, 2);
 
         uint256[] memory nftIds1 = new uint256[](2);
         nftIds1[0] = 0;
@@ -312,8 +309,7 @@ abstract contract RouterRobustSwapWithRoyalties is Test, ERC721Holder, Configura
         });
 
         // calculate royalty and modify input and output amounts
-        uint256 royaltyAmount = calcRoyalty(pair1InputAmount - pair1ProtocolFee);
-        totalRoyaltyAmount += royaltyAmount;
+        totalRoyaltyAmount += royaltyAmount1;
         totalRoyaltyAmount += royaltyAmount2;
 
         // Do the swap
