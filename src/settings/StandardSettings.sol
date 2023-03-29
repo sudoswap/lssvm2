@@ -233,17 +233,21 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 
         // Get current price to buy from pair
-        (,,, uint256 priceToBuyFromPair,) = pair.getBuyNFTQuote(1);
+        (CurveErrorCodes.Error error,,, uint256 priceToBuyFromPair,) = pair.getBuyNFTQuote(1);
+        if (error != CurveErrorCodes.Error.OK) {
+            revert StandardSettings__BondingCurveError(error);
+        }
 
         // Get new price to buy from pair
+        uint256 newPriceToBuyFromPair;
         (
-            CurveErrorCodes.Error error,
+            error,
             ,
             ,
             /* error */
             /* new spot price */
             /* new delta */
-            uint256 newPriceToBuyFromPair, /* trade fee */ /* protocol fee */
+            newPriceToBuyFromPair, /* trade fee */ /* protocol fee */
             ,
         ) = pair.bondingCurve().getBuyInfo(newSpotPrice, newDelta, 1, pair.fee(), pairFactory.protocolFeeMultiplier());
         if (error != CurveErrorCodes.Error.OK) {
@@ -265,7 +269,11 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         }
 
         // Get current price to buy from pair
-        (,,, uint256 priceToSellToPair,,) = pair.getSellNFTQuote(assetId, 1);
+        uint256 priceToSellToPair;
+        (error,,, priceToSellToPair,,) = pair.getSellNFTQuote(assetId, 1);
+        if (error != CurveErrorCodes.Error.OK) {
+            revert StandardSettings__BondingCurveError(error);
+        }
 
         // Get new price to sell to pair
         uint256 newPriceToSellToPair;

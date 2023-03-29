@@ -18,6 +18,8 @@ import {LSSVMPair} from "../../LSSVMPair.sol";
 import {IOwnable} from "../interfaces/IOwnable.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
+import {CurveErrorCodes} from "../../bonding-curves/CurveErrorCodes.sol";
+import {MockCurve} from "../../mocks/MockCurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {IERC1155Mintable} from "../interfaces/IERC1155Mintable.sol";
@@ -487,6 +489,86 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
 
         // Changing price up should fail because there is no more buy pressure
         newSettings.changeSpotPriceAndDelta(address(pair721), newSpotPrice, newDelta, 1);
+    }
+
+    function test_changeSpotPriceAndDeltaFailsWhenCurveErrorsOutOnBuy() public {
+
+        address payable settingsFeeRecipient = payable(address(123));
+        StandardSettings newSettings = settingsFactory.createSettings(settingsFeeRecipient, 0, 1, 2, 1000);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
+
+        // Deploy MockCurve
+        MockCurve mockCurve = new MockCurve();
+
+        // Whitelist mock curve on pair factory
+        factory.setBondingCurveAllowed(ICurve(address(mockCurve)), true);
+
+        // Set up error on buy
+        mockCurve.setBuyError(1);
+
+        // Deploy pair with mock curve
+        LSSVMPair pairWithMockCurve = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
+            factory,
+            test721,
+            ICurve(address(mockCurve)),
+            payable(address(0)), // asset recipient
+            LSSVMPair.PoolType.TRADE,
+            modifyDelta(uint64(delta)),
+            0, // 0% for trade fee
+            spotPrice,
+            new uint256[](0),
+            tokenAmount,
+            address(0)
+        );
+
+        // Opt into the settings 
+        pairWithMockCurve.transferOwnership(address(newSettings), "");
+
+        // Get new params for changing price to buy up
+        uint256 percentage = 1.01 * 1e18; // 1%
+        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pairWithMockCurve, percentage, true);
+        vm.expectRevert(abi.encodeWithSelector(StandardSettings.StandardSettings__BondingCurveError.selector, 1));
+        newSettings.changeSpotPriceAndDelta(address(pairWithMockCurve), newSpotPrice, newDelta, 1);
+    }
+
+    function test_changeSpotPriceAndDeltaFailsWhenCurveErrorsOutOnSell() public {
+
+        address payable settingsFeeRecipient = payable(address(123));
+        StandardSettings newSettings = settingsFactory.createSettings(settingsFeeRecipient, 0, 1, 2, 1000);
+        factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
+
+        // Deploy MockCurve
+        MockCurve mockCurve = new MockCurve();
+
+        // Whitelist mock curve on pair factory
+        factory.setBondingCurveAllowed(ICurve(address(mockCurve)), true);
+
+        // Set up error on sell
+        mockCurve.setSellError(1);
+
+        // Deploy pair with mock curve
+        LSSVMPair pairWithMockCurve = this.setupPairERC721{value: modifyInputAmount(tokenAmount)}(
+            factory,
+            test721,
+            ICurve(address(mockCurve)),
+            payable(address(0)), // asset recipient
+            LSSVMPair.PoolType.TRADE,
+            modifyDelta(uint64(delta)),
+            0, // 0% for trade fee
+            spotPrice,
+            new uint256[](0),
+            tokenAmount,
+            address(0)
+        );
+
+        // Opt into the settings 
+        pairWithMockCurve.transferOwnership(address(newSettings), "");
+
+        // Get new params for changing price to buy up
+        uint256 percentage = 1.01 * 1e18; // 1%
+        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pairWithMockCurve, percentage, true);
+        vm.expectRevert(abi.encodeWithSelector(StandardSettings.StandardSettings__BondingCurveError.selector, 1));
+        newSettings.changeSpotPriceAndDelta(address(pairWithMockCurve), newSpotPrice, newDelta, 1);
     }
 
     // Changing the price down fails (because there are no NFTs)
