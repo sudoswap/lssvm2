@@ -492,7 +492,6 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
     }
 
     function test_changeSpotPriceAndDeltaFailsWhenCurveErrorsOutOnBuy() public {
-
         address payable settingsFeeRecipient = payable(address(123));
         StandardSettings newSettings = settingsFactory.createSettings(settingsFeeRecipient, 0, 1, 2, 1000);
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
@@ -521,18 +520,18 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
             address(0)
         );
 
-        // Opt into the settings 
+        // Opt into the settings
         pairWithMockCurve.transferOwnership(address(newSettings), "");
 
         // Get new params for changing price to buy up
         uint256 percentage = 1.01 * 1e18; // 1%
-        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pairWithMockCurve, percentage, true);
+        (uint128 newSpotPrice, uint128 newDelta) =
+            this.getParamsForAdjustingPriceToBuy(pairWithMockCurve, percentage, true);
         vm.expectRevert(abi.encodeWithSelector(StandardSettings.StandardSettings__BondingCurveError.selector, 1));
         newSettings.changeSpotPriceAndDelta(address(pairWithMockCurve), newSpotPrice, newDelta, 1);
     }
 
     function test_changeSpotPriceAndDeltaFailsWhenCurveErrorsOutOnSell() public {
-
         address payable settingsFeeRecipient = payable(address(123));
         StandardSettings newSettings = settingsFactory.createSettings(settingsFeeRecipient, 0, 1, 2, 1000);
         factory.toggleSettingsForCollection(address(newSettings), address(test721), true);
@@ -561,12 +560,13 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
             address(0)
         );
 
-        // Opt into the settings 
+        // Opt into the settings
         pairWithMockCurve.transferOwnership(address(newSettings), "");
 
         // Get new params for changing price to buy up
         uint256 percentage = 1.01 * 1e18; // 1%
-        (uint128 newSpotPrice, uint128 newDelta) = this.getParamsForAdjustingPriceToBuy(pairWithMockCurve, percentage, true);
+        (uint128 newSpotPrice, uint128 newDelta) =
+            this.getParamsForAdjustingPriceToBuy(pairWithMockCurve, percentage, true);
         vm.expectRevert(abi.encodeWithSelector(StandardSettings.StandardSettings__BondingCurveError.selector, 1));
         newSettings.changeSpotPriceAndDelta(address(pairWithMockCurve), newSpotPrice, newDelta, 1);
     }

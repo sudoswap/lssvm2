@@ -26,6 +26,13 @@ jobs:
               with:
                   submodules: recursive
 
+            - uses: actions/setup-python@v4
+              with:
+                  python-version: '3.9'
+
+            - name: Install eth_abi
+              run: pip install eth_abi
+
             - name: Install Foundry
               uses: foundry-rs/foundry-toolchain@v1
               with:
@@ -39,17 +46,17 @@ jobs:
 
             - name: Run Forge tests
               run: |
-                  FOUNDRY_PROFILE=ci forge test -vvv
+                  FOUNDRY_PROFILE=ci forge test --ffi -vvv
               id: test
-            
+
             - name: Run Forge coverage
-              run: | 
+              run: |
                   forge coverage --report lcov
               id: coverage
 
             - name: Setup LCOV
               run: echo "Installing lcov"; sudo apt-get install lcov > /dev/null
-              
+
             - name: Clean LCOV
               run: |
                   lcov --remove lcov.info -o lcov.info 'src/mocks/*' 'src/test/*' 'src/testgen-scripts/*' 'src/lib/*' 'script/*'
@@ -57,4 +64,4 @@ jobs:
             - name: Upload coverage reports to Codecov
               uses: codecov/codecov-action@v3.1.1
               with:
-                   token: ${{ secrets.CODECOV_TOKEN }}
+                  token: ${{ secrets.CODECOV_TOKEN }}

@@ -6,8 +6,14 @@ remappings = [
   "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
   "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
   "create3-factory/=lib/create3-factory/src/",
+  "solmate/=lib/solmate/src/",
+  "@prb/math/=lib/prb-math/src/",
+  "clones-with-immutable-args/=lib/clones-with-immutable-args/src/",
+  "ds-test/=lib/clones-with-immutable-args/lib/ds-test/src/",
+  "forge-std/=lib/forge-std/src/",
 ]
 verbosity = 1
+auto_detect_remappings = false
 
 # Extreme Fuzzing CI Profile :P
 [profile.ci]
