@@ -79,10 +79,10 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      *  Events
      */
 
-    event SwapNFTInPair(uint256 amountIn, uint256[] ids);
-    event SwapNFTInPair(uint256 amountIn, uint256 numNFTs);
-    event SwapNFTOutPair(uint256 amountOut, uint256[] ids);
-    event SwapNFTOutPair(uint256 amountOut, uint256 numNFTs);
+    event SwapNFTInPair(uint256 amountOut, uint256[] ids);
+    event SwapNFTInPair(uint256 amountOut, uint256 numNFTs);
+    event SwapNFTOutPair(uint256 amountIn, uint256[] ids);
+    event SwapNFTOutPair(uint256 amountIn, uint256 numNFTs);
     event SpotPriceUpdate(uint128 newSpotPrice);
     event TokenDeposit(uint256 amount);
     event TokenWithdrawal(uint256 amount);
