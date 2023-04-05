@@ -10,7 +10,7 @@ import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 
 /**
  * @title An ERC1155 pair where the token is an ERC20
- *     @author boredGenius and 0xmons
+ *     @author boredGenius, 0xmons, 0xCygaar
  */
 contract LSSVMPairERC1155ERC20 is LSSVMPairERC1155, LSSVMPairERC20 {
     uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 113;

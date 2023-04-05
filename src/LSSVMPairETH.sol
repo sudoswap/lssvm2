@@ -9,7 +9,7 @@ import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 
 /**
  * @title An NFT/Token pair where the token is ETH
- *     @author boredGenius and 0xmons
+ *     @author boredGenius, 0xmons, 0xCygaar
  */
 abstract contract LSSVMPairETH is LSSVMPair {
     using SafeTransferLib for address payable;

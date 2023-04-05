@@ -12,7 +12,7 @@ import {ICurve} from "../bonding-curves/ICurve.sol";
 import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 
 /// @title LSSVMPairERC1155
-/// @author boredGenius and 0xmons
+/// @author boredGenius, 0xmons, 0xCygaar
 /// @notice An NFT/Token pair for an ERC1155 NFT where NFTs with the same ID are considered fungible.
 abstract contract LSSVMPairERC1155 is LSSVMPair {
     /**

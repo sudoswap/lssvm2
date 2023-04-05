@@ -19,7 +19,7 @@ import {IOwnershipTransferReceiver} from "./lib/IOwnershipTransferReceiver.sol";
 import {OwnableWithTransferCallback} from "./lib/OwnableWithTransferCallback.sol";
 
 /// @title The base contract for an NFT/TOKEN AMM pair
-/// @author boredGenius and 0xmons
+/// @author boredGenius, 0xmons, 0xCygaar
 /// @notice This implements the core swap logic from NFT to TOKEN
 abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC1155Holder {
     /**

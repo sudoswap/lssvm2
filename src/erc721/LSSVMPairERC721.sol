@@ -14,7 +14,7 @@ import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 import {IPropertyChecker} from "../property-checking/IPropertyChecker.sol";
 
 /// @title LSSVMPairERC721
-/// @author boredGenius and 0xmons
+/// @author boredGenius, 0xmons, 0xCygaar
 /// @notice An NFT/Token pair for an ERC721 NFT
 abstract contract LSSVMPairERC721 is LSSVMPair {
     error LSSVMPairERC721__PropertyCheckFailed();

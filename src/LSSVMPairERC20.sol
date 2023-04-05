@@ -9,7 +9,7 @@ import {LSSVMRouter} from "./LSSVMRouter.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 /**
  * @title An NFT/Token pair where the token is an ERC20
- *     @author boredGenius and 0xmons
+ *     @author boredGenius, 0xmons, 0xCygaar
  */
 
 abstract contract LSSVMPairERC20 is LSSVMPair {
