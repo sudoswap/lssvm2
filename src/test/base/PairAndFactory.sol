@@ -15,6 +15,7 @@ import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155
 import {Test20} from "../../mocks/Test20.sol";
 import {LSSVMPair} from "../../LSSVMPair.sol";
 import {Test721} from "../../mocks/Test721.sol";
+import {MockSettings} from "../../mocks/MockSettings.sol";
 import {LSSVMRouter} from "../../LSSVMRouter.sol";
 import {Test1155} from "../../mocks/Test1155.sol";
 import {Test2981} from "../../mocks/Test2981.sol";
@@ -589,6 +590,21 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         pair1155.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             nftIds, inputAmount, address(this), false, address(0)
         );
+    }
+
+    function test_calculateRoyaltiesInvalidSettings() public {
+        Test2981 test2981 = new Test2981(ROYALTY_RECEIVER, 100);
+        RoyaltyRegistry(royaltyEngine.ROYALTY_REGISTRY()).setRoyaltyLookupAddress(address(test721), address(test2981));
+
+        MockSettings mockSettings = new MockSettings();
+        factory.toggleSettingsForCollection(address(mockSettings), address(test721), true);
+        factory.enableSettingsForPair(address(mockSettings), address(pair));
+
+        // Make sure that invalid settings don't cause a revert
+        (address payable[] memory royaltyRecipients,, uint256 royaltyTotal) = pair.calculateRoyaltiesView(1, 1 ether);
+
+        assertEq(royaltyTotal, 0.01 ether);
+        assertEq(royaltyRecipients[0], ROYALTY_RECEIVER);
     }
 
     function test_brokenRegistryDoesNotBreakSwaps_ERC721() public {

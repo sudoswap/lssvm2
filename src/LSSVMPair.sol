@@ -519,16 +519,21 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
 
         if (numRecipients != 0) {
             // If a pair has custom Settings, use the overridden royalty amount and only use the first receiver
-            (bool settingsEnabled, uint96 bps) = factory().getSettingsForPair(address(this));
-            if (settingsEnabled) {
-                royaltyRecipients = new address payable[](1);
-                royaltyRecipients[0] = recipients[0];
-                royaltyAmounts = new uint256[](1);
-                royaltyAmounts[0] = (saleAmount * bps) / 10000;
+            try factory().getSettingsForPair(address(this)) returns (bool settingsEnabled, uint96 bps) {
+                if (settingsEnabled) {
+                    royaltyRecipients = new address payable[](1);
+                    royaltyRecipients[0] = recipients[0];
+                    royaltyAmounts = new uint256[](1);
+                    royaltyAmounts[0] = (saleAmount * bps) / 10000;
 
-                // update numRecipients to match new recipients list
-                numRecipients = 1;
-            } else {
+                    // update numRecipients to match new recipients list
+                    numRecipients = 1;
+                } else {
+                    royaltyRecipients = recipients;
+                    royaltyAmounts = amounts;
+                }
+            } catch {
+                // Use the input values to calculate royalties if factory call fails
                 royaltyRecipients = recipients;
                 royaltyAmounts = amounts;
             }
