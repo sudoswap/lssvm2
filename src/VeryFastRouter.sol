@@ -13,6 +13,7 @@ import {ILSSVMPairERC721} from "./erc721/ILSSVMPairERC721.sol";
 import {LSSVMPairERC1155} from "./erc1155/LSSVMPairERC1155.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
+import {ICurve} from "./bonding-curves/ICurve.sol";
 
 /**
  * @dev Full-featured router to handle all swap types, with partial fill support
@@ -513,7 +514,8 @@ contract VeryFastRouter {
 
         // Cache current pair values
         uint128 delta = pair.delta();
-        uint256 feeMultiplier = pair.fee();
+
+        uint256 feeMultiplierAndBondingCurve = uint96(pair.fee()) << 160 | uint160(address(pair.bondingCurve()));
 
         // Perform binary search
         while (start <= end) {
@@ -530,8 +532,8 @@ contract VeryFastRouter {
                 /* tradeFee */
                 ,
                 /* protocolFee */
-            ) = pair.bondingCurve().getBuyInfo(
-                spotPrice, delta, (start + end) / 2, feeMultiplier, protocolFeeMultiplier
+            ) = (ICurve(address(uint160(feeMultiplierAndBondingCurve)))).getBuyInfo(
+                spotPrice, delta, (start + end) / 2, (feeMultiplierAndBondingCurve >> 160), protocolFeeMultiplier
             );
 
             currentCost += currentCost * royaltyAmount / BASE;
