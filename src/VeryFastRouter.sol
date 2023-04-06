@@ -567,13 +567,19 @@ contract VeryFastRouter {
         uint256 end = minOutputPerNumNFTs.length;
 
         // Cache current pair values
-        uint256 deltaAndFeeMultiplier;
+        uint256 deltaAndPairTokenBalance;
+        uint256 feeMultiplierAndBondingCurve;
         {
             uint128 delta = pair.delta();
-            uint96 feeMultiplier = pair.fee();
-            deltaAndFeeMultiplier = uint256(delta) << 96 | feeMultiplier;
+            uint128 pairTokenBalance = uint128(getPairBaseQuoteTokenBalance(pair));
+            deltaAndPairTokenBalance = uint256(delta) << 128 | pairTokenBalance;
         }
-        uint256 pairTokenBalance = getPairBaseQuoteTokenBalance(pair);
+        {
+            uint256 feeMultiplier = uint96(pair.fee());
+            address bondingCurve = address(pair.bondingCurve());
+            feeMultiplierAndBondingCurve = feeMultiplier << 160 | uint160(bondingCurve);
+        }
+        
 
         // Perform binary search
         while (start <= end) {
@@ -588,13 +594,13 @@ contract VeryFastRouter {
                 /* tradeFee */
                 ,
                 /* protocolFee */
-            ) = pair.bondingCurve().getSellInfo(
+            ) = (ICurve(address(uint160(feeMultiplierAndBondingCurve)))).getSellInfo(
                 spotPrice,
-                // get delta from deltaAndFeeMultiplier
-                uint128(deltaAndFeeMultiplier >> 96),
+                // get delta from deltaAndPairTokenBalance
+                uint128(deltaAndPairTokenBalance >> 128),
                 (start + end) / 2,
-                // get feeMultiplier from deltaAndFeeMultiplier
-                uint96(deltaAndFeeMultiplier),
+                // get feeMultiplier from feeMultiplierAndBondingCurve
+                uint96(feeMultiplierAndBondingCurve >> 160),
                 protocolFeeMultiplier
             );
             currentOutput -= currentOutput * royaltyAmount / BASE;
@@ -604,7 +610,7 @@ contract VeryFastRouter {
             // then we recurse on the left half (i.e. less items)
             if (
                 error != CurveErrorCodes.Error.OK || currentOutput < minOutputPerNumNFTs[(start + end) / 2 - 1] /* this is the max cost we are willing to pay, zero-indexed */
-                    || currentOutput > pairTokenBalance
+                    || currentOutput > (uint256(uint128(deltaAndPairTokenBalance)))
             ) {
                 end = (start + end) / 2 - 1;
             }
