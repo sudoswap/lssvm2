@@ -70,8 +70,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     address private constant _NOT_ENTERED = address(1);
     address private _caller;
 
-    event NewERC721Pair(address indexed poolAddress);
-    event NewERC1155Pair(address indexed poolAddress);
+    event NewERC721Pair(address indexed poolAddress, uint256[] initialIds);
+    event NewERC1155Pair(address indexed poolAddress, uint256 initialBalance);
     event ERC20Deposit(address indexed poolAddress, uint256 amount);
     event NFTDeposit(address indexed poolAddress, uint256[] ids);
     event ERC1155Deposit(address indexed poolAddress, uint256 indexed id, uint256 amount);
@@ -152,7 +152,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         );
 
         _initializePairERC721ETH(pair, _nft, _assetRecipient, _delta, _fee, _spotPrice, _initialNFTIDs);
-        emit NewERC721Pair(address(pair));
+        emit NewERC721Pair(address(pair), _initialNFTIDs);
     }
 
     /**
@@ -212,7 +212,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             params.initialNFTIDs,
             params.initialTokenBalance
         );
-        emit NewERC721Pair(address(pair));
+        emit NewERC721Pair(address(pair), params.initialNFTIDs);
     }
     /**
      * @notice Creates a pair contract using EIP-1167.
@@ -251,7 +251,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         );
 
         _initializePairERC1155ETH(pair, _nft, _assetRecipient, _delta, _fee, _spotPrice, _nftId, _initialNFTBalance);
-        emit NewERC1155Pair(address(pair));
+        emit NewERC1155Pair(address(pair), _initialNFTBalance);
     }
 
     /**
@@ -311,7 +311,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             params.initialNFTBalance,
             params.initialTokenBalance
         );
-        emit NewERC1155Pair(address(pair));
+        emit NewERC1155Pair(address(pair), params.initialNFTBalance);
     }
 
     function isValidPair(address pairAddress) public view returns (bool) {
