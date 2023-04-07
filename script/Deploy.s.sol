@@ -51,13 +51,12 @@ contract DeployScript is CREATE3Script {
 
         require(ERC165Checker.supportsInterface(royaltyRegistry, type(IRoyaltyRegistry).interfaceId));
 
-        // royaltyEngine = RoyaltyEngine(
-        //     create3.deploy(
-        //         getCreate3ContractSalt("RoyaltyEngine"),
-        //         bytes.concat(type(RoyaltyEngine).creationCode, abi.encode(royaltyRegistry))
-        //     )
-        // );
-        royaltyEngine = RoyaltyEngine(address(0x13FAF01b9027FAe4572Ef1D3f848597174c7f3F1));
+        royaltyEngine = RoyaltyEngine(
+            create3.deploy(
+                getCreate3ContractSalt("RoyaltyEngine"),
+                bytes.concat(type(RoyaltyEngine).creationCode, abi.encode(royaltyRegistry))
+            )
+        );
 
         // deploy factory
         bytes memory factoryConstructorArgs;
@@ -111,14 +110,11 @@ contract DeployScript is CREATE3Script {
         );
 
         // deploy bonding curves
-        // linearCurve = LinearCurve(create3.deploy(getCreate3ContractSalt("LinearCurve"), type(LinearCurve).creationCode));
-        // exponentialCurve = ExponentialCurve(
-        //     create3.deploy(getCreate3ContractSalt("ExponentialCurve"), type(ExponentialCurve).creationCode)
-        // );
-        // xykCurve = XykCurve(create3.deploy(getCreate3ContractSalt("XykCurve"), type(XykCurve).creationCode));
-        linearCurve = LinearCurve(address(0x2b876A902fe11fb6fAD01DF3ee122B9b784c9A84));
-        exponentialCurve = ExponentialCurve(address(0xcEFfc28d19878917fC933A2b4688f24810AF6F65));
-        xykCurve = XykCurve(address(0xcEc01d4e17c349c494F1acda4E411532E46F9196));
+        linearCurve = LinearCurve(create3.deploy(getCreate3ContractSalt("LinearCurve"), type(LinearCurve).creationCode));
+        exponentialCurve = ExponentialCurve(
+            create3.deploy(getCreate3ContractSalt("ExponentialCurve"), type(ExponentialCurve).creationCode)
+        );
+        xykCurve = XykCurve(create3.deploy(getCreate3ContractSalt("XykCurve"), type(XykCurve).creationCode));
         gdaCurve = GDACurve(create3.deploy(getCreate3ContractSalt("GDACurve"), type(GDACurve).creationCode));
 
         // whitelist bonding curves
