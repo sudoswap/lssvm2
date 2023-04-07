@@ -254,7 +254,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
                 // If more than 1 NFT is being transfered, and there is no property checker, we can do a balance check instead of an ownership check, as pools are indifferent between NFTs from the same collection
                 if ((numNFTs > 1) && (propertyChecker() == address(0))) {
                     uint256 beforeBalance = _nft.balanceOf(_assetRecipient);
-                    for (uint256 i = 0; i < numNFTs;) {
+                    for (uint256 i; i < numNFTs;) {
                         router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i]);
 
                         unchecked {
