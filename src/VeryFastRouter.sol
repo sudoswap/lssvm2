@@ -22,7 +22,11 @@ contract VeryFastRouter {
     using SafeTransferLib for address payable;
     using SafeTransferLib for ERC20;
 
-    uint256 constant BASE = 1e18;
+    uint256 private constant BASE = 1e18;
+
+    // Bit shift amounts for _findMaxFillableAmtForBuy and _findMaxFillableAmtForSell
+    uint256 private constant FEE_MULTIPLIER_SHIFT_AMOUNT = 160;
+    uint256 private constant DELTA_SHIFT_AMOUNT = 128;
 
     ILSSVMPairFactoryLike public immutable factory;
 
@@ -515,7 +519,7 @@ contract VeryFastRouter {
         // Cache current pair values
         uint128 delta = pair.delta();
 
-        uint256 feeMultiplierAndBondingCurve = uint96(pair.fee()) << 160 | uint160(address(pair.bondingCurve()));
+        uint256 feeMultiplierAndBondingCurve = uint96(pair.fee()) << FEE_MULTIPLIER_SHIFT_AMOUNT | uint160(address(pair.bondingCurve()));
 
         // Perform binary search
         while (start <= end) {
@@ -533,7 +537,7 @@ contract VeryFastRouter {
                 ,
                 /* protocolFee */
             ) = (ICurve(address(uint160(feeMultiplierAndBondingCurve)))).getBuyInfo(
-                spotPrice, delta, (start + end) / 2, (feeMultiplierAndBondingCurve >> 160), protocolFeeMultiplier
+                spotPrice, delta, (start + end) / 2, (feeMultiplierAndBondingCurve >> FEE_MULTIPLIER_SHIFT_AMOUNT), protocolFeeMultiplier
             );
 
             currentCost += currentCost * royaltyAmount / BASE;
@@ -572,12 +576,12 @@ contract VeryFastRouter {
         {
             uint128 delta = pair.delta();
             uint128 pairTokenBalance = uint128(getPairBaseQuoteTokenBalance(pair));
-            deltaAndPairTokenBalance = uint256(delta) << 128 | pairTokenBalance;
+            deltaAndPairTokenBalance = uint256(delta) << DELTA_SHIFT_AMOUNT | pairTokenBalance;
         }
         {
             uint256 feeMultiplier = uint96(pair.fee());
             address bondingCurve = address(pair.bondingCurve());
-            feeMultiplierAndBondingCurve = feeMultiplier << 160 | uint160(bondingCurve);
+            feeMultiplierAndBondingCurve = feeMultiplier << FEE_MULTIPLIER_SHIFT_AMOUNT | uint160(bondingCurve);
         }
         
 
@@ -597,10 +601,10 @@ contract VeryFastRouter {
             ) = (ICurve(address(uint160(feeMultiplierAndBondingCurve)))).getSellInfo(
                 spotPrice,
                 // get delta from deltaAndPairTokenBalance
-                uint128(deltaAndPairTokenBalance >> 128),
+                uint128(deltaAndPairTokenBalance >> DELTA_SHIFT_AMOUNT),
                 (start + end) / 2,
                 // get feeMultiplier from feeMultiplierAndBondingCurve
-                uint96(feeMultiplierAndBondingCurve >> 160),
+                uint96(feeMultiplierAndBondingCurve >> FEE_MULTIPLIER_SHIFT_AMOUNT),
                 protocolFeeMultiplier
             );
             currentOutput -= currentOutput * royaltyAmount / BASE;
