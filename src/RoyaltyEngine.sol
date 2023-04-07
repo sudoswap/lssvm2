@@ -78,7 +78,7 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
         public
     {
         uint256 numTokens = tokenAddresses.length;
-        for (uint256 i = 0; i < numTokens;) {
+        for (uint256 i; i < numTokens;) {
             // Invalidate cached value
             address royaltyAddress = _getRoyaltyLookupAddress(tokenAddresses[i]);
             delete _specCache[royaltyAddress];
@@ -179,7 +179,7 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
                 recipients = new address payable[](royalties.length);
                 amounts = new uint256[](royalties.length);
                 uint256 totalAmount;
-                for (uint256 i = 0; i < royalties.length;) {
+                for (uint256 i; i < royalties.length;) {
                     recipients[i] = royalties[i].account;
                     amounts[i] = value * royalties[i].value / 10000;
                     totalAmount += amounts[i];
@@ -261,7 +261,7 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
                 recipients = new address payable[](royalties.length);
                 amounts = new uint256[](royalties.length);
                 uint256 totalAmount;
-                for (uint256 i = 0; i < royalties.length;) {
+                for (uint256 i; i < royalties.length;) {
                     recipients[i] = royalties[i].account;
                     amounts[i] = value * royalties[i].value / 10000;
                     totalAmount += amounts[i];
@@ -333,7 +333,7 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
         uint256 numBps = bps.length;
         amounts = new uint256[](numBps);
         uint256 totalAmount;
-        for (uint256 i = 0; i < numBps;) {
+        for (uint256 i; i < numBps;) {
             amounts[i] = value * bps[i] / 10000;
             totalAmount += amounts[i];
             unchecked {
@@ -346,7 +346,7 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
     function _checkAmountsDoesNotExceedValue(uint256 saleAmount, uint256[] memory royalties) private pure {
         uint256 numRoyalties = royalties.length;
         uint256 totalRoyalties;
-        for (uint256 i = 0; i < numRoyalties;) {
+        for (uint256 i; i < numRoyalties;) {
             totalRoyalties += royalties[i];
             unchecked {
                 ++i;

@@ -127,7 +127,7 @@ contract VeryFastRouter {
         }
         // Scale up by slippage amount
         if (slippageScaling != 0) {
-            for (uint256 i = 0; i < prices.length;) {
+            for (uint256 i; i < prices.length;) {
                 prices[i] = prices[i] + (prices[i] * slippageScaling / 1e18);
 
                 unchecked {
@@ -219,7 +219,7 @@ contract VeryFastRouter {
         }
         // Scale down by slippage amount
         if (slippageScaling != 0) {
-            for (uint256 i = 0; i < outputAmounts.length;) {
+            for (uint256 i; i < outputAmounts.length;) {
                 outputAmounts[i] = outputAmounts[i] - (outputAmounts[i] * slippageScaling / 1e18);
 
                 unchecked {
@@ -641,7 +641,7 @@ contract VeryFastRouter {
     {
         IERC721 nft = IERC721(pair.nft());
         uint256[] memory idsThatExist = new uint256[](maxIdsNeeded);
-        uint256 numIdsFound = 0;
+        uint256 numIdsFound;
 
         // Go through each potential ID, and check to see if it's still owned by the pair
         // If it is, record the ID
