@@ -133,6 +133,26 @@ contract GDACurveTest is Test {
         }
     }
 
+    function testGasBuyInfo() public {
+        uint48 t0 = 5;
+        uint48 t1 = 10;
+        vm.warp(t1);
+
+        uint128 delta = getPackedDelta(t0);
+        uint128 numItemsAlreadyPurchased = 1;
+        uint128 initialPrice = 10 ether;
+        uint128 adjustedSpotPrice;
+        {
+            UD60x18 alphaPowM = ud(alpha).powu(numItemsAlreadyPurchased);
+            adjustedSpotPrice = uint128(unwrap(ud(initialPrice).mul(alphaPowM)));
+        }
+
+        uint128 numItemsToBuy = 5;
+        uint256 gasLeft = gasleft();
+        curve.getBuyInfo(adjustedSpotPrice, delta, numItemsToBuy, 0, 0);
+        assertTrue(gasLeft - gasleft() < 14000);
+    }
+
     function test_getBuyInfoWithFees() public {
         uint48 t0 = 5;
         uint48 t1 = 10;
@@ -354,6 +374,26 @@ contract GDACurveTest is Test {
             );
             assertApproxEqRel(tradeFee, unwrap(ud(rawOutputValue).mul(ud(feeMultiplier))), 1e9, "Trade fee incorrect");
         }
+    }
+
+    function testGasSellInfo() public {
+        uint48 t0 = 5;
+        uint48 t1 = 10;
+        vm.warp(t1);
+
+        uint128 delta = getPackedDelta(t0);
+        uint128 numItemsAlreadySold = 2;
+        uint128 initialPrice = 1 ether;
+        uint128 adjustedSpotPrice;
+        {
+            UD60x18 alphaPowM = ud(alpha).powu(numItemsAlreadySold);
+            adjustedSpotPrice = uint128(unwrap(ud(initialPrice).div(alphaPowM)));
+        }
+
+        uint128 numItemsToSell = 1;
+        uint256 gasLeft = gasleft();
+        curve.getSellInfo(adjustedSpotPrice, delta, numItemsToSell, 0, 0);
+        assertTrue(gasLeft - gasleft() < 14000);
     }
 
     function test_getSellInfoTimeBoostTooLarge() public {

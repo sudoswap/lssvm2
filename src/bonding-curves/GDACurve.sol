@@ -95,10 +95,7 @@ contract GDACurve is ICurve, CurveErrorCodes {
         // This is equal to buySpotPrice * (alpha^n - 1) / (alpha - 1).
         // We then divide the value by scalar^(lambda * timeElapsed) to factor in the exponential decay.
         {
-            UD60x18 inputValue_;
-            inputValue_ = spotPrice_.mul(alphaPowN.sub(UNIT));
-            inputValue_ = inputValue_.div(alpha.sub(UNIT));
-            inputValue_ = inputValue_.div(decayFactor);
+            UD60x18 inputValue_ = spotPrice_.mul(alphaPowN.sub(UNIT)).div(alpha.sub(UNIT)).div(decayFactor);
 
             // Account for the protocol fee, a flat percentage of the buy amount
             protocolFee = unwrap(inputValue_.mul(ud(protocolFeeMultiplier)));
@@ -184,12 +181,8 @@ contract GDACurve is ICurve, CurveErrorCodes {
         // and q is the number of items to sell.
         // Our spot price implicity embeds the number of items already purchased and the previous time boost, so we just need to
         // do some simple adjustments to get the current scalar^(lambda * t) and alpha^(m + q - 1) values.
-        UD60x18 outputValue_;
-        {
-            outputValue_ = spotPrice_.mul(boostFactor).div(alphaPowN.div(alpha));
-            outputValue_ = outputValue_.mul(alphaPowN.sub(UNIT));
-            outputValue_ = outputValue_.div(alpha.sub(UNIT));
-        }
+        UD60x18 outputValue_ =
+            spotPrice_.mul(boostFactor).div(alphaPowN.div(alpha)).mul(alphaPowN.sub(UNIT)).div(alpha.sub(UNIT));
 
         // Account for the protocol fee, a flat percentage of the sell amount
         protocolFee = unwrap(outputValue_.mul(ud(protocolFeeMultiplier)));

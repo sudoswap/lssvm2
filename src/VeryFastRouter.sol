@@ -519,7 +519,8 @@ contract VeryFastRouter {
         // Cache current pair values
         uint128 delta = pair.delta();
 
-        uint256 feeMultiplierAndBondingCurve = uint96(pair.fee()) << FEE_MULTIPLIER_SHIFT_AMOUNT | uint160(address(pair.bondingCurve()));
+        uint256 feeMultiplierAndBondingCurve =
+            uint96(pair.fee()) << FEE_MULTIPLIER_SHIFT_AMOUNT | uint160(address(pair.bondingCurve()));
 
         // Perform binary search
         while (start <= end) {
@@ -537,7 +538,11 @@ contract VeryFastRouter {
                 ,
                 /* protocolFee */
             ) = (ICurve(address(uint160(feeMultiplierAndBondingCurve)))).getBuyInfo(
-                spotPrice, delta, (start + end) / 2, (feeMultiplierAndBondingCurve >> FEE_MULTIPLIER_SHIFT_AMOUNT), protocolFeeMultiplier
+                spotPrice,
+                delta,
+                (start + end) / 2,
+                (feeMultiplierAndBondingCurve >> FEE_MULTIPLIER_SHIFT_AMOUNT),
+                protocolFeeMultiplier
             );
 
             currentCost += currentCost * royaltyAmount / BASE;
@@ -583,7 +588,6 @@ contract VeryFastRouter {
             address bondingCurve = address(pair.bondingCurve());
             feeMultiplierAndBondingCurve = feeMultiplier << FEE_MULTIPLIER_SHIFT_AMOUNT | uint160(bondingCurve);
         }
-        
 
         // Perform binary search
         while (start <= end) {
