@@ -33,8 +33,8 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
 
     error StandardSettings__BondingCurveError(CurveErrorCodes.Error error);
 
-    event SettingsAddedForPair(address indexed pairAddress);
-    event SettingsRemovedForPair(address indexed pairAddress);
+    event StandardSettings__PairAddedSettings(address indexed pairAddress);
+    event StandardSettings__PairRemovedSettings(address indexed pairAddress);
 
     constructor(Splitter _splitterImplementation, ILSSVMPairFactoryLike _pairFactory) {
         splitterImplementation = _splitterImplementation;
@@ -160,7 +160,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         // Set the asset (i.e. fee) recipient to be the splitter clone
         ILSSVMPair(msg.sender).changeAssetRecipient(payable(splitterAddress));
 
-        emit SettingsAddedForPair(msg.sender);
+        emit StandardSettings__PairAddedSettings(msg.sender);
     }
 
     /**
@@ -200,7 +200,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         // Remove pairInfo entry
         delete pairInfos[pairAddress];
 
-        emit SettingsRemovedForPair(pairAddress);
+        emit StandardSettings__PairRemovedSettings(pairAddress);
     }
 
     /**
@@ -209,9 +209,8 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
      * @param newFee The new fee to set the pair to, subject to MAX_FEE or less
      */
     function changeFee(address pairAddress, uint96 newFee) public {
-        PairInfo memory pairInfo = pairInfos[pairAddress];
         // Verify that the caller is the previous owner of the pair
-        require(msg.sender == pairInfo.prevOwner, "Not prev owner");
+        require(msg.sender == pairInfos[pairAddress].prevOwner, "Not prev owner");
         require(newFee <= MAX_SETTABLE_FEE, "Fee too high");
         ILSSVMPair(pairAddress).changeFee(newFee);
     }
@@ -225,10 +224,8 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
     function changeSpotPriceAndDelta(address pairAddress, uint128 newSpotPrice, uint128 newDelta, uint256 assetId)
         public
     {
-        PairInfo memory pairInfo = pairInfos[pairAddress];
-
         // Verify that the caller is the previous owner of the pair
-        require(msg.sender == pairInfo.prevOwner, "Not prev owner");
+        require(msg.sender == pairInfos[pairAddress].prevOwner, "Not prev owner");
 
         ILSSVMPair pair = ILSSVMPair(pairAddress);
 
@@ -262,7 +259,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
         }
 
         // If the price to buy is now lower (i.e. NFTs are now cheaper), and there is at least 1 NFT in pair, then make the change
-        if ((newPriceToBuyFromPair < priceToBuyFromPair) && nftBalance >= 1) {
+        if ((newPriceToBuyFromPair < priceToBuyFromPair) && nftBalance > 0) {
             pair.changeSpotPrice(newSpotPrice);
             pair.changeDelta(newDelta);
             return;

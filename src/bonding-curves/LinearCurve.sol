@@ -80,10 +80,9 @@ contract LinearCurve is ICurve, CurveErrorCodes {
 
         // Account for the trade fee, only for Trade pools
         tradeFee = inputValue.mulWadDown(feeMultiplier);
-        inputValue += tradeFee;
 
-        // Add the protocol fee to the required input amount
-        inputValue += protocolFee;
+        // Add the protocol and trade fees to the required input amount
+        inputValue += tradeFee + protocolFee;
 
         // Keep delta the same
         newDelta = delta;
@@ -122,11 +121,8 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         // We first calculate the change in spot price after selling all of the items
         uint256 totalPriceDecrease = delta * numItems;
 
-        // If the current spot price is less than the total amount that the spot price should change by...
+        // If the current spot price is less than the total price decrease, we keep the newSpotPrice at 0
         if (spotPrice < totalPriceDecrease) {
-            // Then we set the new spot price to be 0. (Spot price is never negative)
-            newSpotPrice = 0;
-
             // We calculate how many items we can sell into the linear curve until the spot price reaches 0, rounding up
             uint256 numItemsTillZeroPrice = spotPrice / delta + 1;
             numItems = numItemsTillZeroPrice;
@@ -148,10 +144,9 @@ contract LinearCurve is ICurve, CurveErrorCodes {
 
         // Account for the trade fee, only for Trade pools
         tradeFee = outputValue.mulWadDown(feeMultiplier);
-        outputValue -= tradeFee;
 
-        // Subtract the protocol fee from the output amount to the seller
-        outputValue -= protocolFee;
+        // Subtract the protocol and trade fees from the output amount to the seller
+        outputValue -= (tradeFee + protocolFee);
 
         // Keep delta the same
         newDelta = delta;

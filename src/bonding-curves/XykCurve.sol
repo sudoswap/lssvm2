@@ -57,7 +57,6 @@ contract XykCurve is ICurve, CurveErrorCodes {
         }
 
         // get the pair's virtual nft and token reserves
-        uint256 tokenBalance = spotPrice;
         uint256 nftBalance = delta;
 
         // If numItems is too large, we will get divide by zero error
@@ -65,8 +64,14 @@ contract XykCurve is ICurve, CurveErrorCodes {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
         }
 
-        // calculate the amount to send in
-        uint256 inputValueWithoutFee = (numItems * tokenBalance) / (nftBalance - numItems);
+        // Calculate new nft balance
+        uint256 newNftBalance;
+        unchecked {
+            newNftBalance = nftBalance - numItems;
+        }
+
+        // calculate the amount to send in. spotPrice is the virtual reserve.
+        uint256 inputValueWithoutFee = (numItems * spotPrice) / newNftBalance;
 
         // add the fees to the amount to send in
         protocolFee = inputValueWithoutFee.mulWadDown(protocolFeeMultiplier);
@@ -79,7 +84,8 @@ contract XykCurve is ICurve, CurveErrorCodes {
             return (Error.SPOT_PRICE_OVERFLOW, 0, 0, 0, 0, 0);
         }
         newSpotPrice = uint128(newSpotPrice_); // token reserve
-        newDelta = uint128(nftBalance - numItems); // nft reserve
+
+        newDelta = uint128(newNftBalance); // nft reserve
 
         // If we got all the way here, no math error happened
         error = Error.OK;

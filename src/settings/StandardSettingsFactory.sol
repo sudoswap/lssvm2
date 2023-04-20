@@ -9,6 +9,10 @@ contract StandardSettingsFactory {
 
     event NewSettings(address indexed settingsAddress);
 
+    error StandardSettingsFactory__RoyaltyTooHigh();
+    error StandardSettingsFactory__TradeFeeTooHigh();
+    error StandardSettingsFactory__LockDurationTooHigh();
+
     uint256 constant ONE_YEAR_SECS = 31_556_926;
     uint256 constant BASE = 10_000;
 
@@ -25,9 +29,10 @@ contract StandardSettingsFactory {
         uint64 feeSplitBps,
         uint64 royaltyBps
     ) public returns (StandardSettings settings) {
-        require(royaltyBps <= (BASE / 10), "Max 10% for modified royalty bps");
-        require(feeSplitBps <= BASE, "Max 100% for trade fee bps split");
-        require(secDuration <= ONE_YEAR_SECS, "Max lock duration 1 year");
+        if (royaltyBps > (BASE / 10)) revert StandardSettingsFactory__RoyaltyTooHigh();
+        if (feeSplitBps > BASE) revert StandardSettingsFactory__TradeFeeTooHigh();
+        if (secDuration > ONE_YEAR_SECS) revert StandardSettingsFactory__LockDurationTooHigh();
+
         bytes memory data = abi.encodePacked(ethCost, secDuration, feeSplitBps, royaltyBps);
         settings = StandardSettings(address(standardSettingsImplementation).clone(data));
         settings.initialize(msg.sender, settingsFeeRecipient);

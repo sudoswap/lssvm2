@@ -94,9 +94,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         bool isRouter,
         address routerCaller
     ) external virtual override returns (uint256 outputAmount) {
-        {
-            if (propertyChecker() != address(0)) revert LSSVMPairERC721__NeedPropertyChecking();
-        }
+        if (propertyChecker() != address(0)) revert LSSVMPairERC721__NeedPropertyChecking();
 
         return _swapNFTsForToken(nftIds, minExpectedTokenOutput, tokenRecipient, isRouter, routerCaller);
     }

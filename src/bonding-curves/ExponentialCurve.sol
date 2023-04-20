@@ -83,10 +83,9 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
 
         // Account for the trade fee, only for TRADE pools
         tradeFee = inputValue.mulWadUp(feeMultiplier);
-        inputValue += tradeFee;
 
-        // Add the protocol fee to the required input amount
-        inputValue += protocolFee;
+        // Add the protocol and trade fees to the required input amount
+        inputValue += protocolFee + tradeFee;
 
         // Keep delta the same
         newDelta = delta;
@@ -152,10 +151,9 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
 
         // Account for the trade fee, only for Trade pools
         tradeFee = outputValue.mulWadDown(feeMultiplier);
-        outputValue -= tradeFee;
 
-        // Remove the protocol fee from the output amount
-        outputValue -= protocolFee;
+        // Remove the protocol and trade fees from the output amount
+        outputValue -= (protocolFee + tradeFee);
 
         // Keep delta the same
         newDelta = delta;

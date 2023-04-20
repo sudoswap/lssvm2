@@ -103,14 +103,8 @@ contract GDACurve is ICurve, CurveErrorCodes {
             // Account for the trade fee, only for Trade pools
             tradeFee = unwrap(inputValue_.mul(ud(feeMultiplier)));
 
-            // Add the protocol fee to the required input amount
-            inputValue_ = inputValue_.add(ud(protocolFee));
-
-            // Add the trade fee to the required input amount
-            inputValue_ = inputValue_.add(ud(tradeFee));
-
-            // Unwrap back to uint256
-            inputValue = unwrap(inputValue_);
+            // Add the protocol and trade fees to the required input amount and unwrap to uint256
+            inputValue = unwrap(inputValue_.add(ud(protocolFee)).add(ud(tradeFee)));
         }
 
         // Update delta with the current timestamp
@@ -190,14 +184,8 @@ contract GDACurve is ICurve, CurveErrorCodes {
         // Account for the trade fee, only for Trade pools
         tradeFee = unwrap(outputValue_.mul(ud(feeMultiplier)));
 
-        // Remove the protocol fee from the output amount
-        outputValue_ = outputValue_.sub(ud(protocolFee));
-
-        // Remvoe the trade fee from the output amount
-        outputValue_ = outputValue_.sub(ud(tradeFee));
-
-        // Unwrap back to uint256
-        outputValue = unwrap(outputValue_);
+        // Remove the protocol and trade fees from the output amount and unwrap to uint256
+        outputValue = unwrap(outputValue_.sub(ud(protocolFee)).sub(ud(tradeFee)));
 
         // Update delta with the current timestamp
         newDelta = _getNewDelta(delta);

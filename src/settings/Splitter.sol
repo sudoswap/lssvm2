@@ -24,8 +24,7 @@ contract Splitter is Clone {
     }
 
     function withdrawAllETHInSplitter() public {
-        uint256 ethBalance = address(this).balance;
-        withdrawETH(ethBalance);
+        withdrawETH(address(this).balance);
     }
 
     function withdrawETH(uint256 ethAmount) public {
