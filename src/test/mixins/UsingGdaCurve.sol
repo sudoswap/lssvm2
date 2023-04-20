@@ -3,29 +3,29 @@ pragma solidity ^0.8.0;
 
 import {Configurable} from "./Configurable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
+import {GDACurve} from "../../bonding-curves/GDACurve.sol";
 import {LSSVMPair} from "../../LSSVMPair.sol";
-import {MockCurve} from "../../mocks/MockCurve.sol";
 
-abstract contract UsingMockCurve is Configurable {
+abstract contract UsingGdaCurve is Configurable {
     function setupCurve() public override returns (ICurve) {
-        return new MockCurve();
+        return new GDACurve();
     }
 
-    function modifyDelta(uint128 delta) public pure override returns (uint128) {
-        return delta;
+    function modifyDelta(uint128) public view override returns (uint128) {
+        // @dev hard coded because it's used in some implementation specific tests, yes this is gross, sorry
+        return uint128(1e9 + 1) << 88;
     }
 
-    function modifyDelta(uint128 delta, uint8) public pure override returns (uint128) {
-        return delta;
+    function modifyDelta(uint128 delta, uint8) public view override returns (uint128) {
+        return modifyDelta(delta);
     }
 
-    function modifySpotPrice(uint56 spotPrice) public pure override returns (uint56) {
-        return spotPrice;
+    function modifySpotPrice(uint56 /*spotPrice*/ ) public pure override returns (uint56) {
+        return 0.01 ether;
     }
 
-    // Return 1 eth as spot price and 0.1 eth as the delta scaling
     function getParamsForPartialFillTest() public pure override returns (uint128 spotPrice, uint128 delta) {
-        return (10 ** 18, 10 ** 17);
+        return (0.01 ether, 11);
     }
 
     // Adjusts price up or down
@@ -35,19 +35,18 @@ abstract contract UsingMockCurve is Configurable {
         override
         returns (uint128 spotPrice, uint128 delta)
     {
+        delta = pair.delta();
         if (isIncrease) {
-            // Multiply by multiplier, divide by base for both spot price and delta
+            // Multiply token reserves by multiplier, divide by base for both spot price and delta
             spotPrice = uint128((pair.spotPrice() * percentage) / 1e18);
-            delta = uint128((pair.delta() * percentage) / 1e18);
         } else {
-            // Multiply by base, divide by multiplier for both spot price and delta
+            // Multiply token reserves by base, divide by multiplier for both spot price and delta
             spotPrice = uint128((pair.spotPrice() / 1e18) * percentage);
-            delta = uint128((pair.delta() * 1e18) / percentage);
         }
     }
 
     function getReasonableDeltaAndSpotPrice() public pure override returns (uint128 delta, uint128 spotPrice) {
-        delta = 0.01e18;
+        delta = uint128(1e9 + 1) << 88;
         spotPrice = 1e18;
     }
 }

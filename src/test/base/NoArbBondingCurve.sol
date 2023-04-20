@@ -51,7 +51,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
         spotPrice = modifySpotPrice(spotPrice);
 
         // modify delta to be appropriate for the bonding curve
-        delta = modifyDelta(delta);
+        uint128 newDelta = modifyDelta(delta);
 
         // decrease the range of numItems to speed up testing
         numItems = numItems % 3;
@@ -70,7 +70,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
             bondingCurve,
             payable(address(0)),
             LSSVMPair.PoolType.TRADE,
-            delta,
+            newDelta,
             0,
             spotPrice,
             empty,
@@ -91,7 +91,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
         // sell all NFTs minted to the pair
         {
             (, uint256 newSpotPrice,, uint256 outputAmount, /* tradeFee */, uint256 protocolFee) =
-                bondingCurve.getSellInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
+                bondingCurve.getSellInfo(spotPrice, newDelta, numItems, 0, protocolFeeMultiplier);
 
             // give the pair contract enough tokens to pay for the NFTs
             sendTokens(pair, outputAmount + protocolFee);
@@ -105,7 +105,8 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
 
         // buy back the NFTs just sold to the pair
         {
-            (,,, uint256 inputAmount,,) = bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
+            (,,, uint256 inputAmount,,) =
+                bondingCurve.getBuyInfo(spotPrice, newDelta, numItems, 0, protocolFeeMultiplier);
             pair.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
                 idList, inputAmount, address(this), false, address(0)
             );
@@ -127,7 +128,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
         spotPrice = modifySpotPrice(spotPrice);
 
         // modify delta to be appropriate for the bonding curve
-        delta = modifyDelta(delta, numItems);
+        uint128 newDelta = modifyDelta(delta, numItems);
 
         if (numItems == 0) {
             return;
@@ -141,7 +142,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
                 bondingCurve,
                 payable(address(0)),
                 LSSVMPair.PoolType.TRADE,
-                delta,
+                newDelta,
                 0,
                 spotPrice,
                 startingId,
@@ -169,7 +170,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
                 uint256 outputAmount, /* tradeFee */
                 ,
                 uint256 protocolFee
-            ) = bondingCurve.getSellInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
+            ) = bondingCurve.getSellInfo(spotPrice, newDelta, numItems, 0, protocolFeeMultiplier);
 
             if (error == CurveErrorCodes.Error.OK) {
                 // give the pair contract enough tokens to pay for the NFTs
@@ -215,7 +216,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
         spotPrice = modifySpotPrice(spotPrice);
 
         // modify delta to be appropriate for the bonding curve
-        delta = modifyDelta(delta);
+        uint128 newDelta = modifyDelta(delta);
 
         // decrease the range of numItems to speed up testing
         numItems = numItems % 3;
@@ -238,7 +239,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
             bondingCurve,
             payable(address(0)),
             LSSVMPair.PoolType.TRADE,
-            delta,
+            newDelta,
             0,
             spotPrice,
             idList,
@@ -253,7 +254,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
         // buy all NFTs
         {
             (, uint256 newSpotPrice,, uint256 inputAmount,,) =
-                bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
+                bondingCurve.getBuyInfo(spotPrice, newDelta, numItems, 0, protocolFeeMultiplier);
 
             // Send some token buffer to the pair
             sendTokens(pair, MAX_ALLOWABLE_DIFF);
@@ -268,7 +269,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
 
         // sell back the NFTs
         {
-            bondingCurve.getSellInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
+            bondingCurve.getSellInfo(spotPrice, newDelta, numItems, 0, protocolFeeMultiplier);
             pair.swapNFTsForToken(idList, 0, payable(address(this)), false, address(0));
             endBalance = getBalance(address(this));
         }
@@ -290,7 +291,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
         spotPrice = modifySpotPrice(spotPrice);
 
         // modify delta to be appropriate for the bonding curve
-        delta = modifyDelta(delta, numItems);
+        uint128 newDelta = modifyDelta(delta, numItems);
 
         // initialize the pair
         test1155.mint(address(this), startingId, numItems + 1);
@@ -302,7 +303,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
                 bondingCurve,
                 payable(address(0)),
                 LSSVMPair.PoolType.TRADE,
-                delta,
+                newDelta,
                 0,
                 spotPrice,
                 startingId,
@@ -321,7 +322,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
         // buy all NFTs
         {
             (, uint256 newSpotPrice,, uint256 inputAmount,,) =
-                bondingCurve.getBuyInfo(spotPrice, delta, numItems, 0, protocolFeeMultiplier);
+                bondingCurve.getBuyInfo(spotPrice, newDelta, numItems, 0, protocolFeeMultiplier);
 
             // Send some token buffer to the pair
             sendTokens(pair, MAX_ALLOWABLE_DIFF);

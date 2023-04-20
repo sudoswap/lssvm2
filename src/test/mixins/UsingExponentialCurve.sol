@@ -13,7 +13,7 @@ abstract contract UsingExponentialCurve is Configurable {
         return new ExponentialCurve();
     }
 
-    function modifyDelta(uint64 delta) public pure override returns (uint64) {
+    function modifyDelta(uint128 delta) public pure override returns (uint128) {
         if (delta <= FixedPointMathLib.WAD) {
             // Ensure minimum multiplier of 0.001 wad
             return uint64(1001 * (FixedPointMathLib.WAD) / 1000);
@@ -24,7 +24,7 @@ abstract contract UsingExponentialCurve is Configurable {
         }
     }
 
-    function modifyDelta(uint64 delta, uint8) public pure override returns (uint64) {
+    function modifyDelta(uint128 delta, uint8) public pure override returns (uint128) {
         if (delta <= FixedPointMathLib.WAD) {
             // Ensure minimum multiplier of 0.001 wad
             return uint64(1001 * (FixedPointMathLib.WAD) / 1000);

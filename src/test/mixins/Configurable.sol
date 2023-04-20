@@ -126,9 +126,9 @@ abstract contract Configurable {
 
     function modifyInputAmount(uint256 inputAmount) public virtual returns (uint256);
 
-    function modifyDelta(uint64 delta) public virtual returns (uint64);
+    function modifyDelta(uint128 delta) public virtual returns (uint128);
 
-    function modifyDelta(uint64 delta, uint8 numItems) public virtual returns (uint64);
+    function modifyDelta(uint128 delta, uint8 numItems) public virtual returns (uint128);
 
     function modifySpotPrice(uint56 spotPrice) public virtual returns (uint56);
 
