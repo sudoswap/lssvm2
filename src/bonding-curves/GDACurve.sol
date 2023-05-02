@@ -174,7 +174,7 @@ contract GDACurve is ICurve, CurveErrorCodes {
             newSpotPrice = uint128(unwrap(newSpotPrice_));
         }
 
-        // The expected output at for an auction at index n is defined by the formula: p(t) = k * scalar^(lambda * t) / alpha^n
+        // The expected output for an auction at index n is defined by the formula: p(t) = k * scalar^(lambda * t) / alpha^n
         // where k is the initial price, lambda is the boost constant, t is time elapsed, alpha is the scale factor, and
         // n is the number of items sold. The amount to receive for selling into a pool can thus be written as:
         // k * scalar^(lambda * t) / alpha^(m + q - 1) * (alpha^q - 1) / (alpha - 1) where m is the number of items purchased thus far

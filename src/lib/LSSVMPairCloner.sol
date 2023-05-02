@@ -296,7 +296,7 @@ library LSSVMPairCloner {
             // f3          | RETURN                |                         | [0-runSize): runtime code
 
             // -------------------------------------------------------------------------------------------------------------
-            // RUNTIME (53 bytes of code + 61 bytes of extra data = 114 bytes)
+            // RUNTIME (53 bytes of code + 93 bytes of extra data = 146 bytes)
             // -------------------------------------------------------------------------------------------------------------
 
             // extra data size = 5d
@@ -383,7 +383,7 @@ library LSSVMPairCloner {
             // f3          | RETURN                |                         | [0-runSize): runtime code
 
             // -------------------------------------------------------------------------------------------------------------
-            // RUNTIME (53 bytes of code + 81 bytes of extra data = 134 bytes)
+            // RUNTIME (53 bytes of code + 113 bytes of extra data = 166 bytes)
             // -------------------------------------------------------------------------------------------------------------
 
             // extra data size = 71

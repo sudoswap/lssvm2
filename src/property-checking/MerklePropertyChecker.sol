@@ -6,6 +6,7 @@ import {Clone} from "clones-with-immutable-args/Clone.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract MerklePropertyChecker is IPropertyChecker, Clone {
+    error MerklePropertyChecker__InputMismatch();
     // Immutable params
 
     /**
@@ -19,7 +20,10 @@ contract MerklePropertyChecker is IPropertyChecker, Clone {
         isAllowed = true;
         bytes32 root = getMerkleRoot();
         (bytes[] memory proofList) = abi.decode(params, (bytes[]));
+
         uint256 numIds = ids.length;
+        if (numIds != proofList.length) revert MerklePropertyChecker__InputMismatch();
+
         for (uint256 i; i < numIds;) {
             bytes32[] memory proof = abi.decode(proofList[i], (bytes32[]));
             if (!MerkleProof.verify(proof, root, keccak256(abi.encodePacked(ids[i])))) {

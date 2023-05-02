@@ -316,7 +316,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
     }
 
     /**
-     * @notice Returns the address that assets that receives assets when a swap is done with this pair
+     * @notice Returns the address that receives assets when a swap is done with this pair
      *     Can be set to another address by the owner, but has no effect on TRADE pools
      *     If set to address(0), defaults to owner() for NFT/TOKEN pools
      */

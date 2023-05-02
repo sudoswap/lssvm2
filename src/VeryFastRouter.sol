@@ -617,7 +617,7 @@ contract VeryFastRouter {
             // if the current output is greater than the pair's token balance,
             // then we recurse on the left half (i.e. less items)
             if (
-                error != CurveErrorCodes.Error.OK || currentOutput < minOutputPerNumNFTs[(start + end) / 2 - 1] /* this is the max cost we are willing to pay, zero-indexed */
+                error != CurveErrorCodes.Error.OK || currentOutput < minOutputPerNumNFTs[(start + end) / 2 - 1] /* this is the minimum output we are expecting from the sale, zero-indexed */
                     || currentOutput > (uint256(uint128(deltaAndPairTokenBalance)))
             ) {
                 end = (start + end) / 2 - 1;

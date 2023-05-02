@@ -234,9 +234,7 @@ contract RoyaltyEngine is ERC165, IRoyaltyEngineV1 {
         } else {
             // Spec exists, just execute the appropriate one
             addToCache = false;
-            if (spec == NONE) {
-                return (recipients, amounts, spec, royaltyAddress, addToCache);
-            } else if (spec == EIP2981) {
+            if (spec == EIP2981) {
                 // EIP2981 spec moved to the top because it will be the most prevalent type
                 (address recipient, uint256 amount) = IEIP2981(royaltyAddress).royaltyInfo(tokenId, value);
                 recipients = new address payable[](1);
