@@ -87,6 +87,9 @@ contract GDACurve is ICurve, CurveErrorCodes {
             if (newSpotPrice_.gt(ud(type(uint128).max))) {
                 return (Error.SPOT_PRICE_OVERFLOW, 0, 0, 0, 0, 0);
             }
+            if (newSpotPrice_.lt(ud(MIN_PRICE))) {
+                return (Error.SPOT_PRICE_UNDERFLOW, 0, 0, 0, 0, 0);
+            }
             newSpotPrice = uint128(unwrap(newSpotPrice_));
         }
 
@@ -164,6 +167,9 @@ contract GDACurve is ICurve, CurveErrorCodes {
             newSpotPrice_ = newSpotPrice_.div(alphaPowN);
             if (newSpotPrice_.gt(ud(type(uint128).max))) {
                 return (Error.SPOT_PRICE_OVERFLOW, 0, 0, 0, 0, 0);
+            }
+            if (newSpotPrice_.lt(ud(MIN_PRICE))) {
+                return (Error.SPOT_PRICE_UNDERFLOW, 0, 0, 0, 0, 0);
             }
             newSpotPrice = uint128(unwrap(newSpotPrice_));
         }

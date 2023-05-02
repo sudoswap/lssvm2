@@ -222,6 +222,19 @@ contract GDACurveTest is Test {
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.SPOT_PRICE_OVERFLOW));
     }
 
+    function test_getBuyInfoUnderflow() public {
+        uint48 t0 = 0;
+        uint48 t1 = uint48(1);
+        vm.warp(t1);
+
+        lambda = unwrap(convert(100000));
+        uint128 delta = getPackedDelta(t0);
+        uint128 adjustedSpotPrice = uint128(10 gwei);
+
+        (CurveErrorCodes.Error error,,,,,) = curve.getBuyInfo(adjustedSpotPrice, delta, 5, 0, 0);
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.SPOT_PRICE_UNDERFLOW));
+    }
+
     function test_getBuyInfoFuzz(uint48 t1) public {
         lambda = unwrap(convert(1).div(convert(10000000)));
 
@@ -428,6 +441,18 @@ contract GDACurveTest is Test {
 
         (CurveErrorCodes.Error error,,,,,) = curve.getSellInfo(adjustedSpotPrice, delta, 5, 0, 0);
         assertEq(uint256(error), uint256(CurveErrorCodes.Error.SPOT_PRICE_OVERFLOW));
+    }
+
+    function test_getSellInfoUnderflow() public {
+        uint48 t0 = 0;
+        uint48 t1 = uint48(1);
+        vm.warp(t1);
+
+        uint128 delta = getPackedDelta(t0);
+        uint128 adjustedSpotPrice = uint128(5 gwei);
+
+        (CurveErrorCodes.Error error,,,,,) = curve.getSellInfo(adjustedSpotPrice, delta, 5, 0, 0);
+        assertEq(uint256(error), uint256(CurveErrorCodes.Error.SPOT_PRICE_UNDERFLOW));
     }
 
     function test_getSellInfoFuzz(uint48 t1) public {
