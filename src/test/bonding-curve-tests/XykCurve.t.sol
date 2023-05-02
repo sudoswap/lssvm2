@@ -278,9 +278,10 @@ contract XykCurveTest is Test, ERC721Holder {
         assertEq(nft.balanceOf(address(this)) - nftBalanceBefore, numItemsToBuy, "Should have received NFTs");
 
         uint256 withoutFeeInputAmount = (inputAmount * 1e18) / 103e16;
-        assertEq(
+        assertApproxEqAbs(
             ethPair.spotPrice(),
             uint128(address(ethPair).balance) - (withoutFeeInputAmount * 1e16) / 1e18,
+            1,
             "Spot price should match eth balance - fee after swap"
         );
         assertEq(ethPair.delta(), nft.balanceOf(address(ethPair)), "Delta should match nft balance after swap");
@@ -317,9 +318,10 @@ contract XykCurveTest is Test, ERC721Holder {
         assertEq(nftBalanceBefore - nft.balanceOf(address(this)), numItemsToSell, "Should have sent NFTs");
 
         uint256 withoutFeeOutputAmount = (outputAmount * 1e18) / 0.97e18;
-        assertEq(
+        assertApproxEqAbs(
             ethPair.spotPrice(),
             uint128(address(ethPair).balance) - ((withoutFeeOutputAmount * 1e16) / 1e18),
+            1,
             "Spot price + fee should match eth balance after swap"
         );
         assertEq(ethPair.delta(), nft.balanceOf(address(ethPair)), "Delta should match nft balance after swap");

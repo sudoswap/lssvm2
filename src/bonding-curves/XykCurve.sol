@@ -74,8 +74,8 @@ contract XykCurve is ICurve, CurveErrorCodes {
         uint256 inputValueWithoutFee = (numItems * spotPrice) / newNftBalance;
 
         // add the fees to the amount to send in
-        protocolFee = inputValueWithoutFee.mulWadDown(protocolFeeMultiplier);
-        tradeFee = inputValueWithoutFee.mulWadDown(feeMultiplier);
+        protocolFee = inputValueWithoutFee.mulWadUp(protocolFeeMultiplier);
+        tradeFee = inputValueWithoutFee.mulWadUp(feeMultiplier);
         inputValue = inputValueWithoutFee + tradeFee + protocolFee;
 
         // set the new virtual reserves
@@ -125,8 +125,8 @@ contract XykCurve is ICurve, CurveErrorCodes {
         uint256 outputValueWithoutFee = (numItems * tokenBalance) / (nftBalance + numItems);
 
         // subtract fees from amount to send out
-        protocolFee = outputValueWithoutFee.mulWadDown(protocolFeeMultiplier);
-        tradeFee = outputValueWithoutFee.mulWadDown(feeMultiplier);
+        protocolFee = outputValueWithoutFee.mulWadUp(protocolFeeMultiplier);
+        tradeFee = outputValueWithoutFee.mulWadUp(feeMultiplier);
         outputValue = outputValueWithoutFee - tradeFee - protocolFee;
 
         // set the new virtual reserves

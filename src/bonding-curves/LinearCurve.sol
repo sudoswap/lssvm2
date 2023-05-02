@@ -76,10 +76,10 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         inputValue = numItems * buySpotPrice + (numItems * (numItems - 1) * delta) / 2;
 
         // Account for the protocol fee, a flat percentage of the buy amount
-        protocolFee = inputValue.mulWadDown(protocolFeeMultiplier);
+        protocolFee = inputValue.mulWadUp(protocolFeeMultiplier);
 
         // Account for the trade fee, only for Trade pools
-        tradeFee = inputValue.mulWadDown(feeMultiplier);
+        tradeFee = inputValue.mulWadUp(feeMultiplier);
 
         // Add the protocol and trade fees to the required input amount
         inputValue += tradeFee + protocolFee;
@@ -140,10 +140,10 @@ contract LinearCurve is ICurve, CurveErrorCodes {
         outputValue = numItems * spotPrice - (numItems * (numItems - 1) * delta) / 2;
 
         // Account for the protocol fee, a flat percentage of the sell amount
-        protocolFee = outputValue.mulWadDown(protocolFeeMultiplier);
+        protocolFee = outputValue.mulWadUp(protocolFeeMultiplier);
 
         // Account for the trade fee, only for Trade pools
-        tradeFee = outputValue.mulWadDown(feeMultiplier);
+        tradeFee = outputValue.mulWadUp(feeMultiplier);
 
         // Subtract the protocol and trade fees from the output amount to the seller
         outputValue -= (tradeFee + protocolFee);

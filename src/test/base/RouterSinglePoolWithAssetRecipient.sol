@@ -204,7 +204,7 @@ abstract contract RouterSinglePoolWithAssetRecipient is Test, ERC721Holder, Conf
         (,,, uint256 outputAmount,,) = buyPair.getSellNFTQuote(nftIds[0], 1);
         uint256 output = router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
         // User gets 90% of the tokens (which is output) and the other 10% goes to the factory
-        assertEq(getBalance(address(factory)), output / 9);
+        assertApproxEqAbs(getBalance(address(factory)), output / 9, 1);
     }
 
     function test_swapTokenForSingleSpecificNFTWithProtocolFee() public {

@@ -147,10 +147,10 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         );
 
         // Account for the protocol fee, a flat percentage of the sell amount
-        protocolFee = outputValue.mulWadDown(protocolFeeMultiplier);
+        protocolFee = outputValue.mulWadUp(protocolFeeMultiplier);
 
         // Account for the trade fee, only for Trade pools
-        tradeFee = outputValue.mulWadDown(feeMultiplier);
+        tradeFee = outputValue.mulWadUp(feeMultiplier);
 
         // Remove the protocol and trade fees from the output amount
         outputValue -= (protocolFee + tradeFee);
