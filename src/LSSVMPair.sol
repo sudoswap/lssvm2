@@ -148,10 +148,7 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
             fee = _fee;
         }
 
-        // Set asset recipient if it's not address(0)
-        if (_assetRecipient != address(0)) {
-            assetRecipient = _assetRecipient;
-        }
+        assetRecipient = _assetRecipient;
 
         if (!_bondingCurve.validateDelta(_delta)) revert LSSVMPair__InvalidDelta();
         if (!_bondingCurve.validateSpotPrice(_spotPrice)) revert LSSVMPair__InvalidSpotPrice();

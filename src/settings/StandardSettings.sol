@@ -121,7 +121,7 @@ contract StandardSettings is IOwnershipTransferReceiver, OwnableWithTransferCall
      * - the fee recipient of the pair is set to the fee splitter
      * @param prevOwner The owner of the pair calling transferOwnership
      */
-    function onOwnershipTransferred(address prevOwner, bytes memory) public payable {
+    function onOwnershipTransferred(address prevOwner, bytes calldata) public payable {
         ILSSVMPair pair = ILSSVMPair(msg.sender);
 
         // Only for trade pairs

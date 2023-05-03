@@ -42,7 +42,7 @@ abstract contract OwnableWithTransferCallback {
     /// Disallows setting to the zero address as a way to more gas-efficiently avoid reinitialization
     /// When ownership is transferred, if the new owner implements IOwnershipTransferCallback, we make a callback
     /// Can only be called by the current owner.
-    function transferOwnership(address newOwner, bytes memory data) public payable virtual onlyOwner {
+    function transferOwnership(address newOwner, bytes calldata data) public payable virtual onlyOwner {
         if (newOwner == address(0)) revert Ownable_NewOwnerZeroAddress();
         _transferOwnership(newOwner);
 

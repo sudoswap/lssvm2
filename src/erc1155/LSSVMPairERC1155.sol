@@ -115,8 +115,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
         // Input validation
         {
-            PoolType _poolType = poolType();
-            if (_poolType == PoolType.NFT) revert LSSVMPair__WrongPoolType();
+            if (poolType() == PoolType.NFT) revert LSSVMPair__WrongPoolType();
             if (numNFTs.length != 1 || numNFTs[0] == 0) revert LSSVMPair__ZeroSwapAmount();
         }
 
