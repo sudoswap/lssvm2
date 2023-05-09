@@ -13,9 +13,11 @@ import {ICurve} from "../bonding-curves/ICurve.sol";
 import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 import {IPropertyChecker} from "../property-checking/IPropertyChecker.sol";
 
-/// @title LSSVMPairERC721
-/// @author boredGenius, 0xmons, 0xCygaar
-/// @notice An NFT/Token pair for an ERC721 NFT
+/**
+ * @title LSSVMPairERC721
+ * @author boredGenius, 0xmons, 0xCygaar
+ * @notice An NFT/Token pair for an ERC721 NFT
+ */
 abstract contract LSSVMPairERC721 is LSSVMPair {
     error LSSVMPairERC721__PropertyCheckFailed();
     error LSSVMPairERC721__NeedPropertyChecking();
@@ -101,17 +103,17 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
 
     /**
      * @notice Sends a set of NFTs to the pair in exchange for token
-     *     @dev To compute the amount of token to that will be received, call bondingCurve.getSellInfo.
-     *     @param nftIds The list of IDs of the NFTs to sell to the pair
-     *     @param minExpectedTokenOutput The minimum acceptable token received by the sender. If the actual
-     *     amount is less than this value, the transaction will be reverted.
-     *     @param tokenRecipient The recipient of the token output
-     *     @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
-     *     ETH pairs.
-     *     @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
-     *     ETH pairs.
-     *     @param propertyCheckerParams Parameters to pass into the pair's underlying property checker
-     *     @return outputAmount The amount of token received
+     * @dev To compute the amount of token to that will be received, call bondingCurve.getSellInfo.
+     * @param nftIds The list of IDs of the NFTs to sell to the pair
+     * @param minExpectedTokenOutput The minimum acceptable token received by the sender. If the actual
+     * amount is less than this value, the transaction will be reverted.
+     * @param tokenRecipient The recipient of the token output
+     * @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
+     * ETH pairs.
+     * @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
+     * ETH pairs.
+     * @param propertyCheckerParams Parameters to pass into the pair's underlying property checker
+     * @return outputAmount The amount of token received
      */
     function swapNFTsForToken(
         uint256[] calldata nftIds,
@@ -200,11 +202,11 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
 
     /**
      * @notice Sends specific NFTs to a recipient address
-     *     @dev Even though we specify the NFT address here, this internal function is only
-     *     used to send NFTs associated with this specific pool.
-     *     @param _nft The address of the NFT to send
-     *     @param nftRecipient The receiving address for the NFTs
-     *     @param nftIds The specific IDs of NFTs to send
+     * @dev Even though we specify the NFT address here, this internal function is only
+     * used to send NFTs associated with this specific pool.
+     * @param _nft The address of the NFT to send
+     * @param nftRecipient The receiving address for the NFTs
+     * @param nftIds The specific IDs of NFTs to send
      */
     function _sendSpecificNFTsToRecipient(IERC721 _nft, address nftRecipient, uint256[] calldata nftIds)
         internal
@@ -223,13 +225,11 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
 
     /**
      * @notice Takes NFTs from the caller and sends them into the pair's asset recipient
-     *     @dev This is used by the LSSVMPair's swapNFTForToken function.
-     *     @param _nft The NFT collection to take from
-     *     @param nftIds The specific NFT IDs to take
-     *     @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
-     *     ETH pairs.
-     *     @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
-     *     ETH pairs.
+     * @dev This is used by the LSSVMPair's swapNFTForToken function.
+     * @param _nft The NFT collection to take from
+     * @param nftIds The specific NFT IDs to take
+     * @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for ETH pairs.
+     * @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for ETH pairs.
      */
     function _takeNFTsFromSender(
         IERC721 _nft,
@@ -249,7 +249,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
                 if (!routerAllowed) revert LSSVMPair__NotRouter();
 
                 // Call router to pull NFTs
-                // If more than 1 NFT is being transfered, and there is no property checker, we can do a balance check instead of an ownership check, as pools are indifferent between NFTs from the same collection
+                // If more than 1 NFT is being transfered, and there is no property checker, we can do a balance check
+                // instead of an ownership check, as pools are indifferent between NFTs from the same collection
                 if ((numNFTs > 1) && (propertyChecker() == address(0))) {
                     uint256 beforeBalance = _nft.balanceOf(_assetRecipient);
                     for (uint256 i; i < numNFTs;) {
@@ -291,8 +292,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
 
     /**
      * @notice Rescues a specified set of NFTs owned by the pair to the owner address. (onlyOwner modifier is in the implemented function)
-     *     @param a The NFT to transfer
-     *     @param nftIds The list of IDs of the NFTs to send to the owner
+     * @param a The NFT to transfer
+     * @param nftIds The list of IDs of the NFTs to send to the owner
      */
     function withdrawERC721(IERC721 a, uint256[] calldata nftIds) external virtual override onlyOwner {
         uint256 numNFTs = nftIds.length;
@@ -310,9 +311,9 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
 
     /**
      * @notice Rescues ERC1155 tokens from the pair to the owner. Only callable by the owner.
-     *     @param a The NFT to transfer
-     *     @param ids The NFT ids to transfer
-     *     @param amounts The amounts of each id to transfer
+     * @param a The NFT to transfer
+     * @param ids The NFT ids to transfer
+     * @param amounts The amounts of each id to transfer
      */
     function withdrawERC1155(IERC1155 a, uint256[] calldata ids, uint256[] calldata amounts)
         external

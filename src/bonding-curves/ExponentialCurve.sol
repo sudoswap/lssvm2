@@ -5,13 +5,16 @@ import {ICurve} from "./ICurve.sol";
 import {CurveErrorCodes} from "./CurveErrorCodes.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-/*
-    @author 0xmons and boredGenius
-    @notice Bonding curve logic for an exponential curve, where each buy/sell changes spot price by multiplying/dividing delta*/
+/**
+ * @author 0xmons, boredGenius, 0xCygaar
+ * @notice Bonding curve logic for an exponential curve, where each buy/sell changes spot price by multiplying/dividing delta
+ */
 contract ExponentialCurve is ICurve, CurveErrorCodes {
     using FixedPointMathLib for uint256;
 
-    // minimum price to prevent numerical issues
+    /**
+     * @notice Minimum price to prevent numerical issues
+     */
     uint256 public constant MIN_PRICE = 1000000 wei;
 
     /**
@@ -96,9 +99,9 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
 
     /**
      * @dev See {ICurve-getSellInfo}
-     *     If newSpotPrice is less than MIN_PRICE, newSpotPrice is set to MIN_PRICE instead.
-     *     This is to prevent the spot price from ever becoming 0, which would decouple the price
-     *     from the bonding curve (since 0 * delta is still 0)
+     * If newSpotPrice is less than MIN_PRICE, newSpotPrice is set to MIN_PRICE instead.
+     * This is to prevent the spot price from ever becoming 0, which would decouple the price
+     * from the bonding curve (since 0 * delta is still 0)
      */
     function getSellInfo(
         uint128 spotPrice,
@@ -149,7 +152,7 @@ contract ExponentialCurve is ICurve, CurveErrorCodes {
         // Account for the protocol fee, a flat percentage of the sell amount
         protocolFee = outputValue.mulWadUp(protocolFeeMultiplier);
 
-        // Account for the trade fee, only for Trade pools
+        // Account for the trade fee, only for TRADE pools
         tradeFee = outputValue.mulWadUp(feeMultiplier);
 
         // Remove the protocol and trade fees from the output amount

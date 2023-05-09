@@ -10,7 +10,7 @@ import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 
 /**
  * @title An NFT/Token pair where the token is ETH
- *     @author boredGenius, 0xmons, 0xCygaar
+ * @author boredGenius, 0xmons, 0xCygaar
  */
 contract LSSVMPairERC721ETH is LSSVMPairERC721, LSSVMPairETH {
     uint256 internal constant IMMUTABLE_PARAMS_LENGTH = 81;

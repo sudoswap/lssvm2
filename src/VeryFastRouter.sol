@@ -92,8 +92,9 @@ contract VeryFastRouter {
         factory = _factory;
     }
 
-    /* @dev Meant to be used as a client-side utility
-     * Given a pair and a number of items to buy, calculate the max price paid for 1 up to numNFTs to buy
+    /**
+     * @dev Meant to be used as a client-side utility
+     * @notice Given a pair and a number of items to buy, calculate the max price paid for 1 up to numNFTs to buy
      */
     function getNFTQuoteForBuyOrderWithPartialFill(
         LSSVMPair pair,
@@ -118,7 +119,7 @@ contract VeryFastRouter {
             (,, uint256 royaltyTotal) = pair.calculateRoyaltiesView(assetId, price);
             price += royaltyTotal;
 
-            // Set the price to buy numNFT - i items
+            // Set the price to buy numNFTs - i items
             prices[numNFTs - i - 1] = price;
 
             unchecked {
@@ -186,8 +187,9 @@ contract VeryFastRouter {
         return arr;
     }
 
-    /* @dev Meant to be used as a client-side utility
-     * Given a pair and a number of items to sell, calculate the mininum output for selling 1 to numNFTs
+    /**
+     * @dev Meant to be used as a client-side utility
+     * @notice Given a pair and a number of items to sell, calculate the mininum output for selling 1 to numNFTs
      */
     function getNFTQuoteForSellOrderWithPartialFill(
         LSSVMPair pair,
@@ -206,7 +208,7 @@ contract VeryFastRouter {
                 (newSpotPrice, newDelta) = _getNewPoolParamsAfterSelling(pair, i);
             }
 
-            // Calculate output to sell the remaining numNFTs - i items, factoring in royalties
+            // Calculate output to sell the remaining numNFTs - i items, factoring in royalties and fees
             uint256 output = _getHypotheticalNewPoolParamsAfterSelling(pair, newSpotPrice, newDelta, numNFTs - i);
             (,, uint256 royaltyTotal) = pair.calculateRoyaltiesView(nftId, output);
             output -= royaltyTotal;
@@ -632,11 +634,11 @@ contract VeryFastRouter {
     }
 
     /**
-     *   @dev Checks ownership of all desired NFT IDs to see which ones are still fillable
-     *   @param pair The pair to check for ownership
-     *   @param maxIdsNeeded The maximum amount of NFTs we want, guaranteed to be up to potentialIds.length, but could be less
-     *   @param potentialIds The possible NFT IDs that the pair could own
-     *   @return idsToBuy Actual NFT IDs owned by the pair, guaranteed to be up to maxIdsNeeded length, but could be less
+     * @dev Checks ownership of all desired NFT IDs to see which ones are still fillable
+     * @param pair The pair to check for ownership
+     * @param maxIdsNeeded The maximum amount of NFTs we want, guaranteed to be up to potentialIds.length, but could be less
+     * @param potentialIds The possible NFT IDs that the pair could own
+     * @return idsToBuy Actual NFT IDs owned by the pair, guaranteed to be up to maxIdsNeeded length, but could be less
      */
     function _findAvailableIds(LSSVMPair pair, uint256 maxIdsNeeded, uint256[] memory potentialIds)
         internal
@@ -685,11 +687,11 @@ contract VeryFastRouter {
 
     /**
      * @dev Allows an ERC20 pair contract to transfer ERC20 tokens directly from
-     *     the sender, in order to minimize the number of token transfers. Only callable by an ERC20 pair.
-     *     @param token The ERC20 token to transfer
-     *     @param from The address to transfer tokens from
-     *     @param to The address to transfer tokens to
-     *     @param amount The amount of tokens to transfer
+     * the sender, in order to minimize the number of token transfers. Only callable by an ERC20 pair.
+     * @param token The ERC20 token to transfer
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
      */
     function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
         // verify caller is a trusted ERC20 pair contract
@@ -708,11 +710,11 @@ contract VeryFastRouter {
 
     /**
      * @dev Allows a pair contract to transfer ERC721 NFTs directly from
-     *     the sender, in order to minimize the number of token transfers. Only callable by a pair.
-     *     @param nft The ERC721 NFT to transfer
-     *     @param from The address to transfer tokens from
-     *     @param to The address to transfer tokens to
-     *     @param id The ID of the NFT to transfer
+     * the sender, in order to minimize the number of token transfers. Only callable by a pair.
+     * @param nft The ERC721 NFT to transfer
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param id The ID of the NFT to transfer
      */
     function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
         // verify caller is a trusted pair contract
@@ -731,12 +733,12 @@ contract VeryFastRouter {
 
     /**
      * @dev Allows a pair contract to transfer ERC1155 NFTs directly from
-     *     the sender, in order to minimize the number of token transfers. Only callable by a pair.
-     *     @param nft The ERC1155 NFT to transfer
-     *     @param from The address to transfer tokens from
-     *     @param to The address to transfer tokens to
-     *     @param ids The IDs of the NFT to transfer
-     *     @param amounts The amount of each ID to transfer
+     * the sender, in order to minimize the number of token transfers. Only callable by a pair.
+     * @param nft The ERC1155 NFT to transfer
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param ids The IDs of the NFT to transfer
+     * @param amounts The amount of each ID to transfer
      */
     function pairTransferERC1155From(
         IERC1155 nft,

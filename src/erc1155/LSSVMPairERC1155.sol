@@ -11,9 +11,11 @@ import {LSSVMRouter} from "../LSSVMRouter.sol";
 import {ICurve} from "../bonding-curves/ICurve.sol";
 import {ILSSVMPairFactoryLike} from "../ILSSVMPairFactoryLike.sol";
 
-/// @title LSSVMPairERC1155
-/// @author boredGenius, 0xmons, 0xCygaar
-/// @notice An NFT/Token pair for an ERC1155 NFT where NFTs with the same ID are considered fungible.
+/**
+ * @title LSSVMPairERC1155
+ * @author boredGenius, 0xmons, 0xCygaar
+ * @notice An NFT/Token pair for an ERC1155 NFT where NFTs with the same ID are considered fungible.
+ */
 abstract contract LSSVMPairERC1155 is LSSVMPair {
     /**
      * External state-changing functions
@@ -21,17 +23,15 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
     /**
      * @notice Sends token to the pair in exchange for any `numNFTs` NFTs
-     *     @dev To compute the amount of token to send, call bondingCurve.getBuyInfo.
-     *     This swap function is meant for users who are ID agnostic
-     *     @param numNFTs The number of NFTs to purchase
-     *     @param maxExpectedTokenInput The maximum acceptable cost from the sender. If the actual
-     *     amount is greater than this value, the transaction will be reverted.
-     *     @param nftRecipient The recipient of the NFTs
-     *     @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
-     *     ETH pairs.
-     *     @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
-     *     ETH pairs.
-     *     @return inputAmount The amount of token used for purchase
+     * @dev To compute the amount of token to send, call bondingCurve.getBuyInfo.
+     * This swap function is meant for users who are ID agnostic
+     * @param numNFTs The number of NFTs to purchase
+     * @param maxExpectedTokenInput The maximum acceptable cost from the sender. If the actual
+     * amount is greater than this value, the transaction will be reverted.
+     * @param nftRecipient The recipient of the NFTs
+     * @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for ETH pairs.
+     * @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for ETH pairs.
+     * @return inputAmount The amount of token used for purchase
      */
     function swapTokenForSpecificNFTs(
         uint256[] calldata numNFTs,
@@ -88,16 +88,14 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
     /**
      * @notice Sends a set of NFTs to the pair in exchange for token
-     *     @dev To compute the amount of token to that will be received, call bondingCurve.getSellInfo.
-     *     @param numNFTs The number of NFTs to swap
-     *     @param minExpectedTokenOutput The minimum acceptable token received by the sender. If the actual
-     *     amount is less than this value, the transaction will be reverted.
-     *     @param tokenRecipient The recipient of the token output
-     *     @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for
-     *     ETH pairs.
-     *     @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for
-     *     ETH pairs.
-     *     @return outputAmount The amount of token received
+     * @dev To compute the amount of token to that will be received, call bondingCurve.getSellInfo.
+     * @param numNFTs The number of NFTs to swap
+     * @param minExpectedTokenOutput The minimum acceptable token received by the sender. If the actual
+     * amount is less than this value, the transaction will be reverted.
+     * @param tokenRecipient The recipient of the token output
+     * @param isRouter True if calling from LSSVMRouter, false otherwise. Not used for ETH pairs.
+     * @param routerCaller If isRouter is true, ERC20 tokens will be transferred from this address. Not used for ETH pairs.
+     * @return outputAmount The amount of token received
      */
     function swapNFTsForToken(
         uint256[] calldata numNFTs, // @dev this is a bit hacky, to allow for better interop w/ other pair interfaces
@@ -173,11 +171,11 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
     /**
      * @notice Sends some number of NFTs to a recipient address
-     *     @dev Even though we specify the NFT address here, this internal function is only
-     *     used to send NFTs associated with this specific pool.
-     *     @param _nft The address of the NFT to send
-     *     @param nftRecipient The receiving address for the NFTs
-     *     @param numNFTs The number of NFTs to send
+     * @dev Even though we specify the NFT address here, this internal function is only
+     * used to send NFTs associated with this specific pool.
+     * @param _nft The address of the NFT to send
+     * @param nftRecipient The receiving address for the NFTs
+     * @param numNFTs The number of NFTs to send
      */
     function _sendAnyNFTsToRecipient(IERC1155 _nft, address nftRecipient, uint256 numNFTs) internal virtual {
         _nft.safeTransferFrom(address(this), nftRecipient, nftId(), numNFTs, bytes(""));
@@ -185,11 +183,11 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
     /**
      * @notice Takes NFTs from the caller and sends them into the pair's asset recipient
-     *     @dev This is used by the LSSVMPair's swapNFTForToken function.
-     *     @param _nft The NFT collection to take from
-     *     @param numNFTs The number of NFTs to take
-     *     @param isRouter Whether or not to use the router pull flow
-     *     @param routerCaller If the caller is a router, passes in which address to pull from (i.e. the router's caller)
+     * @dev This is used by the LSSVMPair's swapNFTForToken function.
+     * @param _nft The NFT collection to take from
+     * @param numNFTs The number of NFTs to take
+     * @param isRouter Whether or not to use the router pull flow
+     * @param routerCaller If the caller is a router, passes in which address to pull from (i.e. the router's caller)
      */
     function _takeNFTsFromSender(
         IERC1155 _nft,
@@ -228,8 +226,8 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
     /**
      * @notice Rescues a specified set of NFTs owned by the pair to the owner address. Only callable by the owner.
-     *     @param a The NFT to transfer
-     *     @param nftIds The list of IDs of the NFTs to send to the owner
+     * @param a The NFT to transfer
+     * @param nftIds The list of IDs of the NFTs to send to the owner
      */
     function withdrawERC721(IERC721 a, uint256[] calldata nftIds) external virtual override onlyOwner {
         uint256 numNFTs = nftIds.length;
@@ -243,9 +241,9 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
     /**
      * @notice Transfers ERC1155 tokens from the pair to the owner. Only callable by the owner.
-     *     @param a The NFT to transfer
-     *     @param ids The NFT ids to transfer
-     *     @param amounts The amounts of each id to transfer
+     * @param a The NFT to transfer
+     * @param ids The NFT ids to transfer
+     * @param amounts The amounts of each id to transfer
      */
     function withdrawERC1155(IERC1155 a, uint256[] calldata ids, uint256[] calldata amounts)
         external
@@ -254,7 +252,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         onlyOwner
     {
         if (a == IERC1155(nft())) {
-            // check if we need to emit an event for withdrawing the NFT this pool is trading
+            // Check if we need to emit an event for withdrawing the NFT this pool is trading
             uint256 _nftId = nftId();
             uint256 numNFTs = ids.length;
             uint256 numPairNFTsWithdrawn;
@@ -268,7 +266,7 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
             }
 
             if (numPairNFTsWithdrawn != 0) {
-                // only emit for the pair's NFT
+                // Only emit for the pair's NFT
                 emit NFTWithdrawal(numPairNFTsWithdrawn);
             }
         }

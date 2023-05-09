@@ -60,11 +60,11 @@ contract LSSVMRouter {
 
     /**
      * @notice Swaps ETH into specific NFTs using multiple pairs.
-     *     @param swapList The list of pairs to trade with and the IDs of the NFTs to buy from each.
-     *     @param ethRecipient The address that will receive the unspent ETH input
-     *     @param nftRecipient The address that will receive the NFT output
-     *     @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
-     *     @return remainingValue The unspent ETH amount
+     * @param swapList The list of pairs to trade with and the IDs of the NFTs to buy from each.
+     * @param ethRecipient The address that will receive the unspent ETH input
+     * @param nftRecipient The address that will receive the NFT output
+     * @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
+     * @return remainingValue The unspent ETH amount
      */
     function swapETHForSpecificNFTs(
         PairSwapSpecific[] calldata swapList,
@@ -77,13 +77,13 @@ contract LSSVMRouter {
 
     /**
      * @notice Swaps one set of NFTs into another set of specific NFTs using multiple pairs, using
-     *     ETH as the intermediary.
-     *     @param trade The struct containing all NFT-to-ETH swaps and ETH-to-NFT swaps.
-     *     @param minOutput The minimum acceptable total excess ETH received
-     *     @param ethRecipient The address that will receive the ETH output
-     *     @param nftRecipient The address that will receive the NFT output
-     *     @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
-     *     @return outputAmount The total ETH received
+     * ETH as the intermediary.
+     * @param trade The struct containing all NFT-to-ETH swaps and ETH-to-NFT swaps.
+     * @param minOutput The minimum acceptable total excess ETH received
+     * @param ethRecipient The address that will receive the ETH output
+     * @param nftRecipient The address that will receive the NFT output
+     * @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
+     * @return outputAmount The total ETH received
      */
     function swapNFTsForSpecificNFTsThroughETH(
         NFTsForSpecificNFTsTrade calldata trade,
@@ -109,21 +109,21 @@ contract LSSVMRouter {
     /**
      * ERC20 swaps
      *
-     *     Note: All ERC20 swaps assume that a single ERC20 token is used for all the pairs involved.
-     *     Swapping using multiple tokens in the same transaction is possible, but the slippage checks
-     *     & the return values will be meaningless, and may lead to undefined behavior.
+     * Note: All ERC20 swaps assume that a single ERC20 token is used for all the pairs involved.
+     * Swapping using multiple tokens in the same transaction is possible, but the slippage checks
+     * & the return values will be meaningless, and may lead to undefined behavior.
      *
-     *     Note: The sender should ideally grant infinite token approval to the router in order for NFT-to-NFT
-     *     swaps to work smoothly.
+     * Note: The sender should ideally grant infinite token approval to the router in order for NFT-to-NFT
+     * swaps to work smoothly.
      */
 
     /**
      * @notice Swaps ERC20 tokens into specific NFTs using multiple pairs.
-     *     @param swapList The list of pairs to trade with and the IDs of the NFTs to buy from each.
-     *     @param inputAmount The amount of ERC20 tokens to add to the ERC20-to-NFT swaps
-     *     @param nftRecipient The address that will receive the NFT output
-     *     @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
-     *     @return remainingValue The unspent token amount
+     * @param swapList The list of pairs to trade with and the IDs of the NFTs to buy from each.
+     * @param inputAmount The amount of ERC20 tokens to add to the ERC20-to-NFT swaps
+     * @param nftRecipient The address that will receive the NFT output
+     * @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
+     * @return remainingValue The unspent token amount
      */
     function swapERC20ForSpecificNFTs(
         PairSwapSpecific[] calldata swapList,
@@ -136,11 +136,11 @@ contract LSSVMRouter {
 
     /**
      * @notice Swaps NFTs into ETH/ERC20 using multiple pairs.
-     *     @param swapList The list of pairs to trade with and the IDs of the NFTs to sell to each.
-     *     @param minOutput The minimum acceptable total tokens received
-     *     @param tokenRecipient The address that will receive the token output
-     *     @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
-     *     @return outputAmount The total tokens received
+     * @param swapList The list of pairs to trade with and the IDs of the NFTs to sell to each.
+     * @param minOutput The minimum acceptable total tokens received
+     * @param tokenRecipient The address that will receive the token output
+     * @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
+     * @return outputAmount The total tokens received
      */
     function swapNFTsForToken(
         PairSwapSpecific[] calldata swapList,
@@ -153,13 +153,13 @@ contract LSSVMRouter {
 
     /**
      * @notice Swaps one set of NFTs into another set of specific NFTs using multiple pairs, using
-     *     an ERC20 token as the intermediary.
-     *     @param trade The struct containing all NFT-to-ERC20 swaps and ERC20-to-NFT swaps.
-     *     @param inputAmount The amount of ERC20 tokens to add to the ERC20-to-NFT swaps
-     *     @param minOutput The minimum acceptable total excess tokens received
-     *     @param nftRecipient The address that will receive the NFT output
-     *     @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
-     *     @return outputAmount The total ERC20 tokens received
+     * an ERC20 token as the intermediary.
+     * @param trade The struct containing all NFT-to-ERC20 swaps and ERC20-to-NFT swaps.
+     * @param inputAmount The amount of ERC20 tokens to add to the ERC20-to-NFT swaps
+     * @param minOutput The minimum acceptable total excess tokens received
+     * @param nftRecipient The address that will receive the NFT output
+     * @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
+     * @return outputAmount The total ERC20 tokens received
      */
     function swapNFTsForSpecificNFTsThroughERC20(
         NFTsForSpecificNFTsTrade calldata trade,
@@ -185,17 +185,17 @@ contract LSSVMRouter {
 
     /**
      * Robust Swaps
-     *     These are "robust" versions of the NFT<>Token swap functions which will never revert due to slippage
-     *     Instead, users specify a per-swap max cost. If the price changes more than the user specifies, no swap is attempted. This allows users to specify a batch of swaps, and execute as many of them as possible.
+     * These are "robust" versions of the NFT<>Token swap functions which will never revert due to slippage
+     * Instead, users specify a per-swap max cost. If the price changes more than the user specifies, no swap is attempted. This allows users to specify a batch of swaps, and execute as many of them as possible.
      */
 
     /**
      * @dev Ensure msg.value >= sum of values in maxCostPerPair to make sure the transaction doesn't revert
-     *     @param swapList The list of pairs to trade with and the IDs of the NFTs to buy from each.
-     *     @param ethRecipient The address that will receive the unspent ETH input
-     *     @param nftRecipient The address that will receive the NFT output
-     *     @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
-     *     @return remainingValue The unspent token amount
+     * @param swapList The list of pairs to trade with and the IDs of the NFTs to buy from each.
+     * @param ethRecipient The address that will receive the unspent ETH input
+     * @param nftRecipient The address that will receive the NFT output
+     * @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
+     * @return remainingValue The unspent token amount
      */
     function robustSwapETHForSpecificNFTs(
         RobustPairSwapSpecific[] calldata swapList,
@@ -237,12 +237,11 @@ contract LSSVMRouter {
 
     /**
      * @notice Swaps as many ERC20 tokens for specific NFTs as possible, respecting the per-swap max cost.
-     *     @param swapList The list of pairs to trade with and the IDs of the NFTs to buy from each.
-     *     @param inputAmount The amount of ERC20 tokens to add to the ERC20-to-NFT swaps
-     *
-     *     @param nftRecipient The address that will receive the NFT output
-     *     @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
-     *     @return remainingValue The unspent token amount
+     * @param swapList The list of pairs to trade with and the IDs of the NFTs to buy from each.
+     * @param inputAmount The amount of ERC20 tokens to add to the ERC20-to-NFT swaps
+     * @param nftRecipient The address that will receive the NFT output
+     * @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
+     * @return remainingValue The unspent token amount
      */
     function robustSwapERC20ForSpecificNFTs(
         RobustPairSwapSpecific[] calldata swapList,
@@ -277,10 +276,10 @@ contract LSSVMRouter {
 
     /**
      * @notice Swaps as many NFTs for tokens as possible, respecting the per-swap min output
-     *     @param swapList The list of pairs to trade with and the IDs of the NFTs to sell to each.
-     *     @param tokenRecipient The address that will receive the token output
-     *     @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
-     *     @return outputAmount The total ETH/ERC20 received
+     * @param swapList The list of pairs to trade with and the IDs of the NFTs to sell to each.
+     * @param tokenRecipient The address that will receive the token output
+     * @param deadline The Unix timestamp (in seconds) at/after which the swap will revert
+     * @return outputAmount The total ETH/ERC20 received
      */
     function robustSwapNFTsForToken(
         RobustPairSwapSpecificForToken[] calldata swapList,
@@ -327,13 +326,13 @@ contract LSSVMRouter {
 
     /**
      * @notice Buys NFTs with ETH and sells them for tokens in one transaction
-     *     @param params All the parameters for the swap (packed in struct to avoid stack too deep), containing:
-     *     - ethToNFTSwapList The list of NFTs to buy
-     *     - nftToTokenSwapList The list of NFTs to sell
-     *     - inputAmount The max amount of tokens to send (if ERC20)
-     *     - tokenRecipient The address that receives tokens from the NFTs sold
-     *     - nftRecipient The address that receives NFTs
-     *     - deadline UNIX timestamp deadline for the swap
+     * @param params All the parameters for the swap (packed in struct to avoid stack too deep), containing:
+     * - ethToNFTSwapList The list of NFTs to buy
+     * - nftToTokenSwapList The list of NFTs to sell
+     * - inputAmount The max amount of tokens to send (if ERC20)
+     * - tokenRecipient The address that receives tokens from the NFTs sold
+     * - nftRecipient The address that receives NFTs
+     * - deadline UNIX timestamp deadline for the swap
      */
     function robustSwapETHForSpecificNFTsAndNFTsToToken(RobustPairNFTsFoTokenAndTokenforNFTsTrade calldata params)
         external
@@ -411,13 +410,13 @@ contract LSSVMRouter {
 
     /**
      * @notice Buys NFTs with ERC20, and sells them for tokens in one transaction
-     *     @param params All the parameters for the swap (packed in struct to avoid stack too deep), containing:
-     *     - ethToNFTSwapList The list of NFTs to buy
-     *     - nftToTokenSwapList The list of NFTs to sell
-     *     - inputAmount The max amount of tokens to send (if ERC20)
-     *     - tokenRecipient The address that receives tokens from the NFTs sold
-     *     - nftRecipient The address that receives NFTs
-     *     - deadline UNIX timestamp deadline for the swap
+     * @param params All the parameters for the swap (packed in struct to avoid stack too deep), containing:
+     * - ethToNFTSwapList The list of NFTs to buy
+     * - nftToTokenSwapList The list of NFTs to sell
+     * - inputAmount The max amount of tokens to send (if ERC20)
+     * - tokenRecipient The address that receives tokens from the NFTs sold
+     * - nftRecipient The address that receives NFTs
+     * - deadline UNIX timestamp deadline for the swap
      */
     function robustSwapERC20ForSpecificNFTsAndNFTsToToken(RobustPairNFTsFoTokenAndTokenforNFTsTrade calldata params)
         external
@@ -493,11 +492,11 @@ contract LSSVMRouter {
 
     /**
      * @dev Allows an ERC20 pair contract to transfer ERC20 tokens directly from
-     *     the sender, in order to minimize the number of token transfers. Only callable by an ERC20 pair.
-     *     @param token The ERC20 token to transfer
-     *     @param from The address to transfer tokens from
-     *     @param to The address to transfer tokens to
-     *     @param amount The amount of tokens to transfer
+     * the sender, in order to minimize the number of token transfers. Only callable by an ERC20 pair.
+     * @param token The ERC20 token to transfer
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
      */
     function pairTransferERC20From(ERC20 token, address from, address to, uint256 amount) external {
         // verify caller is a trusted pair contract
@@ -511,11 +510,11 @@ contract LSSVMRouter {
 
     /**
      * @dev Allows a pair contract to transfer ERC721 NFTs directly from
-     *     the sender, in order to minimize the number of token transfers. Only callable by a pair.
-     *     @param nft The ERC721 NFT to transfer
-     *     @param from The address to transfer tokens from
-     *     @param to The address to transfer tokens to
-     *     @param id The ID of the NFT to transfer
+     * the sender, in order to minimize the number of token transfers. Only callable by a pair.
+     * @param nft The ERC721 NFT to transfer
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param id The ID of the NFT to transfer
      */
     function pairTransferNFTFrom(IERC721 nft, address from, address to, uint256 id) external {
         // verify caller is a trusted pair contract
@@ -551,11 +550,11 @@ contract LSSVMRouter {
 
     /**
      * @notice Internal function used to swap ETH for a specific set of NFTs
-     *     @param swapList The list of pairs and swap calldata
-     *     @param inputAmount The total amount of ETH to send
-     *     @param ethRecipient The address receiving excess ETH
-     *     @param nftRecipient The address receiving the NFTs from the pairs
-     *     @return remainingValue The unspent token amount
+     * @param swapList The list of pairs and swap calldata
+     * @param inputAmount The total amount of ETH to send
+     * @param ethRecipient The address receiving excess ETH
+     * @param nftRecipient The address receiving the NFTs from the pairs
+     * @return remainingValue The unspent token amount
      */
     function _swapETHForSpecificNFTs(
         PairSwapSpecific[] calldata swapList,
@@ -596,14 +595,14 @@ contract LSSVMRouter {
 
     /**
      * @notice Internal function used to swap an ERC20 token for specific NFTs
-     *     @dev Note that we don't need to query the pair's bonding curve first for pricing data because
-     *     we just calculate and take the required amount from the caller during swap time.
-     *     However, we can't "pull" ETH, which is why for the ETH->NFT swaps, we need to calculate the pricing info
-     *     to figure out how much the router should send to the pool.
-     *     @param swapList The list of pairs and swap calldata
-     *     @param inputAmount The total amount of ERC20 tokens to send
-     *     @param nftRecipient The address receiving the NFTs from the pairs
-     *     @return remainingValue The unspent token amount
+     * @dev Note that we don't need to query the pair's bonding curve first for pricing data because
+     * we just calculate and take the required amount from the caller during swap time.
+     * However, we can't "pull" ETH, which is why for the ETH->NFT swaps, we need to calculate the pricing info
+     * to figure out how much the router should send to the pool.
+     * @param swapList The list of pairs and swap calldata
+     * @param inputAmount The total amount of ERC20 tokens to send
+     * @param nftRecipient The address receiving the NFTs from the pairs
+     * @return remainingValue The unspent token amount
      */
     function _swapERC20ForSpecificNFTs(PairSwapSpecific[] calldata swapList, uint256 inputAmount, address nftRecipient)
         internal
@@ -630,12 +629,12 @@ contract LSSVMRouter {
 
     /**
      * @notice Swaps NFTs for tokens, designed to be used for 1 token at a time
-     *     @dev Calling with multiple tokens is permitted, BUT minOutput will be
-     *     far from enough of a safety check because different tokens almost certainly have different unit prices.
-     *     @param swapList The list of pairs and swap calldata
-     *     @param minOutput The minimum number of tokens to be receieved from the swaps
-     *     @param tokenRecipient The address that receives the tokens
-     *     @return outputAmount The number of tokens to be received
+     * @dev Calling with multiple tokens is permitted, BUT minOutput will be
+     * far from enough of a safety check because different tokens almost certainly have different unit prices.
+     * @param swapList The list of pairs and swap calldata
+     * @param minOutput The minimum number of tokens to be receieved from the swaps
+     * @param tokenRecipient The address that receives the tokens
+     * @return outputAmount The number of tokens to be received
      */
     function _swapNFTsForToken(PairSwapSpecific[] calldata swapList, uint256 minOutput, address payable tokenRecipient)
         internal

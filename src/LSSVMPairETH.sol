@@ -9,7 +9,7 @@ import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 
 /**
  * @title An NFT/Token pair where the token is ETH
- *     @author boredGenius, 0xmons, 0xCygaar
+ * @author boredGenius, 0xmons, 0xCygaar
  */
 abstract contract LSSVMPairETH is LSSVMPair {
     using SafeTransferLib for address payable;
@@ -17,7 +17,9 @@ abstract contract LSSVMPairETH is LSSVMPair {
 
     error LSSVMPairETH__InsufficientInput();
 
-    /// @inheritdoc LSSVMPair
+    /**
+     * @inheritdoc LSSVMPair
+     */
     function _pullTokenInputs(
         uint256 inputAmountExcludingRoyalty,
         uint256[] memory royaltyAmounts,
@@ -28,10 +30,10 @@ abstract contract LSSVMPairETH is LSSVMPair {
         address, /*routerCaller*/
         uint256 protocolFee
     ) internal override {
-        // Require that the input amount is sufficient to pay for the sale amount and royalties
+        // Require that the input amount is sufficient to pay for the sale amount, royalties, and fees
         if (msg.value < (royaltyTotal + inputAmountExcludingRoyalty)) revert LSSVMPairETH__InsufficientInput();
 
-        // Transfer inputAmountExcludingRoyalty ETH to assetRecipient if it's been set
+        // Transfer inputAmountExcludingRoyalty ETH to assetRecipient if it has been set
         address payable _assetRecipient = getAssetRecipient();
 
         // Attempt to transfer trade fees only if TRADE pool and they exist
@@ -67,7 +69,9 @@ abstract contract LSSVMPairETH is LSSVMPair {
         }
     }
 
-    /// @inheritdoc LSSVMPair
+    /**
+     * @inheritdoc LSSVMPair
+     */
     function _refundTokenToSender(uint256 inputAmount) internal override {
         // Give excess ETH back to caller
         if (msg.value > inputAmount) {
@@ -75,7 +79,9 @@ abstract contract LSSVMPairETH is LSSVMPair {
         }
     }
 
-    /// @inheritdoc LSSVMPair
+    /**
+     * @inheritdoc LSSVMPair
+     */
     function _sendTokenOutput(address payable tokenRecipient, uint256 outputAmount) internal override {
         // Send ETH to caller
         if (outputAmount != 0) {
@@ -85,7 +91,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
 
     /**
      * @notice Withdraws all token owned by the pair to the owner address.
-     *     @dev Only callable by the owner.
+     * @dev Only callable by the owner.
      */
     function withdrawAllETH() external onlyOwner {
         withdrawETH(address(this).balance);
@@ -93,9 +99,9 @@ abstract contract LSSVMPairETH is LSSVMPair {
 
     /**
      * @notice Withdraws a specified amount of token owned by the pair to the owner address.
-     *     @dev Only callable by the owner.
-     *     @param amount The amount of token to send to the owner. If the pair's balance is less than
-     *     this value, the transaction will be reverted.
+     * @dev Only callable by the owner.
+     * @param amount The amount of token to send to the owner. If the pair's balance is less than
+     * this value, the transaction will be reverted.
      */
     function withdrawETH(uint256 amount) public onlyOwner {
         payable(msg.sender).safeTransferETH(amount);
@@ -104,14 +110,16 @@ abstract contract LSSVMPairETH is LSSVMPair {
         emit TokenWithdrawal(amount);
     }
 
-    /// @inheritdoc LSSVMPair
+    /**
+     * @inheritdoc LSSVMPair
+     */
     function withdrawERC20(ERC20 a, uint256 amount) external override onlyOwner {
         a.safeTransfer(msg.sender, amount);
     }
 
     /**
      * @dev All ETH transfers into the pair are accepted. This is the main method
-     *     for the owner to top up the pair's token reserves.
+     * for the owner to top up the pair's token reserves.
      */
     receive() external payable {
         emit TokenDeposit(msg.value);
@@ -119,7 +127,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
 
     /**
      * @dev All ETH transfers into the pair are accepted. This is the main method
-     *     for the owner to top up the pair's token reserves.
+     * for the owner to top up the pair's token reserves.
      */
     fallback() external payable {
         // Only allow calls without function selector

@@ -23,7 +23,7 @@ import {LSSVMPairERC1155ERC20} from "./erc1155/LSSVMPairERC1155ERC20.sol";
 import {ISettings} from "./settings/ISettings.sol";
 
 /**
- * Imports for authAllowedForToken (forked from manifold.xyz Royalty Registry)
+ * @notice Imports for authAllowedForToken (forked from manifold.xyz Royalty Registry)
  */
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
@@ -36,6 +36,10 @@ import "./royalty-auth/IFoundation.sol";
 import "./royalty-auth/IDigitalax.sol";
 import "./royalty-auth/IArtBlocks.sol";
 
+/**
+ * @title The factory contract used to deploy new pairs
+ * @author boredGenius, 0xmons, 0xCygaar
+ */
 contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     using LSSVMPairCloner for address;
     using AddressUpgradeable for address;
@@ -116,19 +120,17 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Creates a pair contract using EIP-1167.
-     *     @param _nft The NFT contract of the collection the pair trades
-     *     @param _bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
-     *     @param _assetRecipient The address that will receive the assets traders give during trades.
-     *                           If set to address(0), assets will be sent to the pool address.
-     *                           Not available to TRADE pools.
-     *     @param _poolType TOKEN, NFT, or TRADE
-     *     @param _delta The delta value used by the bonding curve. The meaning of delta depends
-     *     on the specific curve.
-     *     @param _fee The fee taken by the LP in each trade. Can only be non-zero if _poolType is Trade.
-     *     @param _spotPrice The initial selling spot price
-     *     @param _propertyChecker The contract to use for verifying properties of IDs sent in
-     *     @param _initialNFTIDs The list of IDs of NFTs to transfer from the sender to the pair
-     *     @return pair The new pair
+     * @param _nft The NFT contract of the collection the pair trades
+     * @param _bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
+     * @param _assetRecipient The address that will receive the assets traders give during trades.
+     * If set to address(0), assets will be sent to the pool address. Not available to TRADE pools.
+     * @param _poolType TOKEN, NFT, or TRADE
+     * @param _delta The delta value used by the bonding curve. The meaning of delta depends on the specific curve.
+     * @param _fee The fee taken by the LP in each trade. Can only be non-zero if _poolType is Trade.
+     * @param _spotPrice The initial selling spot price
+     * @param _propertyChecker The contract to use for verifying properties of IDs sent in
+     * @param _initialNFTIDs The list of IDs of NFTs to transfer from the sender to the pair
+     * @return pair The new pair
      */
     function createPairERC721ETH(
         IERC721 _nft,
@@ -155,24 +157,6 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         emit NewERC721Pair(address(pair), _initialNFTIDs);
     }
 
-    /**
-     * @notice Creates a pair contract using EIP-1167.
-     *     @param nft The NFT contract of the collection the pair trades
-     *     @param bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
-     *     @param assetRecipient The address that will receive the assets traders give during trades.
-     *                             If set to address(0), assets will be sent to the pool address.
-     *                             Not available to TRADE pools.
-     *     @param poolType TOKEN, NFT, or TRADE
-     *     @param delta The delta value used by the bonding curve. The meaning of delta depends
-     *     on the specific curve.
-     *     @param fee The fee taken by the LP in each trade. Can only be non-zero if poolType is Trade.
-     *     @param spotPrice Param 1 for the bonding curve, usually used for start price
-     *     @param delta Param 2 for the bonding curve, usually used for dynamic adjustment
-     *     @param propertyChecker The contract to use for verifying properties of IDs sent in
-     *     @param initialNFTIDs The list of IDs of NFTs to transfer from the sender to the pair
-     *     @param initialTokenBalance The initial token balance sent from the sender to the new pair
-     *     @return pair The new pair
-     */
     struct CreateERC721ERC20PairParams {
         ERC20 token;
         IERC721 nft;
@@ -187,6 +171,24 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint256 initialTokenBalance;
     }
 
+    /**
+     * @notice Creates a pair contract using EIP-1167.
+     * @param params The info used to create a new pair. This includes:
+     * - token: The ERC20 token the pair trades
+     * - nft: The NFT contract of the collection the pair trades
+     * - bondingCurve: The bonding curve for the pair to price NFTs, must be whitelisted
+     * - assetRecipient: The address that will receive the assets traders give during trades.
+     *   If set to address(0), assets will be sent to the pool address. Not available to TRADE pools.
+     * - poolType: TOKEN, NFT, or TRADE
+     * - delta: The delta value used by the bonding curve. The meaning of delta depends on the specific curve.
+     * - fee: The fee taken by the LP in each trade. Can only be non-zero if poolType is Trade.
+     * - spotPrice: Param 1 for the bonding curve, usually used for start price
+     * - delta: Param 2 for the bonding curve, usually used for dynamic adjustment
+     * - propertyChecker: The contract to use for verifying properties of IDs sent in
+     * - initialNFTIDs: The list of IDs of NFTs to transfer from the sender to the pair
+     * - initialTokenBalance: The initial token balance sent from the sender to the new pair
+     * @return pair The new pair
+     */
     function createPairERC721ERC20(CreateERC721ERC20PairParams calldata params)
         external
         returns (LSSVMPairERC721ERC20 pair)
@@ -216,19 +218,17 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     }
     /**
      * @notice Creates a pair contract using EIP-1167.
-     *     @param _nft The NFT contract of the collection the pair trades
-     *     @param _bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
-     *     @param _assetRecipient The address that will receive the assets traders give during trades.
-     *                           If set to address(0), assets will be sent to the pool address.
-     *                           Not available to TRADE pools.
-     *     @param _poolType TOKEN, NFT, or TRADE
-     *     @param _delta The delta value used by the bonding curve. The meaning of delta depends
-     *     on the specific curve.
-     *     @param _fee The fee taken by the LP in each trade. Can only be non-zero if _poolType is Trade.
-     *     @param _spotPrice The initial selling spot price
-     *     @param _nftId The ID of the NFT to trade
-     *     @param _initialNFTBalance The amount of NFTs to transfer from the sender to the pair
-     *     @return pair The new pair
+     * @param _nft The NFT contract of the collection the pair trades
+     * @param _bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
+     * @param _assetRecipient The address that will receive the assets traders give during trades.
+     * If set to address(0), assets will be sent to the pool address. Not available to TRADE pools.
+     * @param _poolType TOKEN, NFT, or TRADE
+     * @param _delta The delta value used by the bonding curve. The meaning of delta depends on the specific curve.
+     * @param _fee The fee taken by the LP in each trade. Can only be non-zero if _poolType is Trade.
+     * @param _spotPrice The initial selling spot price
+     * @param _nftId The ID of the NFT to trade
+     * @param _initialNFTBalance The amount of NFTs to transfer from the sender to the pair
+     * @return pair The new pair
      */
 
     function createPairERC1155ETH(
@@ -254,23 +254,6 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         emit NewERC1155Pair(address(pair), _initialNFTBalance);
     }
 
-    /**
-     * @notice Creates a pair contract using EIP-1167.
-     *     @param _nft The NFT contract of the collection the pair trades
-     *     @param _bondingCurve The bonding curve for the pair to price NFTs, must be whitelisted
-     *     @param _assetRecipient The address that will receive the assets traders give during trades.
-     *                             If set to address(0), assets will be sent to the pool address.
-     *                             Not available to TRADE pools.
-     *     @param _poolType TOKEN, NFT, or TRADE
-     *     @param _delta The delta value used by the bonding curve. The meaning of delta depends
-     *     on the specific curve.
-     *     @param _fee The fee taken by the LP in each trade. Can only be non-zero if _poolType is Trade.
-     *     @param _spotPrice The initial selling spot price, in ETH
-     *     @param _nftId The ID of the NFT to trade
-     *     @param _initialNFTBalance The amount of NFTs to transfer from the sender to the pair
-     *     @param _initialTokenBalance The initial token balance sent from the sender to the new pair
-     *     @return pair The new pair
-     */
     struct CreateERC1155ERC20PairParams {
         ERC20 token;
         IERC1155 nft;
@@ -285,6 +268,23 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint256 initialTokenBalance;
     }
 
+    /**
+     * @notice Creates a pair contract using EIP-1167.
+     * @param params The info used to create a new pair. This includes:
+     * - token: The ERC20 token the pair trades
+     * - nft: The NFT contract of the collection the pair trades
+     * - bondingCurve: The bonding curve for the pair to price NFTs, must be whitelisted
+     * - assetRecipient: The address that will receive the assets traders give during trades.
+     *   If set to address(0), assets will be sent to the pool address. Not available to TRADE pools.
+     * - poolType: TOKEN, NFT, or TRADE
+     * - delta: The delta value used by the bonding curve. The meaning of delta depends on the specific curve.
+     * - fee: The fee taken by the LP in each trade. Can only be non-zero if poolType is Trade.
+     * - spotPrice: Param 1 for the bonding curve, usually used for start price
+     * - nftId: The ERC1155 nft id that this pair trades
+     * - initialNFTBalance: The initial NFT balance sent from the sender to the new pair
+     * - initialTokenBalance: The initial token balance sent from the sender to the new pair
+     * @return pair The new pair
+     */
     function createPairERC1155ERC20(CreateERC1155ERC20PairParams calldata params)
         external
         returns (LSSVMPairERC1155ERC20 pair)
@@ -351,9 +351,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Checks if an address is an allowed auth for a token
-     *   @param tokenAddress The token address to check
-     *   @param proposedAuthAddress The auth address to check
-     *   @return True if the proposedAuthAddress is a valid auth for the tokenAddress, false otherwise.
+     * @param tokenAddress The token address to check
+     * @param proposedAuthAddress The auth address to check
+     * @return True if the proposedAuthAddress is a valid auth for the tokenAddress, false otherwise.
      */
     function authAllowedForToken(address tokenAddress, address proposedAuthAddress) public view returns (bool) {
         // Check for admin interface
@@ -415,7 +415,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Withdraws the ETH balance to the protocol fee recipient.
-     *     Only callable by the owner.
+     * Only callable by the owner.
      */
     function withdrawETHProtocolFees() external onlyOwner {
         protocolFeeRecipient.safeTransferETH(address(this).balance);
@@ -423,8 +423,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Withdraws ERC20 tokens to the protocol fee recipient. Only callable by the owner.
-     *     @param token The token to transfer
-     *     @param amount The amount of tokens to transfer
+     * @param token The token to transfer
+     * @param amount The amount of tokens to transfer
      */
     function withdrawERC20ProtocolFees(ERC20 token, uint256 amount) external onlyOwner {
         token.safeTransfer(protocolFeeRecipient, amount);
@@ -432,7 +432,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Changes the protocol fee recipient address. Only callable by the owner.
-     *     @param _protocolFeeRecipient The new fee recipient
+     * @param _protocolFeeRecipient The new fee recipient
      */
     function changeProtocolFeeRecipient(address payable _protocolFeeRecipient) external onlyOwner {
         if (_protocolFeeRecipient == address(0)) revert LSSVMPairFactory__ZeroAddress();
@@ -442,7 +442,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Changes the protocol fee multiplier. Only callable by the owner.
-     *     @param _protocolFeeMultiplier The new fee multiplier, 18 decimals
+     * @param _protocolFeeMultiplier The new fee multiplier, 18 decimals
      */
     function changeProtocolFeeMultiplier(uint256 _protocolFeeMultiplier) external onlyOwner {
         if (_protocolFeeMultiplier > MAX_PROTOCOL_FEE) revert LSSVMPairFactory__FeeTooLarge();
@@ -452,8 +452,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Sets the whitelist status of a bonding curve contract. Only callable by the owner.
-     *     @param bondingCurve The bonding curve contract
-     *     @param isAllowed True to whitelist, false to remove from whitelist
+     * @param bondingCurve The bonding curve contract
+     * @param isAllowed True to whitelist, false to remove from whitelist
      */
     function setBondingCurveAllowed(ICurve bondingCurve, bool isAllowed) external onlyOwner {
         bondingCurveAllowed[bondingCurve] = isAllowed;
@@ -462,12 +462,12 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Sets the whitelist status of a contract to be called arbitrarily by a pair.
-     *     Only callable by the owner.
-     *     @param target The target contract
-     *     @param isAllowed True to whitelist, false to remove from whitelist
+     * Only callable by the owner.
+     * @param target The target contract
+     * @param isAllowed True to whitelist, false to remove from whitelist
      */
     function setCallAllowed(address payable target, bool isAllowed) external onlyOwner {
-        // ensure target is not / was not ever a router
+        // Ensure target is not / was not ever a router
         if (isAllowed) {
             if (routerStatus[LSSVMRouter(target)].wasEverTouched) revert LSSVMPairFactory__CannotCallRouter();
         }
@@ -478,11 +478,11 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Updates the router whitelist. Only callable by the owner.
-     *     @param _router The router
-     *     @param isAllowed True to whitelist, false to remove from whitelist
+     * @param _router The router
+     * @param isAllowed True to whitelist, false to remove from whitelist
      */
     function setRouterAllowed(LSSVMRouter _router, bool isAllowed) external onlyOwner {
-        // ensure target is not arbitrarily callable by pairs
+        // Ensure target is not arbitrarily callable by pairs
         if (isAllowed) {
             if (callAllowed[address(_router)]) revert LSSVMPairFactory__CannotCallRouter();
         }
@@ -494,7 +494,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     /**
      * @notice Returns the Settings for a pair if it currently has Settings
      * @param pairAddress The address of the pair to look up
-     * Returns whether or not the pair has custom settings, and what its bps should be (if valid)
+     * @return settingsEnabled Whether or not the pair has custom settings
+     * @return bps The royalty basis points from the custom settings, 0 if there is no custom settings
      */
     function getSettingsForPair(address pairAddress) public view returns (bool settingsEnabled, uint96 bps) {
         address settingsAddress = settingsForPair[pairAddress];
@@ -506,9 +507,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
 
     /**
      * @notice Enables or disables an settings for a given NFT collection
-     *      @param settings The address of the Settings contract
-     *      @param collectionAddress The NFT project that the settings is toggled for
-     *      @param enable Bool to determine whether to disable or enable the settings
+     *  @param settings The address of the Settings contract
+     *  @param collectionAddress The NFT project that the settings is toggled for
+     *  @param enable Bool to determine whether to disable or enable the settings
      */
     function toggleSettingsForCollection(address settings, address collectionAddress, bool enable) public {
         if (!authAllowedForToken(collectionAddress, msg.sender)) revert LSSVMPairFactory__UnauthorizedCaller();
@@ -523,8 +524,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @notice Enables an Settings for a given Pair
      * @notice Only the owner of the Pair can call this function
      * @notice The Settings must be enabled for the Pair's collection
-     *      @param settings The address of the Settings contract
-     *      @param pairAddress The address of the Pair contract
+     * @param settings The address of the Settings contract
+     * @param pairAddress The address of the Pair contract
      */
     function enableSettingsForPair(address settings, address pairAddress) public {
         if (!isValidPair(pairAddress)) revert LSSVMPairFactory__InvalidPair();
@@ -540,8 +541,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @notice Disables an Settings for a given Pair
      * @notice Only the owner of the Pair can call this function
      * @notice The Settings must already be enabled for the Pair
-     *      @param settings The address of the Settings contract
-     *      @param pairAddress The address of the Pair contract
+     * @param settings The address of the Settings contract
+     * @param pairAddress The address of the Pair contract
      */
     function disableSettingsForPair(address settings, address pairAddress) public {
         if (!isValidPair(pairAddress)) revert LSSVMPairFactory__InvalidPair();
@@ -564,13 +565,13 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint128 _spotPrice,
         uint256[] calldata _initialNFTIDs
     ) internal {
-        // initialize pair
+        // Initialize pair
         _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
 
-        // transfer initial ETH to pair
+        // Transfer initial ETH to pair
         if (msg.value != 0) payable(address(_pair)).safeTransferETH(msg.value);
 
-        // transfer initial NFTs from sender to pair
+        // Transfer initial NFTs from sender to pair
         uint256 numNFTs = _initialNFTIDs.length;
         for (uint256 i; i < numNFTs;) {
             _nft.transferFrom(msg.sender, address(_pair), _initialNFTIDs[i]);
@@ -592,15 +593,15 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint256[] calldata _initialNFTIDs,
         uint256 _initialTokenBalance
     ) internal {
-        // initialize pair
+        // Initialize pair
         _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
 
-        // transfer initial tokens to pair (if != 0)
+        // Transfer initial tokens to pair (if != 0)
         if (_initialTokenBalance != 0) {
             _token.safeTransferFrom(msg.sender, address(_pair), _initialTokenBalance);
         }
 
-        // transfer initial NFTs from sender to pair
+        // Transfer initial NFTs from sender to pair
         uint256 numNFTs = _initialNFTIDs.length;
         for (uint256 i; i < numNFTs;) {
             _nft.transferFrom(msg.sender, address(_pair), _initialNFTIDs[i]);
@@ -621,13 +622,13 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint256 _nftId,
         uint256 _initialNFTBalance
     ) internal {
-        // initialize pair
+        // Initialize pair
         _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
 
-        // transfer initial ETH to pair
+        // Transfer initial ETH to pair
         if (msg.value != 0) payable(address(_pair)).safeTransferETH(msg.value);
 
-        // transfer initial NFTs from sender to pair
+        // Transfer initial NFTs from sender to pair
         if (_initialNFTBalance != 0) {
             _nft.safeTransferFrom(msg.sender, address(_pair), _nftId, _initialNFTBalance, bytes(""));
         }
@@ -645,15 +646,15 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint256 _initialNFTBalance,
         uint256 _initialTokenBalance
     ) internal {
-        // initialize pair
+        // Initialize pair
         _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
 
-        // transfer initial tokens to pair
+        // Transfer initial tokens to pair
         if (_initialTokenBalance != 0) {
             _token.safeTransferFrom(msg.sender, address(_pair), _initialTokenBalance);
         }
 
-        // transfer initial NFTs from sender to pair
+        // Transfer initial NFTs from sender to pair
         if (_initialNFTBalance != 0) {
             _nft.safeTransferFrom(msg.sender, address(_pair), _nftId, _initialNFTBalance, bytes(""));
         }
@@ -665,10 +666,10 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     function depositNFTs(IERC721 _nft, uint256[] calldata ids, address recipient) external {
         uint256 numNFTs = ids.length;
 
-        // early return for trivial transfers
+        // Early return for trivial transfers
         if (numNFTs == 0) return;
 
-        // transfer NFTs from caller to recipient
+        // Transfer NFTs from caller to recipient
         for (uint256 i; i < numNFTs;) {
             _nft.transferFrom(msg.sender, recipient, ids[i]);
 
@@ -685,7 +686,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @dev Used to deposit ERC20s into a pair after creation and emit an event for indexing (if recipient is indeed an ERC20 pair and the token matches)
      */
     function depositERC20(ERC20 token, address recipient, uint256 amount) external {
-        // early return for trivial transfers
+        // Early return for trivial transfers
         if (amount == 0) return;
 
         token.safeTransferFrom(msg.sender, recipient, amount);

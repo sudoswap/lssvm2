@@ -17,7 +17,9 @@ contract GDACurve is ICurve, CurveErrorCodes {
     uint256 internal constant _TIME_SCALAR = 2 * uUNIT; // Used in place of Euler's number
     uint256 internal constant _MAX_TIME_EXPONENT = 10;
 
-    // minimum price to prevent numerical issues
+    /**
+     * @notice Minimum price to prevent numerical issues
+     */
     uint256 public constant MIN_PRICE = 1 gwei;
 
     /**
@@ -201,20 +203,19 @@ contract GDACurve is ICurve, CurveErrorCodes {
     }
 
     function _parseDelta(uint128 delta) internal pure returns (UD60x18 alpha, uint256 lambda, uint256 prevTime) {
-        // the highest 40 bits are alpha with 9 decimals of precision.
-        // however, because our alpha value needs to be 18 decimals of precision, we multiple by a scaling factor
+        // The highest 40 bits are alpha with 9 decimals of precision.
+        // However, because our alpha value needs to be 18 decimals of precision, we multiply by a scaling factor
         alpha = ud(uint40(delta >> 88) * _SCALE_FACTOR);
 
-        // the middle 40 bits are lambda with 9 decimals of precision
+        // The middle 40 bits are lambda with 9 decimals of precision
         // lambda determines the exponential decay (when buying) or exponential boost (when selling) over time
-        // see https://www.paradigm.xyz/2022/04/gda
-        // lambda also needs to be 18 decimals of precision so we multiple by a scaling factor
+        // See https://www.paradigm.xyz/2022/04/gda
+        // lambda also needs to be 18 decimals of precision so we multiply by a scaling factor
         lambda = uint40(delta >> 48) * _SCALE_FACTOR;
 
-        // the lowest 48 bits are the start timestamp
-        // this works because solidity cuts off higher bits when converting
-        // from a larger type to a smaller type
-        // see https://docs.soliditylang.org/en/latest/types.html#explicit-conversions
+        // The lowest 48 bits are the start timestamp
+        // This works because solidity cuts off higher bits when converting from a larger type to a smaller type
+        // See https://docs.soliditylang.org/en/latest/types.html#explicit-conversions
         prevTime = uint256(uint48(delta));
     }
 

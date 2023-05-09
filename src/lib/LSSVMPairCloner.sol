@@ -18,6 +18,8 @@ library LSSVMPairCloner {
      *
      * During the delegate call, extra data is copied into the calldata which can then be
      * accessed by the implementation contract.
+     *
+     * @return instance The address of the new pair instance
      */
     function cloneERC721ETHPair(
         address implementation,
@@ -76,7 +78,7 @@ library LSSVMPairCloner {
             // 93          | SWAP4                 | 0 rds success 0 rds     | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 80          | DUP1                  | 0 0 rds success 0 rds   | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 3e          | RETURNDATACOPY        | success 0 rds           | [0, rds) = return data (there might be some irrelevant leftovers in memory [rds, cds+0x35) when rds < cds+0x35)
-            // 60 0x33     | PUSH1 0x33            | 0x33 sucess 0 rds       | [0, rds) = return data
+            // 60 0x33     | PUSH1 0x33            | 0x33 success 0 rds      | [0, rds) = return data
             // 57          | JUMPI                 | 0 rds                   | [0, rds) = return data
             // fd          | REVERT                | –                       | [0, rds) = return data
             // 5b          | JUMPDEST              | 0 rds                   | [0, rds) = return data
@@ -108,6 +110,8 @@ library LSSVMPairCloner {
      *
      * During the delegate call, extra data is copied into the calldata which can then be
      * accessed by the implementation contract.
+     *
+     * @return instance The address of the new pair instance
      */
     function cloneERC721ERC20Pair(
         address implementation,
@@ -167,7 +171,7 @@ library LSSVMPairCloner {
             // 93          | SWAP4                 | 0 rds success 0 rds     | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 80          | DUP1                  | 0 0 rds success 0 rds   | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 3e          | RETURNDATACOPY        | success 0 rds           | [0, rds) = return data (there might be some irrelevant leftovers in memory [rds, cds+0x37) when rds < cds+0x37)
-            // 60 0x33     | PUSH1 0x33            | 0x33 sucess 0 rds       | [0, rds) = return data
+            // 60 0x33     | PUSH1 0x33            | 0x33 success 0 rds      | [0, rds) = return data
             // 57          | JUMPI                 | 0 rds                   | [0, rds) = return data
             // fd          | REVERT                | –                       | [0, rds) = return data
             // 5b          | JUMPDEST              | 0 rds                   | [0, rds) = return data
@@ -269,6 +273,8 @@ library LSSVMPairCloner {
      *
      * During the delegate call, extra data is copied into the calldata which can then be
      * accessed by the implementation contract.
+     *
+     * @return instance The address of the new pair instance
      */
     function cloneERC1155ETHPair(
         address implementation,
@@ -327,7 +333,7 @@ library LSSVMPairCloner {
             // 93          | SWAP4                 | 0 rds success 0 rds     | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 80          | DUP1                  | 0 0 rds success 0 rds   | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 3e          | RETURNDATACOPY        | success 0 rds           | [0, rds) = return data (there might be some irrelevant leftovers in memory [rds, cds+0x37) when rds < cds+0x37)
-            // 60 0x33     | PUSH1 0x33            | 0x33 sucess 0 rds       | [0, rds) = return data
+            // 60 0x33     | PUSH1 0x33            | 0x33 success 0 rds      | [0, rds) = return data
             // 57          | JUMPI                 | 0 rds                   | [0, rds) = return data
             // fd          | REVERT                | –                       | [0, rds) = return data
             // 5b          | JUMPDEST              | 0 rds                   | [0, rds) = return data
@@ -355,6 +361,8 @@ library LSSVMPairCloner {
      *
      * During the delegate call, extra data is copied into the calldata which can then be
      * accessed by the implementation contract.
+     *
+     * @return instance The address of the new pair instance
      */
     function cloneERC1155ERC20Pair(
         address implementation,
@@ -414,7 +422,7 @@ library LSSVMPairCloner {
             // 93          | SWAP4                 | 0 rds success 0 rds     | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 80          | DUP1                  | 0 0 rds success 0 rds   | [0, cds) = calldata, [cds, cds+0x35) = extraData
             // 3e          | RETURNDATACOPY        | success 0 rds           | [0, rds) = return data (there might be some irrelevant leftovers in memory [rds, cds+0x37) when rds < cds+0x37)
-            // 60 0x33     | PUSH1 0x33            | 0x33 sucess 0 rds       | [0, rds) = return data
+            // 60 0x33     | PUSH1 0x33            | 0x33 success 0 rds      | [0, rds) = return data
             // 57          | JUMPI                 | 0 rds                   | [0, rds) = return data
             // fd          | REVERT                | –                       | [0, rds) = return data
             // 5b          | JUMPDEST              | 0 rds                   | [0, rds) = return data

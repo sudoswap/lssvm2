@@ -5,9 +5,10 @@ import {ICurve} from "./ICurve.sol";
 import {CurveErrorCodes} from "./CurveErrorCodes.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-/*
-    @author 0xmons and boredGenius
-    @notice Bonding curve logic for a linear curve, where each buy/sell changes spot price by adding/substracting delta*/
+/**
+ * @author 0xmons, boredGenius, 0xCygaar
+ * @notice Bonding curve logic for a linear curve, where each buy/sell changes spot price by adding/substracting delta
+ */
 contract LinearCurve is ICurve, CurveErrorCodes {
     using FixedPointMathLib for uint256;
 

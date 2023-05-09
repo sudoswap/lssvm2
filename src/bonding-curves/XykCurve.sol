@@ -6,11 +6,12 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {ICurve} from "./ICurve.sol";
 import {CurveErrorCodes} from "./CurveErrorCodes.sol";
 
-/*
-    @author 0xacedia
-    @notice Bonding curve logic for an x*y=k curve using virtual reserves.
-    @dev    The virtual token reserve is stored in `spotPrice` and the virtual nft reserve is stored in `delta`.
-            An LP can modify the virtual reserves by changing the `spotPrice` (tokens) or `delta` (nfts).*/
+/**
+ * @author 0xacedia
+ * @notice Bonding curve logic for an x*y=k curve using virtual reserves.
+ * @dev The virtual token reserve is stored in `spotPrice` and the virtual nft reserve is stored in `delta`.
+ * An LP can modify the virtual reserves by changing the `spotPrice` (tokens) or `delta` (nfts).
+ */
 contract XykCurve is ICurve, CurveErrorCodes {
     using FixedPointMathLib for uint256;
 
@@ -56,10 +57,10 @@ contract XykCurve is ICurve, CurveErrorCodes {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
         }
 
-        // get the pair's virtual nft and token reserves
+        // Get the pair's virtual nft and token reserves
         uint256 nftBalance = delta;
 
-        // If numItems is too large, we will get divide by zero error
+        // If numItems is too large, we will get a divide by zero error
         if (numItems >= nftBalance) {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
         }
@@ -70,15 +71,15 @@ contract XykCurve is ICurve, CurveErrorCodes {
             newNftBalance = nftBalance - numItems;
         }
 
-        // calculate the amount to send in. spotPrice is the virtual reserve.
+        // Calculate the amount to send in. spotPrice is the virtual reserve.
         uint256 inputValueWithoutFee = (numItems * spotPrice) / newNftBalance;
 
-        // add the fees to the amount to send in
+        // Add the fees to the amount to send in
         protocolFee = inputValueWithoutFee.mulWadUp(protocolFeeMultiplier);
         tradeFee = inputValueWithoutFee.mulWadUp(feeMultiplier);
         inputValue = inputValueWithoutFee + tradeFee + protocolFee;
 
-        // set the new virtual reserves
+        // Set the new virtual reserves
         uint256 newSpotPrice_ = spotPrice + inputValueWithoutFee;
         if (newSpotPrice_ > type(uint128).max) {
             return (Error.SPOT_PRICE_OVERFLOW, 0, 0, 0, 0, 0);
@@ -87,7 +88,7 @@ contract XykCurve is ICurve, CurveErrorCodes {
 
         newDelta = uint128(newNftBalance); // nft reserve
 
-        // If we got all the way here, no math error happened
+        // If we got all the way here, no math errors happened
         error = Error.OK;
     }
 
@@ -117,19 +118,19 @@ contract XykCurve is ICurve, CurveErrorCodes {
             return (Error.INVALID_NUMITEMS, 0, 0, 0, 0, 0);
         }
 
-        // get the pair's virtual nft and eth/erc20 balance
+        // Get the pair's virtual nft and eth/erc20 balance
         uint256 tokenBalance = spotPrice;
         uint256 nftBalance = delta;
 
-        // calculate the amount to send out
+        // Calculate the amount to send out
         uint256 outputValueWithoutFee = (numItems * tokenBalance) / (nftBalance + numItems);
 
-        // subtract fees from amount to send out
+        // Subtract fees from amount to send out
         protocolFee = outputValueWithoutFee.mulWadUp(protocolFeeMultiplier);
         tradeFee = outputValueWithoutFee.mulWadUp(feeMultiplier);
         outputValue = outputValueWithoutFee - tradeFee - protocolFee;
 
-        // set the new virtual reserves
+        // Set the new virtual reserves
         newSpotPrice = uint128(spotPrice - outputValueWithoutFee); // token reserve
         uint256 newDelta_ = nftBalance + numItems; // nft reserve
         if (newDelta_ > type(uint128).max) {
@@ -137,7 +138,7 @@ contract XykCurve is ICurve, CurveErrorCodes {
         }
         newDelta = uint128(newDelta_);
 
-        // If we got all the way here, no math error happened
+        // If we got all the way here, no math errors happened
         error = Error.OK;
     }
 }
