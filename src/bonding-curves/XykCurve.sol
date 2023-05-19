@@ -84,6 +84,7 @@ contract XykCurve is ICurve, CurveErrorCodes {
         if (newSpotPrice_ > type(uint128).max) {
             return (Error.SPOT_PRICE_OVERFLOW, 0, 0, 0, 0, 0);
         }
+
         newSpotPrice = uint128(newSpotPrice_); // token reserve
 
         newDelta = uint128(newNftBalance); // nft reserve
@@ -122,21 +123,25 @@ contract XykCurve is ICurve, CurveErrorCodes {
         uint256 tokenBalance = spotPrice;
         uint256 nftBalance = delta;
 
+        // Return early if new nft balance is too high
+        uint256 newBalance = nftBalance + numItems;
+        if (newBalance > type(uint128).max) {
+            return (Error.DELTA_OVERFLOW, 0, 0, 0, 0, 0);
+        }
+
         // Calculate the amount to send out
-        uint256 outputValueWithoutFee = (numItems * tokenBalance) / (nftBalance + numItems);
+        uint256 outputValueWithoutFee = (numItems * tokenBalance) / newBalance;
 
         // Subtract fees from amount to send out
         protocolFee = outputValueWithoutFee.mulWadUp(protocolFeeMultiplier);
         tradeFee = outputValueWithoutFee.mulWadUp(feeMultiplier);
         outputValue = outputValueWithoutFee - tradeFee - protocolFee;
 
+        // Set new nft balance
+        newDelta = uint128(newBalance);
+
         // Set the new virtual reserves
         newSpotPrice = uint128(spotPrice - outputValueWithoutFee); // token reserve
-        uint256 newDelta_ = nftBalance + numItems; // nft reserve
-        if (newDelta_ > type(uint128).max) {
-            return (Error.DELTA_OVERFLOW, 0, 0, 0, 0, 0);
-        }
-        newDelta = uint128(newDelta_);
 
         // If we got all the way here, no math errors happened
         error = Error.OK;
