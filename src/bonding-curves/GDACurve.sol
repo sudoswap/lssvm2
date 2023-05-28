@@ -71,7 +71,7 @@ contract GDACurve is ICurve, CurveErrorCodes {
             (, uint256 lambda, uint256 prevTime) = _parseDelta(delta);
             UD60x18 exponent = ud((block.timestamp - prevTime) * lambda);
             if (convert(exponent) > _MAX_TIME_EXPONENT) {
-                // Cap the max decay factor to 2^20
+                // Cap the max decay factor to 2^10
                 exponent = convert(_MAX_TIME_EXPONENT);
             }
             decayFactor = ud(_TIME_SCALAR).pow(exponent);
@@ -152,7 +152,7 @@ contract GDACurve is ICurve, CurveErrorCodes {
             (, uint256 lambda, uint256 prevTime) = _parseDelta(delta);
             UD60x18 exponent = ud((block.timestamp - prevTime) * lambda);
             if (convert(exponent) > _MAX_TIME_EXPONENT) {
-                // Cap the max boost factor to 2^20
+                // Cap the max boost factor to 2^10
                 exponent = convert(_MAX_TIME_EXPONENT);
             }
             boostFactor = ud(_TIME_SCALAR).pow(exponent);
