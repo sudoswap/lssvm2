@@ -1,6 +1,9 @@
 # Compiler files
 cache/
 out/
+_git
+git-completion.bash
+venv/
 
 remappings.txt
 todo.txt
