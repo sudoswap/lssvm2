@@ -1,0 +1,1 @@
+forge script $1 -f https://eth-goerli.g.alchemy.com/v2/BggOj0nAoA4i5e2tCVi6iIzzC0ZbI28x -vvvv --broadcast --skip-simulation
