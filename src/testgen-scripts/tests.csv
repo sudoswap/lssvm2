@@ -1,0 +1,15 @@
+NoArbBondingCurve,NoArb
+RouterRobustSwap,RRS
+RouterSinglePool,RSP
+RouterSinglePoolWithRoyalties,RSPWR
+PairAndFactory,PAF
+RouterMultiPool,RMP
+RouterMultiPoolWithRoyalties,RMPWR
+RouterSinglePoolWithAssetRecipient,RSPWAR
+RouterRobustSwapWithAssetRecipient,RRSWAR
+RouterRobustSwapWithRoyalties,RRSWR
+SettingsE2E,SE2E
+PropertyChecking,PC
+VeryFastRouterAllSwapTypes,VFR
+VeryFastRouterWithRoyalties,VFRWR
+MaliciousRouterFailsSwap,MRFS
