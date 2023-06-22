@@ -4,12 +4,19 @@ sudoAMM v2 is focused on delivering several specific feature upgrades missing fr
 
 Read the longform overview [here](https://blog.sudoswap.xyz/introducing-sudoswap-v2.html).
 
+## Architecture
+![sudoAMM v2 diagram](./flowchart.png)
+
+Diagram by [Gerard Pearson](https://twitter.com/gpersoon), prepared during the Spearbit [security audit](https://github.com/sudoswap/v2-audits/blob/main/spearbit.pdf).
+
+## Features
 The main focuses are:
 - On-chain royalty support for all collections by default
 - Property-checking for pools to allow for specifying desired trait / ID orders
 - An opt-in on-chain structure for LPs and project owners that allows for revenue sharing
 - ERC1155 support
 - Separate fee accounting, unified router, improved events, and minor gas optimizations
+
 
 ### On-chain Royalty Support
 If your collection is already ERC2981 compliant, then you're good to go. All buys and sells executed on sudoAMM v2 will send the appropriate royalty amount to your specified recipient address(es). If your collection isn't ERC2981 compliant, but your collection has an `owner()` or similar admin role, you can use the Manifold Royalty Registry to deploy a 2981 compliant royalty lookup.
