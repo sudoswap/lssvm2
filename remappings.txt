@@ -1,0 +1,13 @@
+@manifoldxyz/=lib/
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@prb/math/=lib/prb-math/src/
+clones-with-immutable-args/=lib/clones-with-immutable-args/src/
+create3-factory/=lib/create3-factory/src/
+ds-test/=lib/clones-with-immutable-args/lib/ds-test/src/
+forge-std/=lib/forge-std/src/
+foundry-huff/=lib/foundry-huff/src/
+huffmate/=lib/huffmate/src/
+manifoldxyz/=lib/royalty-registry-solidity/contracts/
+solmate/=lib/solmate/src/
+stringutils/=lib/foundry-huff/lib/solidity-stringutils/

@@ -11,6 +11,8 @@ remappings = [
   "clones-with-immutable-args/=lib/clones-with-immutable-args/src/",
   "ds-test/=lib/clones-with-immutable-args/lib/ds-test/src/",
   "forge-std/=lib/forge-std/src/",
+  "huffmate/=lib/huffmate/src",
+  "foundry-huff/=lib/foundry-huff/src",
 ]
 verbosity = 1
 auto_detect_remappings = false
@@ -20,10 +22,4 @@ auto_detect_remappings = false
 fuzz_runs = 100_000
 verbosity = 4
 
-[rpc_endpoints]
-goerli = "${RPC_URL_GOERLI}"
-mainnet = "${RPC_URL_MAINNET}"
-
-[etherscan]
-goerli = {key = "GA4UNA77WSDGDZ3VV3ZUUKC98BTWYFJXFA", url = "https://api-goerli.etherscan.io/api"}
-mainnet = {key = "GA4UNA77WSDGDZ3VV3ZUUKC98BTWYFJXFA"}
+# ffi = true

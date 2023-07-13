@@ -1,0 +1,150 @@
+/// SPDX-License-Identifier: AGPL-3.0
+/// @author 0xhamachi <https://github.com/0xhamachi>
+
+#include "huffmate/math/FixedPointMath.huff"
+
+/// TODO: custom error messages out
+#define constant OK = 0x00
+#define constant INVALID_NUMITEMS = 0x01
+#define constant SPOT_PRICE_OVERFLOW = 0x02
+#define constant DELTA_OVERFLOW = 0x03
+#define constant SPOT_PRICE_UNDERFLOW = 0x04
+
+#define constant UINT128_MAX = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+
+#define function validateDelta(uint128) pure returns (bool)
+#define function validateSpotPrice(uint128) view returns (bool)
+#define function getBuyInfo(uint128, uint128, uint256, uint256, uint256) view returns ()
+#define function getSellInfo(uint128, uint128, uint256, uint256, uint256) view returns ()
+
+#define macro CONSTRUCTOR() = {}
+
+#define macro GTFO() = takes(0) returns (0) {
+    0x20 0x00 revert
+}
+
+#define macro VALIDATE_DELTA() = takes(0) returns (0) {
+    0x01 0x00 mstore 
+    0x20 0x00 return
+
+}
+
+#define macro VALIDATE_SPOT_PRICE() = takes(0) returns (0) {
+    0x01 0x00 mstore
+    0x20 0x00 return
+
+}
+
+#define macro GET_BUY_INFO() = takes(0) returns (0) {
+
+    // check numItems != 0
+    0x44 calldataload iszero iszero numitems_not_zero jumpi 
+        [INVALID_NUMITEMS] 0x00 mstore                             
+        0xC0 0x00 return    
+    numitems_not_zero:   
+
+    // check numItems < nftBalance  
+    0x24 calldataload 0x44 calldataload                 // [numItems, nftBalance]
+    lt numitems_is_valid jumpi
+        [INVALID_NUMITEMS] 0x00 mstore
+        0xC0 0x00 return
+    numitems_is_valid:
+
+    // calcualte amount to send 
+    0x44 calldataload dup1 0x24 calldataload sub        // [nftBalance - numItems, numItems]
+    swap1 0x04 calldataload mul                         // [numItems * tokenBalance, nftBalance - numItems]
+    div                                                 // [(numItems * tokenBalance) / (nftBalance - numItems)]
+    dup1 dup1 dup1                                      // [inputValueWithoutFee, inputValueWithoutFee, inputValueWithoutFee, inputValueWithoutFee]
+
+    // store tradeFee
+    0x64 calldataload                                   // [feeMultiplier, inputValueWithoutFee, inputValueWithoutFee, inputValueWithoutFee, inputValueWithoutFee]
+    swap1 MUL_WAD_DOWN(fail) dup1                       // [tradeFee, tradeFee, inputValueWithoutFee, inputValueWithoutFee, inputValueWithoutFee]
+    swap4                                               // [inputValueWithoutFee, tradeFee, inputValueWithoutFee, inputValueWithoutFee, tradeFee]
+
+    // store protocol fee
+    0x84 calldataload                                   // [protocolFeeMultiplier, inputValueWithoutFee, tradeFee, inputValueWithoutFee, inputValueWithoutFee, tradeFee]
+    swap1 MUL_WAD_DOWN(fail) dup1                       // [protocolFee, protocolFee, tradeFee, inputValueWithoutFee, inputValueWithoutFee, tradeFee]         
+    swap4                                               // [inputValueWithoutFee, protocolFee, tradeFee, inputValueWithoutFee, protocolFee, tradeFee]                    
+
+    add add swap1                                       // [inputValueWithoutFee, inputValue, protocolFee, tradeFee]
+
+    // newSpotPrice = spotPrice + inputValueWithoutFee 
+    0x04 calldataload add                               // [newSpotPrice, inputValue, protocolFee, tradeFee]
+
+    [UINT128_MAX] dup2                                  // [newSpotPrice, UINT128_MAX, newSpotPrice, inputValue, protocolFee, tradeFee]
+    gt iszero spotprice_not_overflow jumpi
+        [SPOT_PRICE_OVERFLOW] 0x00 mstore
+        0xC0 0x00 return
+    spotprice_not_overflow:
+    0x20 mstore 0x60 mstore 0xA0 mstore 0x80 mstore     // []
+
+    // new delta = nftBalance - numItems
+    0x44 calldataload 0x24 calldataload sub             // [nftBalance - numItems]
+    0x40 mstore                                         // []
+
+    [OK] 0x00 mstore
+    0xC0 0x00 return
+}
+
+#define macro GET_SELL_INFO() = takes(0) returns (0) {
+
+    // check numItems != 0
+    0x44 calldataload iszero iszero numitems_not_zero jumpi 
+        [INVALID_NUMITEMS] 0x00 mstore                             
+        0xC0 0x00 return    
+    numitems_not_zero:   
+
+    // check delta overflow 
+    0x24 calldataload 0x44 calldataload add             // [newDelta]
+    [UINT128_MAX] dup2                                  // [newDelta, UINT128_MAX, newDelta]
+    gt iszero delta_not_overflow jumpi
+        [DELTA_OVERFLOW] 0x00 mstore
+        0xC0 0x00 return
+    delta_not_overflow:
+    0x40 mstore                                         // []
+
+    // calcualte amount to send 
+    0x44 calldataload dup1 0x24 calldataload add        // [nftBalance + numItems, numItems]
+    swap1 0x04 calldataload mul                         // [numItems * tokenBalance, nftBalance + numItems]
+    div                                                 // [(numItems * tokenBalance) / (nftBalance + numItems)]
+    dup1 dup1                                           // [outputValueWithoutFee, outputValueWithoutFee, outputValueWithoutFee]
+
+    // store newSpotPrice = spotPrice - outputValueWithoutFee
+    dup1 0x04 calldataload sub 0x20 mstore              // [outputValueWithoutFee, outputValueWithoutFee, outputValueWithoutFee]       
+
+    // store tradeFee
+    0x64 calldataload                                   // [feeMultiplier, outputValueWithoutFee, outputValueWithoutFee, outputValueWithoutFee]
+    MUL_WAD_DOWN(fail) dup1 0x80 mstore swap1           // [outputValueWithoutFee, tradeFee, outputValueWithoutFee]
+
+    // store protocol fee
+    0x84 calldataload
+    MUL_WAD_DOWN(fail) dup1 0xA0 mstore                 // [protocolFee, tradeFee, outputValueWithoutFee]    
+
+    // store outputValue
+    swap2 sub sub 0x60 mstore                           // [outputValue]
+
+    [OK] 0x00 mstore
+    0xC0 0x00 return
+}
+
+#define macro MAIN() = takes(0) returns (0) {
+    0x00 calldataload 0xe0 shr   
+
+    dup1 __FUNC_SIG(getBuyInfo) eq get_buy_info jumpi
+    dup1 __FUNC_SIG(getSellInfo) eq get_sell_info jumpi
+    dup1 __FUNC_SIG(validateDelta) eq validate_delta jumpi
+    dup1 __FUNC_SIG(validateSpotPrice) eq validate_spot_price jumpi
+
+    fail
+
+    fail:
+        GTFO()                                        // _reverts_
+    get_buy_info: 
+        GET_BUY_INFO()                                // _stops_
+    get_sell_info: 
+        GET_SELL_INFO()                               // _stops_
+    validate_delta: 
+        VALIDATE_DELTA()                              // _stops_
+    validate_spot_price: 
+        VALIDATE_SPOT_PRICE()                         // _stops_
+}

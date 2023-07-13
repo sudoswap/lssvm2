@@ -1,0 +1,193 @@
+/// SPDX-License-Identifier: AGPL-3.0
+/// @author 0xhamachi <https://github.com/0xhamachi>
+
+#include "huffmate/math/FixedPointMath.huff"
+
+/// TODO: custom error messages out
+#define constant OK = 0x00
+#define constant INVALID_NUMITEMS = 0x01
+#define constant SPOT_PRICE_OVERFLOW = 0x02
+#define constant DELTA_OVERFLOW = 0x03
+#define constant SPOT_PRICE_UNDERFLOW = 0x04
+
+#define constant MIN_PRICE = 0xF4240
+#define constant UINT128_MAX = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+
+#define function MIN_PRICE() view returns (uint256)
+#define function validateDelta(uint128) pure returns (bool)
+#define function validateSpotPrice(uint128) view returns (bool)
+#define function getBuyInfo(uint128, uint128, uint256, uint256, uint256) view returns ()
+#define function getSellInfo(uint128, uint128, uint256, uint256, uint256) view returns ()
+
+#define macro CONSTRUCTOR() = {}
+
+#define macro GTFO() = takes(0) returns (0) {
+    0x20 0x00 revert
+}
+
+#define macro MIN_PRICE() = takes(0) returns (0) {
+    [MIN_PRICE] 0x00 mstore
+    0x20 0x00 return
+}
+
+#define macro VALIDATE_DELTA() = takes(0) returns (0) {
+    [WAD] 0x04 calldataload           // [delta, WAD]
+    gt                                // [delta > WAD]
+    0x00 mstore
+    0x20 0x00 return 
+}
+
+#define macro VALIDATE_SPOT_PRICE() = takes(0) returns (0) {
+    [MIN_PRICE] 0x04 calldataload     // [spotPrice, MIN_PRICE]
+    lt iszero                         // [spotPrice >= MIN_PRICE]
+    0x00 mstore
+    0x20 0x00 return 
+}
+
+#define macro GET_BUY_INFO() = takes(0) returns (0) {
+
+    // check numItems > 0
+    0x44 calldataload iszero iszero numitems_not_zero jumpi 
+        [INVALID_NUMITEMS] 0x00 mstore                             
+        0xC0 0x00 return    
+    numitems_not_zero:   
+
+    // calculate deltaPowN
+    [WAD] 0x44 calldataload 0x24 calldataload     // [delta, numItems, WAD]
+    RPOW(fail) dup1                               // [deltaPowN, deltaPowN]
+
+    // calculate newSpotPrice
+    0x04 calldataload                             // [spotPrice, deltaPowN, deltaPowN]
+    MUL_WAD_UP(fail)                              // [newSpotPrice, deltaPowN]
+
+    // check spotprice underflow
+    [UINT128_MAX]                                 // [UINT128_MAX, newSpotPrice, deltaPowN]
+    dup2                                          // [newSpotPrice, UINT128_MAX, newSpotPrice, deltaPowN]
+    gt iszero spotprice_not_overflow jumpi        
+        [SPOT_PRICE_OVERFLOW] 0x00 mstore
+        0xC0 0x00 return
+    spotprice_not_overflow:
+
+    // store new spotprice
+    0x20 mstore                                   // [deltaPowN] 
+
+    // store newDelta = delta
+    0x24 calldataload dup1 0x40 mstore            // [delta, deltaPowN]
+
+    //calculate buySpotPrice
+    dup1 0x04 calldataload                        // [spotPrice, delta, delta, deltaPowN]
+    MUL_WAD_UP(fail)                              // [buySpotPrice, delta, deltaPowN]
+    swap1                                         // [delta, buySpotPrice, dletaPowN]
+
+    // (delta - WAD)                              
+    [WAD] swap1                                   // [delta, WAD, buySpotPrice, deltaPowN]
+    sub                                           // [delta - WAD, buySpotPrice, deltaPowN]
+    swap2                                         // [deltaPowN, buySpotPrice, delta - WAD]
+
+    // (deltaPowN - WAD)
+    [WAD] swap1                                   // [deltaPowN, WAD, buySpotPrice, delta - WAD]
+    sub                                           // [deltaPowN - WAD, buySpotPrice, delta - WAD]
+    swap2                                         // [delta - WAD, buySpotPrice, deltaPowN - WAD]
+    swap1                                         // [buySpotPrice, delta - WAD, deltaPowN - WAD]
+    swap2                                         // [deltaPowN - WAD, delta - WAD, buySpotPrice]               
+
+    // (deltaPowN - WAD) / (delta - WAD)
+    DIV_WAD_UP(fail)                              // [(deltaPowN - WAD).divWadUp(delta - WAD), buySpotPrice]
+    MUL_WAD_UP(fail) dup1 dup1                    // [inputValue, inputValue, inputValue]
+
+    // store trade fee
+    0x64 calldataload                             // [feeMultiplier, inputValue, inputValue, inputValue]
+    MUL_WAD_UP(fail) dup1 0x80 mstore swap1       // [inputValue, tradeFee, inputValue]
+
+    // store protocol fee
+    0x84 calldataload                             // [protocolFeeMultiplier, inputValue, tradeFee, inputValue]
+    MUL_WAD_UP(fail) dup1 0xA0 mstore             // [protocolFee, tradeFee, inputValue]
+
+    add add 0x60 mstore                           // []
+
+    [OK] 0x00 mstore 
+    0xC0 0x00 return
+}
+
+#define macro GET_SELL_INFO() = takes(0) returns (0) {
+
+    // check numItems > 0
+    0x44 calldataload iszero iszero numitems_not_zero jumpi
+        [INVALID_NUMITEMS] 0x00 mstore
+        0xC0 0x00 return
+    numitems_not_zero:
+
+    // calculate invDeltaPowN
+    0x24 calldataload [WAD]                       // [WAD, delta]
+    DIV_WAD_DOWN(fail)                            // [invDelta]
+
+    [WAD] 0x44 calldataload                       // [numItems, WAD, invDelta]
+    dup3                                          // [invDelta, numItems, WAD, invDelta]
+    RPOW(fail)                                    // [invDeltaPowN, invDelta]
+    dup1                                          // [invDeltaPowN, invDeltaPowN, invDelta]
+
+    // calculate newSpotPrice
+    0x04 calldataload                             // [spotPrice, invDeltaPowN, invDeltaPowN, invDelta]
+    MUL_WAD_DOWN(fail)                            // [newSpotPrice, invDeltaPowN, invDelta]
+
+    // check spotprice overflow
+    [MIN_PRICE]                                   // [MIN_PRICE, newSpotPrice, invDeltaPowN, invDelta]
+    dup2                                          // [newSpotPrice, MIN_PRICE, newSpotPrice, invDeltaPowN, invDelta]
+    lt iszero spotprice_not_underflow jumpi
+        [SPOT_PRICE_UNDERFLOW] 0x00 mstore
+        0xC0 0x00 return
+    spotprice_not_underflow:
+
+    // store new spotprice
+    0x20 mstore                                   // [invDeltaPowN, invDelta]
+
+    // store delta
+    0x24 calldataload 0x40 mstore                 // [invDeltaPowN, invDelta]
+
+    // calculate outputValue
+    swap1 [WAD]                                   // [WAD, invDelta, invDeltaPowN]
+    sub                                           // [WAD - invDelta, invDeltaPowN]
+    swap1 [WAD]                                   // [WAD, invDeltaPowN, WAD - invDelta]
+    sub                                           // [WAD - invDeltaPowN, WAD - invDelta]
+    DIV_WAD_DOWN(fail)                            // [(WAD - invDeltaPowN).divWadDown(WAD - invDelta)]
+    0x04 calldataload                             // [spotPrice, (WAD - invDeltaPowN).divWadDown(WAD - invDelta)]
+    MUL_WAD_DOWN(fail) dup1 dup1                  // [outputValue, outputValue, outputValue]
+
+    // store trade fee
+    0x64 calldataload swap1                       // [outputValue, feeMultiplier, outputValue, outputValue]
+    MUL_WAD_DOWN(fail) dup1 0x80 mstore swap1     // [outputValue, tradeFee, outputValue]
+
+    // store protocol fee
+    0x84 calldataload swap1                       // [outputValue, protocolFeeMultiplier, tradeFee, outputValue]
+    MUL_WAD_DOWN(fail) dup1 0xA0 mstore swap2     // [outputValue, protocolFee, tradeFee]
+
+    sub sub 0x60 mstore                           // []
+
+    [OK] 0x00 mstore
+    0xC0 0x00 return
+}
+
+#define macro MAIN() = takes(0) returns (0) {
+    0x00 calldataload 0xe0 shr   
+
+    dup1 __FUNC_SIG(getBuyInfo) eq get_buy_info jumpi
+    dup1 __FUNC_SIG(getSellInfo) eq get_sell_info jumpi
+    dup1 __FUNC_SIG(MIN_PRICE) eq min_price jumpi
+    dup1 __FUNC_SIG(validateDelta) eq validate_delta jumpi
+    dup1 __FUNC_SIG(validateSpotPrice) eq validate_spot_price jumpi
+
+    fail
+
+    fail:
+        GTFO()                                        // _reverts_
+    min_price:
+        MIN_PRICE()                                   // _stops_
+    get_buy_info: 
+        GET_BUY_INFO()                                // _stops_
+    get_sell_info: 
+        GET_SELL_INFO()                               // _stops_
+    validate_delta: 
+        VALIDATE_DELTA()                              // _stops_
+    validate_spot_price: 
+        VALIDATE_SPOT_PRICE()                         // _stops_
+}
