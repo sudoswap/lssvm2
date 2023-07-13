@@ -89,7 +89,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         );
     }
 
-    function test_getBuyInfoCannotHave0NumItemsHuff() public {
+    function test_getBuyInfoCannotHave0NumItems() public {
         // arrange
         uint256 numItems = 0;
 
@@ -104,7 +104,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         );
     }
 
-    function test_getSellInfoCannotHave0NumItemsHuff() public {
+    function test_getSellInfoCannotHave0NumItems() public {
         // arrange
         uint256 numItems = 0;
 
@@ -119,7 +119,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         );
     }
 
-    function test_getBuyInfoReturnsNewReservesHuff() public {
+    function test_getBuyInfoReturnsNewReserves() public {
         // arrange
         uint256 numNfts = 5;
         uint256 value = 1 ether;
@@ -136,7 +136,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         assertEq(newSpotPrice, inputValue + value, "Should have updated virtual eth reserve");
     }
 
-    function test_getBuyInfoOverflowHuff() public {
+    function test_getBuyInfoOverflow() public {
         uint256 nftBalance = 10000000002;
         uint256 tokenBalance = type(uint128).max / 10000000000;
         setUpEmptyEthPair(tokenBalance);
@@ -153,7 +153,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         assertEq(inputValue, 0);
     }
 
-    function test_getSellInfoReturnsNewReservesHuff() public {
+    function test_getSellInfoReturnsNewReserves() public {
         // arrange
         uint256 numNfts = 5;
         uint256 value = 1 ether;
@@ -170,7 +170,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         assertEq(newSpotPrice, value - inputValue, "Should have updated virtual eth reserve");
     }
 
-    function test_getBuyInfoReturnsInputValueHuff() public {
+    function test_getBuyInfoReturnsInputValue() public {
         // arrange
         uint256 numNfts = 5;
         uint256 value = 0.8 ether;
@@ -186,7 +186,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         assertEq(inputValue, expectedInputValue, "Should have calculated input value");
     }
 
-    function test_getSellInfoReturnsOutputValueHuff() public {
+    function test_getSellInfoReturnsOutputValue() public {
         // arrange
         uint256 numNfts = 5;
         uint256 value = 0.8 ether;
@@ -202,7 +202,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         assertEq(outputValue, expectedOutputValue, "Should have calculated output value");
     }
 
-    function test_getBuyInfoCalculatesProtocolFeeHuff() public {
+    function test_getBuyInfoCalculatesProtocolFee() public {
         // arrange
         uint256 numNfts = 5;
         uint256 value = 0.8 ether;
@@ -219,7 +219,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         assertEq(protocolFee, expectedProtocolFee, "Should have calculated protocol fee");
     }
 
-    function test_getSellInfoCalculatesProtocolFeeHuff() public {
+    function test_getSellInfoCalculatesProtocolFee() public {
         // arrange
         uint256 numNfts = 5;
         uint256 value = 0.8 ether;
@@ -236,7 +236,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         assertEq(protocolFee, expectedProtocolFee, "Should have calculated protocol fee");
     }
 
-    function test_getSellInfoOverflowHuff() public {
+    function test_getSellInfoOverflow() public {
         uint256 nftBalance = type(uint128).max;
         uint256 tokenBalance = 1 ether;
         setUpEmptyEthPair(tokenBalance);
@@ -251,7 +251,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         assertEq(inputValue, 0);
     }
 
-    function test_swapTokenForSpecificNFTsHuff() public {
+    function test_swapTokenForSpecificNFTs() public {
         // arrange
         uint256 numNfts = 5;
         uint256 value = 0.8 ether;
@@ -287,7 +287,7 @@ contract XykCurveHuffTest is Test, ERC721Holder {
         assertEq(ethPair.delta(), nft.balanceOf(address(ethPair)), "Delta should match nft balance after swap");
     }
 
-    function test_swapNFTsForTokenHuff() public {
+    function test_swapNFTsForToken() public {
         // arrange
         uint256 numNfts = 5;
         uint256 value = 0.8 ether;

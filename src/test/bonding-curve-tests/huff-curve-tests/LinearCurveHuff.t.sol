@@ -30,7 +30,7 @@ contract LinearCurveHuff is Test {
         assertTrue(curve.validateSpotPrice(100));
     }
 
-    function test_customErrorHuff() public {
+    function test_customError() public {
         (CurveErrorCodes.Error error,,,,,) = curve.getBuyInfo(1, 340282366920938463463374607431768211455, 254, 0, 0);
         assertEq(
             uint256(error),
@@ -43,7 +43,7 @@ contract LinearCurveHuff is Test {
         );
     }
 
-    function test_getBuyInfoLinearHuff() public {
+    function test_getBuyInfoLinear() public {
         (   
             CurveErrorCodes.Error error, 
             uint128 newSpotPrice, 
@@ -61,7 +61,7 @@ contract LinearCurveHuff is Test {
         assertEq(protocolFee, 0);
     }
 
-    function test_getBuyInfoExampleHuff() public {
+    function test_getBuyInfoExample() public {
         uint128 spotPrice = 3 ether;
         uint128 delta = 0.1 ether;
         uint256 numItems = 5;
@@ -82,7 +82,7 @@ contract LinearCurveHuff is Test {
         assertEq(inputValue, 16.632 ether, "Input value incorrect");
     }
 
-    function test_getBuyInfoWithoutFeeHuff(uint128 spotPrice, uint128 delta, uint8 numItems) public {
+    function test_getBuyInfoWithoutFee(uint128 spotPrice, uint128 delta, uint8 numItems) public {
         if (numItems == 0) {
             return;
         }
@@ -105,7 +105,7 @@ contract LinearCurveHuff is Test {
         }
     }
 
-    function test_getSellInfoLinearHuff() public {
+    function test_getSellInfoLinear() public {
         (   
             CurveErrorCodes.Error error, 
             uint128 newSpotPrice, 
@@ -123,7 +123,7 @@ contract LinearCurveHuff is Test {
         assertEq(protocolFee, 0);
     }
 
-    function test_getSellInfoExampleHuff() public {
+    function test_getSellInfoExample() public {
         uint128 spotPrice = 3 ether;
         uint128 delta = 0.1 ether;
         uint256 numItems = 5;
@@ -144,7 +144,7 @@ contract LinearCurveHuff is Test {
         assertEq(protocolFee, 0.042 ether, "Protocol fee incorrect");
     }
 
-    function test_getSellInfoWithoutFeeHuff(uint128 spotPrice, uint128 delta, uint8 numItems) public {
+    function test_getSellInfoWithoutFee(uint128 spotPrice, uint128 delta, uint8 numItems) public {
         if (numItems == 0) {
             return;
         }
