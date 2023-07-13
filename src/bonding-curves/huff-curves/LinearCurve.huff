@@ -4,11 +4,8 @@
 #include "huffmate/math/SafeMath.huff"
 #include "huffmate/math/FixedPointMath.huff"
 
-#define constant OK = 0x00
-#define constant INVALID_NUMITEMS = 0x01
-#define constant SPOT_PRICE_OVERFLOW = 0x02
-#define constant DELTA_OVERFLOW = 0x03
-#define constant SPOT_PRICE_UNDERFLOW = 0x04
+#include "./utils/CurveErrorCodes.huff"
+
 #define constant UINT128_MAX = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
 #define function validateDelta(uint128) pure returns (bool)

@@ -1,14 +1,8 @@
 /// SPDX-License-Identifier: AGPL-3.0
 /// @author 0xhamachi <https://github.com/0xhamachi>
 
+#include "./utils/CurveErrorCodes.huff"
 #include "huffmate/math/FixedPointMath.huff"
-
-/// TODO: custom error messages out
-#define constant OK = 0x00
-#define constant INVALID_NUMITEMS = 0x01
-#define constant SPOT_PRICE_OVERFLOW = 0x02
-#define constant DELTA_OVERFLOW = 0x03
-#define constant SPOT_PRICE_UNDERFLOW = 0x04
 
 #define constant UINT128_MAX = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 

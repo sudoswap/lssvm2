@@ -1,23 +1,17 @@
 /// SPDX-License-Identifier: AGPL-3.0
 /// @author 0xhamachi <https://github.com/0xhamachi>
 
+#include "./utils/CurveErrorCodes.huff"
 #include "huffmate/math/FixedPointMath.huff"
-
-/// TODO: custom error messages out
-#define constant OK = 0x00
-#define constant INVALID_NUMITEMS = 0x01
-#define constant SPOT_PRICE_OVERFLOW = 0x02
-#define constant DELTA_OVERFLOW = 0x03
-#define constant SPOT_PRICE_UNDERFLOW = 0x04
 
 #define constant UINT128_MAX = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
 #define constant MIN_PRICE = 0x01
-#define constant MAX_TIME_EXPONENT = 0x8AC7230489E80000 // 1e19
-#define constant PREV_TIME_MASK = 0xFFFFFFFFFFFF
+#define constant SCALE_FACTOR = 0x3B9ACA00              // 1e9
 #define constant LAMBDA_MASK = 0xFFFFFFFFFF
-#define constant TIME_SCALAR = 0x1BC16D674EC80000   // Use 2e18 in place of Euler's number
-#define constant SCALE_FACTOR = 0x3B9ACA00          // 1e9
+#define constant PREV_TIME_MASK = 0xFFFFFFFFFFFF
+#define constant TIME_SCALAR = 0x1BC16D674EC80000       // Use 2e18 in place of Euler's number
+#define constant MAX_TIME_EXPONENT = 0x8AC7230489E80000 // 1e19
 
 #define function MIN_PRICE() view returns (uint256)
 #define function validateDelta(uint128) pure returns (bool)
