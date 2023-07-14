@@ -8,7 +8,7 @@ import {LinearCurve} from "../../../bonding-curves/LinearCurve.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {CurveErrorCodes} from "../../../bonding-curves/CurveErrorCodes.sol";
 
-contract LinearCurveHuff is Test {
+contract LinearCurveHuffTest is Test {
 
     LinearCurve public curve;
 

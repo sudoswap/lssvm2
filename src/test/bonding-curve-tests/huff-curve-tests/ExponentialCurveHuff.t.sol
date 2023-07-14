@@ -9,7 +9,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {CurveErrorCodes} from "../../../bonding-curves/CurveErrorCodes.sol";
 import {ExponentialCurve} from "../../../bonding-curves/ExponentialCurve.sol";
 
-contract ExponentialCurveTest is Test {
+contract ExponentialCurveHuffTest is Test {
     using FixedPointMathLib for uint256;
 
     uint256 constant MIN_PRICE = 1 gwei;
