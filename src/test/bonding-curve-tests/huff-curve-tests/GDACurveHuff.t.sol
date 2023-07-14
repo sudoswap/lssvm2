@@ -10,7 +10,7 @@ import {UD60x18, convert, ud, unwrap, PRBMath_UD60x18_Exp2_InputTooBig} from "@p
 import {GDACurve} from "../../../bonding-curves/GDACurve.sol";
 import {CurveErrorCodes} from "../../../bonding-curves/CurveErrorCodes.sol";
 
-contract GDACurveTest is Test {
+contract GDACurveHuffTest is Test {
     using Strings for uint256;
 
     struct ScriptArgs {

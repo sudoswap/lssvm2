@@ -9,7 +9,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {CurveErrorCodes} from "../../../bonding-curves/CurveErrorCodes.sol";
 import {ExponentialCurve} from "../../../bonding-curves/ExponentialCurve.sol";
 
-contract ExponentialCurveTest is Test {
+contract ExponentialCurveHuffTest is Test {
     using FixedPointMathLib for uint256;
 
     uint256 constant MIN_PRICE = 1 gwei;
@@ -30,7 +30,7 @@ contract ExponentialCurveTest is Test {
         assertFalse(curve.validateSpotPrice(0xF423F));
     }
 
-    function test_getBuyInfoExampleHuff() public {
+    function test_getBuyInfoExample() public {
         uint128 spotPrice = 3 ether;
         uint128 delta = 2 ether; // 2
         uint256 numItems = 5;
@@ -51,7 +51,7 @@ contract ExponentialCurveTest is Test {
         assertEq(protocolFee, 0.558 ether, "Protocol fee incorrect");
     }
 
-    function test_getBuyInfoWithoutFeeHuff(uint128 spotPrice, uint64 delta, uint8 numItems) public {
+    function test_getBuyInfoWithoutFee(uint128 spotPrice, uint64 delta, uint8 numItems) public {
         if (delta <= FixedPointMathLib.WAD || numItems > 10 || spotPrice < MIN_PRICE || numItems == 0) {
             return;
         }
@@ -79,7 +79,7 @@ contract ExponentialCurveTest is Test {
         }
     }
 
-    function test_getSellInfoExampleHuff() public {
+    function test_getSellInfoExample() public {
         uint128 spotPrice = 3 ether;
         uint128 delta = 2 ether; // 2
         uint256 numItems = 5;
@@ -100,7 +100,7 @@ contract ExponentialCurveTest is Test {
         assertEq(protocolFee, 0.0174375 ether, "Protocol fee incorrect");
     }
 
-    function test_getSellInfoWithoutFeeHuff(uint128 spotPrice, uint128 delta, uint8 numItems) public {
+    function test_getSellInfoWithoutFee(uint128 spotPrice, uint128 delta, uint8 numItems) public {
         if (delta <= FixedPointMathLib.WAD || spotPrice < MIN_PRICE || numItems == 0) {
             return;
         }

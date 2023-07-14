@@ -1,14 +1,9 @@
 /// SPDX-License-Identifier: AGPL-3.0
 /// @author 0xhamachi <https://github.com/0xhamachi>
 
-#include "huffmate/math/SafeMath.huff"
+#include "./utils/CurveErrorCodes.huff"
 #include "huffmate/math/FixedPointMath.huff"
 
-#define constant OK = 0x00
-#define constant INVALID_NUMITEMS = 0x01
-#define constant SPOT_PRICE_OVERFLOW = 0x02
-#define constant DELTA_OVERFLOW = 0x03
-#define constant SPOT_PRICE_UNDERFLOW = 0x04
 #define constant UINT128_MAX = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
 #define function validateDelta(uint128) pure returns (bool)
@@ -20,44 +15,6 @@
 
 #define macro GTFO() = takes(0) returns (0) {
     0x20 0x00 revert    
-}
-
-/// @notice Safe multiply with custom error codes
-/// https://github.com/huff-language/huffmate/blob/main/src/math/SafeMath.huff#L44
-#define macro SAFE_MUL_WITH_ERROR_CODES() = takes(2) returns (1) {
-    dup1                        // [num1, num1, num2]
-    is_not_zero jumpi           // [num1, num2]
-        mul                     // [result]
-        0x01 is_not_overflow jumpi
-    is_not_zero:                // [num1, num2]
-    dup2                        // [num2, num1, num2]
-    dup2                        // [num1, num2, num1, num2]
-    mul                         // [result, num1, num2]
-    swap1                       // [num1, result, num2]
-    dup2                        // [result, num1, result, num2]
-    div                         // [div_check, result, num2]
-    swap1                       // [result, div_check, num2]
-    swap2                       // [num2, div_check, result]
-    eq                          // [is_not_overflow, result]
-    is_not_overflow jumpi       // [result]
-        [SPOT_PRICE_OVERFLOW] 0x00 mstore
-        0xC0 0x00 return
-    is_not_overflow:
-}
-
-/// @notice Safe add with custom error codes
-/// https://github.com/huff-language/huffmate/blob/main/src/math/SafeMath.huff#L17
-#define macro SAFE_ADD_WITH_ERROR_CODES() = takes(2) returns (1) {
-    dup2                    // [num2, num1, num2]
-    add                     // [result, num2]
-    dup1                    // [result, result, num2]
-    swap2                   // [num2, result, result]
-    gt                      // [is_overflow, result]
-    iszero                  // [is_not_overflow, result]
-    is_not_overflow jumpi   // [result]
-        [SPOT_PRICE_OVERFLOW] 0x00 mstore
-        0xC0 0x00 return
-    is_not_overflow:        // [result]
 }
 
 #define macro VALIDATE_DELTA() = takes(0) returns (0) {
@@ -72,63 +29,53 @@
 
 #define macro GET_BUY_INFO() = takes(0) returns (0) {
 
-    // check numItems > 0
+    // check numItems == 0
     0x44 calldataload iszero iszero numitems_not_zero jumpi 
         [INVALID_NUMITEMS] 0x00 mstore                             
         0xC0 0x00 return    
     numitems_not_zero:                         
 
     // check spotprice overflow
-    0x24 calldataload 0x44 calldataload              // [numItems, delta]
-    SAFE_MUL_WITH_ERROR_CODES()                      // [numItems * delta]
-    0x04 calldataload                                // [spotPrice]
-    SAFE_ADD_WITH_ERROR_CODES()                      // [spotPrice + numItems * delta]
-    [UINT128_MAX] dup2                               // [newSpotPrice, UINT128_MAX, newSpotPrice]            
+    0x24 calldataload 0x44 calldataload               // [numItems, delta]
+    mul                                               // [numItems * delta]
+    0x04 calldataload                                 // [spotPrice]
+    add                                               // [spotPrice + numItems * delta]
+    [UINT128_MAX] dup2                                // [newSpotPrice, UINT128_MAX, newSpotPrice]            
     gt iszero spotprice_not_overflow jumpi              
         [SPOT_PRICE_OVERFLOW] 0x00 mstore
         0xC0 0x00 return
     spotprice_not_overflow: 
-    0x20 mstore                                      //[]       
+    0x20 mstore                                       // []       
 
-    // store newDelta = delta
-    0x24 calldataload dup1 0x40 mstore               // [delta]
+    // newDelta = delta
+    0x24 calldataload dup1 0x40 mstore                // [delta]
     
-    // store inputValue = numItems * (spotPrice + delta) + (numItems * (numItems - 1) * delta) / 2
-
-    // (spotPrice + delta) //ADD
+    // calculate inputValue
     0x04 calldataload                                 // [spotPrice, delta]
-    SAFE_ADD()                                        // [spotPrice + delta]
+    add                                               // [spotPrice + delta]
 
-    // numItems * (spotPrice + delta) //MUL
     0x44 calldataload                                 // [numItems, spotPrice + delta]
-    SAFE_MUL()                                        // [numItems * (spotPrice + delta)]
-
+    mul                                               // [numItems * (spotPrice + delta)]
     0x24 calldataload 0x44 calldataload dup1          // [numItems, numItems, delta, numItems * (spotPrice + delta)]
-    
-    // (numItems - 1) // SUB
-    0x01 swap1                                         // [numItems, 0x01, numItems, delta, numItems * (spotPrice + delta)]
-    sub                                                // [numItems - 1,numItems, delta, numItems * (spotPrice + delta)]
-    // numItems * (numItems - 1) // MUL
-    SAFE_MUL()                                         // [numItems * (numItems - 1), delta, numItems * (spotPrice + delta)]
-    // numItems * (numItems - 1) * delta  // MUL
-    SAFE_MUL()                                         // [numItems * (numItems - 1) * delta, numItems * (spotPrice + delta)]
-    // (numItems * (numItems - 1) * delta) / 2 // DIV
-    0x02                                               // [0x02, numItems * (numItems - 1) * delta, numItems * (spotPrice + delta)]
-    swap1                                              // [numitems * (numItems - 1) * delta / 2, 0x02, numItems * (spotPrice + delta)]
-    div                                                // [(numItems * (numItems - 1) * delta) / 2, numItems * (spotPrice + delta)]
+    0x01 swap1                                        // [numItems, 0x01, numItems, delta, numItems * (spotPrice + delta)]
+    sub                                               // [numItems - 1,numItems, delta, numItems * (spotPrice + delta)]
+    mul                                               // [numItems * (numItems - 1), delta, numItems * (spotPrice + delta)]
+    mul                                               // [numItems * (numItems - 1) * delta, numItems * (spotPrice + delta)]
+    0x02                                              // [0x02, numItems * (numItems - 1) * delta, numItems * (spotPrice + delta)]
+    swap1                                             // [numitems * (numItems - 1) * delta / 2, 0x02, numItems * (spotPrice + delta)]
+    div                                               // [(numItems * (numItems - 1) * delta) / 2, numItems * (spotPrice + delta)]
+    add dup1 dup1                                     // [inputValue, inputValue, inputValue]
 
-    // numItems * (spotPrice +delta) + (numItems * (numItems - 1) * delta) / 2 // ADD
-    SAFE_ADD() dup1 dup1                               // [inputValue, inputValue, inputValue]
+    // calculate tradeFee
+    0x64 calldataload                                 // [feeMultiplier, inputValue, inputValue, inputValue]
+    MUL_WAD_DOWN(fail) dup1 0x80 mstore               // [tradeFee, inputValue, inputValue]
+    swap1                                             // [inputValue, tradeFee, inputValue]
 
-    // store tradeFee = inputValue.mulWadDown(feeMultiplier)
-    0x64 calldataload                                  // [feeMultiplier, inputValue, inputValue, inputValue]
-    MUL_WAD_DOWN(fail) dup1 0x80 mstore swap1          // [inputValue, tradeFee, inputValue]
+    // calculate protocolFee
+    0x84 calldataload                                 // [protocolFeeMultiplier, inputValue, tradeFee, inputValue]
+    MUL_WAD_DOWN(fail) dup1 0xA0 mstore               // [protocolFee, tradeFee, inputValue]
 
-    // store protocolFee = inputValue.mulWadDown(protocolFeeMultiplier)
-    0x84 calldataload                                  // [protocolFeeMultiplier, inputValue, tradeFee, inputValue]
-    MUL_WAD_DOWN(fail) dup1 0xA0 mstore                // [protocolFee, tradeFee, inputValue]
-
-    add add 0x60 mstore                                // []
+    add add 0x60 mstore                               // []
 
     [OK] 0x00 mstore                                   
     0xC0 0x00 return
@@ -136,7 +83,7 @@
 
 #define macro GET_SELL_INFO() = takes(0) returns (0) {
 
-    // check numItems > 0
+    // check numItems == 0
     0x44 calldataload iszero iszero numitems_not_zero_sell jumpi 
         [INVALID_NUMITEMS] 0x00 mstore                             
         0xC0 0x00 return    
@@ -145,7 +92,7 @@
     // calculate totalPriceDecrease
     0x24 calldataload dup1 0x40 mstore                // [delta]
     0x44 calldataload                                 // [numItems, delta]
-    SAFE_MUL()                                        // [totalPriceDecrease]
+    mul                                               // [totalPriceDecrease]
     0x04 calldataload                                 // [spotPrice, totalPriceDecrease]
     lt iszero not_less_than jumpi
         0x00 0x20 mstore
@@ -155,7 +102,7 @@
         0x01 calculate_output jumpi                   // [numItems]
     not_less_than:
         0x24 calldataload 0x44 calldataload           // [numItems, delta]
-        SAFE_MUL()                                    // [numItems * delta]
+        mul                                           // [numItems * delta]
         0x04 calldataload                             // [spotPrice, totalPriceDecrease]
         sub                                           // [newSpotPrice]
         0x20 mstore                                   // []
@@ -163,15 +110,15 @@
 
     calculate_output:
 
-    //calculate outputValue = numItems * spotPrice - (numItems * (numItems - 1) * delta) / 2
+    // calculate outputValue
     dup1 dup1 0x04 calldataload                       // [spotPrice, numItems, numItems, numItems]
-    SAFE_MUL()                                        // [numItems * spotPrice, numItems, numItems]
+    mul                                               // [numItems * spotPrice, numItems, numItems]
     swap2                                             // [numItems, numItems, numItems * spotPrice]
     0x01 swap1                                        // [numItems, 0x01, numItems, numItems * spotPrice]
     sub                                               // [numItems - 1, numItems, numItems * spotPrice]
-    SAFE_MUL()                                        // [numItems * (numItems - 1), numItems * spotPrice]
+    mul                                               // [numItems * (numItems - 1), numItems * spotPrice]
     0x24 calldataload                                 // [delta, numItems * (numItems - 1), numItems * spotPrice]
-    SAFE_MUL()                                        // [numItems * (numItems - 1) * delta, numItems * spotPrice]
+    mul                                               // [numItems * (numItems - 1) * delta, numItems * spotPrice]
     0x02 swap1 div                                    // [numItems * (numItems - 1) * delta / 2, 0x02, numItems * spotPrice]
     swap1 sub                                         // [numItems * spotPrice - (numItems * (numItems - 1) * delta) / 2]
     dup1 dup1                                         // [outputValue, outputValue, outputValue]
