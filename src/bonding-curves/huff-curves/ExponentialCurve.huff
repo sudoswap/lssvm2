@@ -41,7 +41,7 @@
 #define macro GET_BUY_INFO() = takes(0) returns (0) {
 
     // check numItems == 0
-    0x44 calldataload iszero iszero numitems_not_zero jumpi 
+    0x44 calldataload numitems_not_zero jumpi 
         [INVALID_NUMITEMS] 0x00 mstore                             
         0xC0 0x00 return    
     numitems_not_zero:   
@@ -106,7 +106,7 @@
 #define macro GET_SELL_INFO() = takes(0) returns (0) {
 
     // check numItems > 0
-    0x44 calldataload iszero iszero numitems_not_zero jumpi
+    0x44 calldataload numitems_not_zero jumpi
         [INVALID_NUMITEMS] 0x00 mstore
         0xC0 0x00 return
     numitems_not_zero:
