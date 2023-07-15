@@ -1,0 +1,267 @@
+/// SPDX-License-Identifier: AGPL-3.0
+/// @author 0xhamachi <https://github.com/0xhamachi>
+/// @dev alpha, lambda, and start timestamp are packed into uint128 delta
+/// Highest 40 bits are alpha, next 40 bits are lambda, lowest 48 bits are start timestamp
+/// Upper 64 bits are bounds, lower 64 bits are spot price, scaled by 1e9
+
+#include "./utils/FixedPointMath.huff"
+#include "./utils/CurveErrorCodes.huff"
+
+#define constant UINT128_MAX = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+
+#define constant MIN_PRICE = 0x01
+#define constant SCALE_FACTOR = 0x3B9ACA00              // 1e9
+#define constant LAMBDA_MASK = 0xFFFFFFFFFF
+#define constant PREV_TIME_MASK = 0xFFFFFFFFFFFF
+#define constant TIME_SCALAR = 0x1BC16D674EC80000       // Use 2e18 in place of Euler's number
+#define constant MAX_TIME_EXPONENT = 0x8AC7230489E80000 // 1e19
+
+#define function MIN_PRICE() view returns (uint256)
+#define function validateDelta(uint128) pure returns (bool)
+#define function validateSpotPrice(uint128) view returns (bool)
+#define function getBuyInfo(uint128, uint128, uint256, uint256, uint256) view returns ()
+#define function getSellInfo(uint128, uint128, uint256, uint256, uint256) view returns ()
+
+#define macro CONSTRUCTOR() = {}
+
+#define macro GTFO() = takes(0) returns (0) {
+    0x20 0x00 revert    
+}
+
+#define macro MIN_PRICE() = takes(0) returns (0) {
+    [MIN_PRICE] 0x00 mstore
+    0x20 0x00 return
+}
+
+#define macro VALIDATE_DELTA() = takes(0) returns (0) {
+    [WAD] 0x04 calldataload           // [delta, WAD]
+    gt                                // [delta > WAD]
+    0x00 mstore
+    0x20 0x00 return 
+}
+
+#define macro VALIDATE_SPOT_PRICE() = takes(0) returns (0) {
+    [MIN_PRICE] 0x04 calldataload     // [spotPrice, MIN_PRICE]
+    lt iszero                         // [spotPrice >= MIN_PRICE]
+    0x00 mstore
+    0x20 0x00 return 
+}
+
+#define macro GET_BUY_INFO() = takes(0) returns (0) {
+    
+    // check numItems == 0
+    0x44 calldataload numitems_not_zero jumpi
+        [INVALID_NUMITEMS] 0x00 mstore
+        0xC0 0x00 return
+    numitems_not_zero:
+
+    // unpack delta -> (alpha, lambda, prevTime)
+    0x24 calldataload dup1            // [delta, delta]
+    0x30 shr                          // [delta >> 48, delta] 
+    [LAMBDA_MASK] and                 // [LAMBDA_MASK & (delta >> 48), delta]
+    [SCALE_FACTOR] mul                // [(delta >> 48) * 1e9, delta]
+
+    swap1                             // [delta, lambda]
+    [PREV_TIME_MASK] and              // [PREV_TIME_MASK & delta, lambda]
+    timestamp sub                     // [timestamp - prevTime, lambda]
+    mul                               // [exponent]
+
+    // check if exponent is too large
+    dup1 [MAX_TIME_EXPONENT]          // [MAX_TIME_EXPONENT, exponent, exponent]
+    swap1                             // [exponent, MAX_TIME_EXPONENT, exponent]
+    gt iszero exponent_not_too_large jumpi
+        pop                           // [exponent]
+        [MAX_TIME_EXPONENT]           // [MAX_TIME_EXPONENT] 
+    exponent_not_too_large:           // [exponent]
+
+    // calculate decayFactor
+    [TIME_SCALAR]                     // [TIME_SCALAR, exponent]
+    POW_WAD(fail) dup1                // [decayFactor, decayFactor]
+
+    // calculate alphaPowN
+    0x44 calldataload                 // [numItems, decayFactor, decayFactor]
+    0x24 calldataload 0x58 shr        // [delta >> 88, numItems, decayFactor, decayFactor]    
+    [SCALE_FACTOR] mul                // [alpha, numItems, decayFactor, decayFactor]
+    dup1                              // [alpha, alpha, numItems, decayFactor, decayFactor]
+    swap3                             // [decayFactor, alpha, numItems, alpha, decayFactor] 
+    swap2                             // [numItems, alpha, decayFactor, alpha, decayFactor]
+    [WAD] mul                         // [numItems * 1e18, alpha, decayFactor, alpha, decayFactor]
+    swap1                             // [alpha, numItems * 1e18, decayFactor, alpha, decayFactor]             
+    POW_WAD(fail)                     // [alphaPowN_e18, decayFactor, alpha, decayFactor]
+    dup1                              // [alphaPowN_e18, alphaPowN_e18, decayFactor, alpha, decayFactor]
+    swap2                             // [decayFactor, alphaPowN_e18, alphaPowN_e18, alpha, decayFactor]
+    swap1                             // [alphaPowN_e18, decayFactor, alphaPowN_e18, alpha, decayFactor]    
+
+
+    // calculate new spotprice
+    0x04 calldataload                 // [spotPrice, alphaPowN_e18, decayFactor, alphaPowN_e18, alpha, decayFactor]
+    MUL_WAD_UP(fail)                  // [spotPrice * alphaPowN_e18, decayFactor, alphaPowN_e18, alpha, decayFactor]    
+    DIV_WAD_UP(fail)                  // [spotPrice * alphaPowN_e18 / decayFactor, alphaPowN_e18, alpha, decayFactor]
+
+    // check if spotPrice is too large
+    [UINT128_MAX]                     // [UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    dup2                              // [newSpotPrice, UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    gt iszero spotprice_not_overflow jumpi
+        [SPOT_PRICE_OVERFLOW] 0x00 mstore
+        0xC0 0x00 return
+    spotprice_not_overflow:
+    0x20 mstore                       // [ alphaPowN_e18, alpha, decayFactor]
+
+    // calculate inputValue
+    [WAD] swap1 sub                   // [alphaPowN_e18 - 1e18, alpha, decayFactor]
+    0x04 calldataload                 // [spotPrice, alphaPowN_e18 - 1e18, alpha, decayFactor]
+    MUL_WAD_UP(fail)                  // [spotPrice * (alphaPowN_e18 - 1e18), alpha, decayFactor]
+    swap1                             // [alpha, spotPrice * (alphaPowN_e18 - 1e18), decayFactor]
+    [WAD] swap1 sub                   // [alpha - 1e18, spotPrice * (alphaPowN_e18 - 1e18), decayFactor]
+    swap1                             // [spotPrice * (alphaPowN_e18 - 1e18), alpha - 1e18, decayFactor]
+    DIV_WAD_UP(fail)                  // [spotPrice * (alphaPowN_e18 - 1e18) / (alpha - 1e18), decayFactor]
+    DIV_WAD_UP(fail)                  // [spotPrice * (alphaPowN_e18 - 1e18) / (alpha - 1e18) / decayFactor]
+    dup1 dup1                         // [inputValue, inputValue, inputValue]
+
+    // calculate tradeFee
+    0x64 calldataload                 // [feeMultiplier, inputValue, inputValue, inputValue]
+    MUL_WAD_UP(fail)                  // [tradeFee, inputValue, inputValue]
+    dup1 0x80 mstore                  // [tradeFee, inputValue, inputValue]
+    swap1                             // [inputValue, tradeFee, inputValue]
+
+    // calculate protocolFee
+    0x84 calldataload                 // [protocolFeeMultiplier, inputValue, tradeFee, inputValue]
+    MUL_WAD_UP(fail)                  // [protocolFee, tradeFee, inputvalue]
+    dup1 0xA0 mstore                  // [protocolFee, tradeFee, inputValue]
+
+    add add 0x60 mstore               // []
+
+    // update newDelta
+    0x24 calldataload                 // [delta]
+    0x30 shr                          // [delta >> 48]
+    0x30 shl                          // [(delta >> 48) << 48]
+    timestamp or                      // [timestamp | (delta >> 48) << 48]
+    0x40 mstore                       // []
+
+    [OK] 0x00 mstore
+    0xC0 0x00 return
+}
+
+#define macro GET_SELL_INFO() = takes(0) returns (0) {
+
+    // check numItems > 0
+    0x44 calldataload numitems_not_zero jumpi
+        [INVALID_NUMITEMS] 0x00 mstore
+        0xC0 0x00 return
+    numitems_not_zero:
+
+    // unpack delta -> (alpha, lambda, prevTime)
+    0x24 calldataload dup1            // [delta, delta]
+    0x30 shr                          // [delta >> 48, delta] 
+    [LAMBDA_MASK] and                 // [LAMBDA_MASK & (delta >> 48), delta]
+    [SCALE_FACTOR] mul                // [(delta >> 48) * 1e9, delta]
+
+    swap1                             // [delta, lambda]
+    [PREV_TIME_MASK] and              // [PREV_TIME_MASK & delta, lambda]
+    timestamp sub                     // [timestamp - prevTime, lambda]
+    mul                               // [exponent]
+
+    // check if exponent is too large
+    dup1 [MAX_TIME_EXPONENT]          // [MAX_TIME_EXPONENT, exponent, exponent]
+    swap1                             // [exponent, MAX_TIME_EXPONENT, exponent]
+    gt iszero exponent_not_too_large jumpi
+        pop                           // [exponent]
+        [MAX_TIME_EXPONENT]           // [MAX_TIME_EXPONENT] 
+    exponent_not_too_large:           // [exponent]
+
+    // calculate boostFactor
+    [TIME_SCALAR]                     // [TIME_SCALAR, exponent]
+    POW_WAD(fail) dup1                // [boostFactor, boostFactor]
+
+    // calculate alphaPowN
+    0x44 calldataload                 // [numItems, boostFactor, boostFactor]
+    0x24 calldataload 0x58 shr        // [delta >> 88, numItems, boostFactor, boostFactor]    
+    [SCALE_FACTOR] mul                // [alpha, numItems, boostFactor, boostFactor]
+    dup1                              // [alpha, alpha, numItems, boostFactor, boostFactor]
+    swap4                             // [boostFactor, alpha, numItems, boostFactor, alpha] 
+    swap2                             // [numItems, alpha, boostFactor, boostFactor, alpha]
+    [WAD] mul                         // [numItems * 1e18, alpha, boostFactor, boostFactor, alpha]
+    swap1                             // [alpha, numItems * 1e18, boostFactor, boostFactor, alpha]             
+    POW_WAD(fail)                     // [alphaPowN_e18, boostFactor, boostFactor, alpha]
+    dup1                              // [alphaPowN_e18, alphaPowN_e18, boostFactor, boostFactor, alpha]
+    swap2                             // [boostFactor, alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]
+
+    // calculate new spotprice
+    0x04 calldataload                 // [spotPrice, boostFactor, alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]
+    MUL_WAD_UP(fail)                  // [spotPrice * boostFactor, alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]    
+    DIV_WAD_UP(fail)                  // [spotPrice * boostFactor / alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]
+
+    // check if spotPrice is too large
+    [UINT128_MAX]                     // [UINT128_MAX, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    dup2                              // [newSpotPrice, UINT128_MAX, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    gt iszero spotprice_not_overflow jumpi
+        [SPOT_PRICE_OVERFLOW] 0x00 mstore
+        0xC0 0x00 return
+    spotprice_not_overflow:
+    0x20 mstore                       // [alphaPowN_e18, boostFactor, alpha]
+
+    // calculate outputValue
+    dup1                              // [alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]
+    [WAD] swap1 sub                   // [alphaPowN_e18 - 1e18, alphaPowN_e18, boostFactor, alpha]
+    swap3                             // [alpha, alphaPowN_e18, boostFactor, alphaPowN_e18 - 1e18]
+    dup1                              // [alpha, alpha, alphaPowN_e18, boostFactor, alphaPowN_e18 - 1e18]
+    [WAD] swap1 sub                   // [alpha - 1e18, alpha, alphaPowN_e18, boostFactor, alphaPowN_e18 - 1e18]
+    swap3                             // [boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
+    0x04 calldataload                 // [spotPrice, boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
+    MUL_WAD_UP(fail)                    // [spotPrice * boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
+    swap2                             // [alphaPowN_e18, alpha, spotPrice * boostFactor, alpha - 1e18, alphaPowN_e18 - 1e18]
+    DIV_WAD_UP(fail)                  // [alphaPowN_e18 / alpha, spotPrice * boostFactor, alpha - 1e18, alphaPowN_e18 - 1e18]
+    swap1                             // [spotPrice * boostFactor, alphaPowN_e18 / alpha, alpha - 1e18, alphaPowN_e18 - 1e18]
+    DIV_WAD_UP(fail)                  // [spotPrice * boostFactor / (alphaPowN_e18 / alpha), alpha - 1e18, alphaPowN_e18 - 1e18]
+    DIV_WAD_UP(fail)                  // [spotPrice * boostFactor / (alphaPowN_e18 / alpha) / (alpha - 1e18), alphaPowN_e18 - 1e18]
+    MUL_WAD_UP(fail)                  // [spotPrice * boostFactor / (alphaPowN_e18 / alpha) / (alpha - 1e18) * (alphaPowN_e18 - 1e18)]
+    dup1 dup1                         // [outputValue, outputValue, outputValue]
+
+    // calculate tradeFee
+    0x64 calldataload                 // [feeMultiplier, outputValue, outputValue, outputValue]
+    MUL_WAD_UP(fail)                  // [tradeFee, outputValue, outputValue]
+    dup1 0x80 mstore                  // [tradeFee, outputValue, outputValue]
+    swap1                             // [outputValue, tradeFee, outputValue]
+
+    // calculate protocolFee
+    0x84 calldataload                 // [protocolFeeMultiplier, outputValue, tradeFee, outputValue]
+    MUL_WAD_UP(fail)                  // [protocolFee, tradeFee, outputValue]
+    dup1 0xA0 mstore                  // [protocolFee, tradeFee, outputValue]
+
+    swap2 sub sub 0x60 mstore         // []
+
+    // update newDelta
+    0x24 calldataload                 // [delta]
+    0x30 shr                          // [delta >> 48]
+    0x30 shl                          // [(delta >> 48) << 48]
+    timestamp or                      // [timestamp | (delta >> 48) << 48]
+    0x40 mstore                       // []
+
+    [OK] 0x00 mstore
+    0xC0 0x00 return
+}
+
+#define macro MAIN() = takes(0) returns (0) {
+    0x00 calldataload 0xe0 shr   
+
+    dup1 __FUNC_SIG(getBuyInfo) eq get_buy_info jumpi
+    dup1 __FUNC_SIG(getSellInfo) eq get_sell_info jumpi
+    dup1 __FUNC_SIG(MIN_PRICE) eq min_price jumpi
+    dup1 __FUNC_SIG(validateDelta) eq validate_delta jumpi
+    dup1 __FUNC_SIG(validateSpotPrice) eq validate_spot_price jumpi
+
+    fail
+
+    fail:
+        GTFO()                                        // _reverts_
+    min_price:
+        MIN_PRICE()                                   // _stops_
+    get_buy_info: 
+        GET_BUY_INFO()                                // _stops_
+    get_sell_info: 
+        GET_SELL_INFO()                               // _stops_
+    validate_delta: 
+        VALIDATE_DELTA()                              // _stops_
+    validate_spot_price: 
+        VALIDATE_SPOT_PRICE()                         // _stops_
+}
