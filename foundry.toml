@@ -24,3 +24,6 @@ evm_version = 'shanghai'
 [profile.ci]
 fuzz_runs = 100_000
 verbosity = 4
+ffi = true
+solc_version = '0.8.20'
+evm_version = 'shanghai'
