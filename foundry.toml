@@ -11,15 +11,16 @@ remappings = [
   "clones-with-immutable-args/=lib/clones-with-immutable-args/src/",
   "ds-test/=lib/clones-with-immutable-args/lib/ds-test/src/",
   "forge-std/=lib/forge-std/src/",
-  "huffmate/=lib/huffmate/src",
   "foundry-huff/=lib/foundry-huff/src",
 ]
 verbosity = 1
 auto_detect_remappings = false
 
+ffi = true
+solc_version = '0.8.20'
+evm_version = 'shanghai'
+
 # Extreme Fuzzing CI Profile :P
 [profile.ci]
 fuzz_runs = 100_000
 verbosity = 4
-
-# ffi = true

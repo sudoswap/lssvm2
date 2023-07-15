@@ -3,8 +3,8 @@
 /// @dev alpha, lambda, and start timestamp are packed into uint128 delta
 /// Highest 40 bits are alpha, next 40 bits are lambda, lowest 48 bits are start timestamp
 
+#include "./utils/FixedPointMath.huff"
 #include "./utils/CurveErrorCodes.huff"
-#include "huffmate/math/FixedPointMath.huff"
 
 #define constant UINT128_MAX = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 

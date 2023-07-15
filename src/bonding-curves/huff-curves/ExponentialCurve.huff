@@ -1,8 +1,8 @@
 /// SPDX-License-Identifier: AGPL-3.0
 /// @author 0xhamachi <https://github.com/0xhamachi>
 
+#include "./utils/FixedPointMath.huff"
 #include "./utils/CurveErrorCodes.huff"
-#include "huffmate/math/FixedPointMath.huff"
 
 #define constant MIN_PRICE = 0xF4240
 #define constant UINT128_MAX = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
