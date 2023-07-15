@@ -33,8 +33,9 @@
 }
 
 #define macro VALIDATE_DELTA() = takes(0) returns (0) {
-    [WAD] 0x04 calldataload           // [delta, WAD]
-    gt                                // [delta > WAD]
+    [WAD] 0x24 calldataload 0x58 shr  // [delta >> 88, WAD]
+    [SCALE_FACTOR] mul                // [alpha > WAD]
+    gt                                // [alpha > WAD]
     0x00 mstore
     0x20 0x00 return 
 }
