@@ -124,7 +124,7 @@ contract bGDACurveHuffTest is Test {
 
     function test_floor_buy() public {
         uint48 t0 = 5;
-        uint48 t1 = 10;
+        uint48 t1 = 5000;
 
         vm.warp(t1);
         uint128 delta = getPackedDelta(t0);
@@ -134,10 +134,8 @@ contract bGDACurveHuffTest is Test {
         uint128 adjustedSpotPrice;
         {
             UD60x18 alphaPowM = ud(alpha).powu(numItemsAlreadyPurchased);
-            adjustedSpotPrice = uint128(unwrap(ud(initialPrice).mul(alphaPowM)));
+            adjustedSpotPrice = getPackedSpotPrice(uint128(unwrap(ud(initialPrice).mul(alphaPowM))));
         }
-
-        uint128 packedSpotPrice = getPackedSpotPrice(adjustedSpotPrice);
 
         // Check outputs against Python script
         {
@@ -149,12 +147,16 @@ contract bGDACurveHuffTest is Test {
                 uint256 inputValue,
                 ,
                 uint256 protocolFee
-            ) = curve.getBuyInfo(packedSpotPrice, delta, numItemsToBuy, 0, 0);
+            ) = curve.getBuyInfo(adjustedSpotPrice, delta, numItemsToBuy, 0, 0);
 
             ScriptArgs memory args =
-                ScriptArgs(initialPrice, alpha, lambda, numItemsAlreadyPurchased, 10-5, numItemsToBuy);
+                ScriptArgs(initialPrice, alpha, lambda, numItemsAlreadyPurchased, 5000-5, numItemsToBuy);
             uint256 expectedInputValue = calculateValue("buy_input_value", args);
-            uint128 expectedPackedNewSpotPrice = getPackedSpotPrice(uint128(calculateValue("buy_spot_price", args)));
+            uint256 calculateNewSpotPrice = uint128(calculateValue("buy_spot_price", args));
+            if (calculateNewSpotPrice < floor) {
+                calculateNewSpotPrice = floor;
+            }
+            uint128 expectedPackedNewSpotPrice = getPackedSpotPrice(uint128(calculateNewSpotPrice));
 
             assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
             assertApproxEqRel(newSpotPrice, expectedPackedNewSpotPrice, 1e9, "Spot price incorrect");
@@ -165,9 +167,9 @@ contract bGDACurveHuffTest is Test {
     }
 
     // pickup: not sure why spot price is underflowing on sell logic
-    function test_floor_sell() public {
+    function test_ceiling_sell() public {
         uint32 t0 = 5;
-        uint32 t1 = 10;
+        uint32 t1 = 5000;
         vm.warp(t1);
 
         uint128 delta = getPackedDelta(t0);
@@ -193,9 +195,13 @@ contract bGDACurveHuffTest is Test {
             ) = curve.getSellInfo(adjustedSpotPrice, delta, numItemsToSell, 0, 0);
 
             ScriptArgs memory args =
-                ScriptArgs(initialPrice, alpha, lambda, numItemsAlreadySold, 10-5, numItemsToSell);
+                ScriptArgs(initialPrice, alpha, lambda, numItemsAlreadySold, 5000-5, numItemsToSell);
             uint256 expectedOutputValue = calculateValue("sell_output_value", args);
-            uint128 expectedSpotPrice = getPackedSpotPrice(uint128(calculateValue("sell_spot_price", args)));
+            uint256 calculateNewSpotPrice = uint128(calculateValue("sell_spot_price", args));
+            if (calculateNewSpotPrice > floor) {
+                calculateNewSpotPrice = floor;
+            }
+            uint128 expectedSpotPrice = getPackedSpotPrice(uint128(calculateNewSpotPrice));
 
             assertEq(uint256(error), uint256(CurveErrorCodes.Error.OK), "Error code not OK");
             assertApproxEqRel(newSpotPrice, expectedSpotPrice, 1e9, "Spot price incorrect");
