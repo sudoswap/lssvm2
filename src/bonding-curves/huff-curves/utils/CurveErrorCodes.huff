@@ -3,3 +3,4 @@
 #define constant SPOT_PRICE_OVERFLOW = 0x02
 #define constant DELTA_OVERFLOW = 0x03
 #define constant SPOT_PRICE_UNDERFLOW = 0x04
+#define constant AUCTION_ENDED = 0x05

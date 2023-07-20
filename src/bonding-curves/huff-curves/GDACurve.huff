@@ -98,14 +98,22 @@
     MUL_WAD_UP(fail)                  // [spotPrice * alphaPowN_e18, decayFactor, alphaPowN_e18, alpha, decayFactor]    
     DIV_WAD_UP(fail)                  // [spotPrice * alphaPowN_e18 / decayFactor, alphaPowN_e18, alpha, decayFactor]
 
-    // check if spotPrice is too large
+    // check if spotPrice is too large or small
     [UINT128_MAX]                     // [UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
     dup2                              // [newSpotPrice, UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
     gt iszero spotprice_not_overflow jumpi
         [SPOT_PRICE_OVERFLOW] 0x00 mstore
         0xC0 0x00 return
     spotprice_not_overflow:
-    0x20 mstore                       // [ alphaPowN_e18, alpha, decayFactor]
+
+    [MIN_PRICE]                       // [MIN_PRICE, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    dup2                              // [newSpotPrice, MIN_PRICE, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    lt iszero spotprice_not_underflow jumpi
+        [SPOT_PRICE_UNDERFLOW] 0x00 mstore
+        0xC0 0x00 return
+    spotprice_not_underflow:
+
+    0x20 mstore                       // [alphaPowN_e18, alpha, decayFactor]
 
     // calculate inputValue
     [WAD] swap1 sub                   // [alphaPowN_e18 - 1e18, alpha, decayFactor]
@@ -191,13 +199,21 @@
     MUL_WAD_UP(fail)                  // [spotPrice * boostFactor, alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]    
     DIV_WAD_UP(fail)                  // [spotPrice * boostFactor / alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]
 
-    // check if spotPrice is too large
+    // check if spotPrice is too large or small
     [UINT128_MAX]                     // [UINT128_MAX, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
     dup2                              // [newSpotPrice, UINT128_MAX, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
     gt iszero spotprice_not_overflow jumpi
         [SPOT_PRICE_OVERFLOW] 0x00 mstore
         0xC0 0x00 return
     spotprice_not_overflow:
+
+    [MIN_PRICE]                       // [MIN_PRICE, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    dup2                              // [newSpotPrice, MIN_PRICE, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    lt iszero spotprice_not_underflow jumpi
+        [SPOT_PRICE_UNDERFLOW] 0x00 mstore
+        0xC0 0x00 return
+    spotprice_not_underflow:
+
     0x20 mstore                       // [alphaPowN_e18, boostFactor, alpha]
 
     // calculate outputValue
@@ -208,7 +224,7 @@
     [WAD] swap1 sub                   // [alpha - 1e18, alpha, alphaPowN_e18, boostFactor, alphaPowN_e18 - 1e18]
     swap3                             // [boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
     0x04 calldataload                 // [spotPrice, boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
-    MUL_WAD_UP(fail)                    // [spotPrice * boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
+    MUL_WAD_UP(fail)                  // [spotPrice * boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
     swap2                             // [alphaPowN_e18, alpha, spotPrice * boostFactor, alpha - 1e18, alphaPowN_e18 - 1e18]
     DIV_WAD_UP(fail)                  // [alphaPowN_e18 / alpha, spotPrice * boostFactor, alpha - 1e18, alphaPowN_e18 - 1e18]
     swap1                             // [spotPrice * boostFactor, alphaPowN_e18 / alpha, alpha - 1e18, alphaPowN_e18 - 1e18]
