@@ -1,19 +1,24 @@
 /// SPDX-License-Identifier: AGPL-3.0
 /// @author 0xhamachi <https://github.com/0xhamachi>
-/// @dev alpha, lambda, and start timestamp are packed into uint128 delta
-/// Highest 40 bits are alpha, next 40 bits are lambda, lowest 48 bits are start timestamp
+/// @dev bGDA is a modified Gradual Duction Auction with time and price boundary conditions
+/// alpha, lambda, endTime, prevTime are packed into delta (32, 32, 32, 32)
+/// spotPrice, bound are packed into spotPrice (64, 64)
 
 #include "./utils/FixedPointMath.huff"
 #include "./utils/CurveErrorCodes.huff"
 
+#define constant UINT64_MAX = 0xFFFFFFFFFFFFFFFF
 #define constant UINT128_MAX = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
+#define constant MASK_32 = 0xffffffff                   
+#define constant MASK_64 = 0xffffffffffffffff           
+
 #define constant MIN_PRICE = 0x01
-#define constant SCALE_FACTOR = 0x3B9ACA00              // 1e9
-#define constant LAMBDA_MASK = 0xFFFFFFFFFF
-#define constant PREV_TIME_MASK = 0xFFFFFFFFFFFF
+#define constant SCALE_FACTOR = 0x174876E800            // 1e11
+#define constant SCALE_FACTOR_6 = 0xF4240               // 1e6
+
 #define constant TIME_SCALAR = 0x1BC16D674EC80000       // Use 2e18 in place of Euler's number
-#define constant MAX_TIME_EXPONENT = 0x8AC7230489E80000 // 1e19
+#define constant MAX_TIME_EXPONENT = 0x8AC7230489E80000 // 10e18
 
 #define function MIN_PRICE() view returns (uint256)
 #define function validateDelta(uint128) pure returns (bool)
@@ -33,22 +38,32 @@
 }
 
 #define macro VALIDATE_DELTA() = takes(0) returns (0) {
-    [WAD] 0x04 calldataload 0x58 shr  // [delta >> 88, WAD]
-    [SCALE_FACTOR] mul                // [alpha, WAD]
+    [WAD]                             // [WAD]
+    0x04 calldataload 0x60 shr        // [delta >> 96, WAD]
+    [SCALE_FACTOR] mul                // [alpha, WAD]             
     gt                                // [alpha > WAD]
     0x00 mstore
     0x20 0x00 return 
 }
 
 #define macro VALIDATE_SPOT_PRICE() = takes(0) returns (0) {
-    [MIN_PRICE] 0x04 calldataload     // [spotPrice, MIN_PRICE]
+    [MIN_PRICE]                       // [MIN_PRICE]
+    0x04 calldataload 0x40 shr        // [spotPrice >> 64]
+    [SCALE_FACTOR_6] mul              // [spotPrice, MIN_PRICE]
     lt iszero                         // [spotPrice >= MIN_PRICE]
     0x00 mstore
     0x20 0x00 return 
 }
 
 #define macro GET_BUY_INFO() = takes(0) returns (0) {
-    
+
+    // check endTime > timestamp
+    timestamp UNPACK_ENDTIME()        // [endTime, timestamp]
+    lt iszero auction_not_ended jumpi
+        [AUCTION_ENDED] 0x00 mstore
+        0xC0 0x00 return
+    auction_not_ended:
+
     // check numItems == 0
     0x44 calldataload numitems_not_zero jumpi
         [INVALID_NUMITEMS] 0x00 mstore
@@ -56,13 +71,8 @@
     numitems_not_zero:
 
     // unpack delta -> (alpha, lambda, prevTime)
-    0x24 calldataload dup1            // [delta, delta]
-    0x30 shr                          // [delta >> 48, delta] 
-    [LAMBDA_MASK] and                 // [LAMBDA_MASK & (delta >> 48), delta]
-    [SCALE_FACTOR] mul                // [(delta >> 48) * 1e9, delta]
-
-    swap1                             // [delta, lambda]
-    [PREV_TIME_MASK] and              // [PREV_TIME_MASK & delta, lambda]
+    UNPACK_LAMBDA()                   // [lambda]
+    UNPACK_PREVTIME()                 // [prevTime, lambda]
     timestamp sub                     // [timestamp - prevTime, lambda]
     mul                               // [exponent]
 
@@ -80,8 +90,7 @@
 
     // calculate alphaPowN
     0x44 calldataload                 // [numItems, decayFactor, decayFactor]
-    0x24 calldataload 0x58 shr        // [delta >> 88, numItems, decayFactor, decayFactor]    
-    [SCALE_FACTOR] mul                // [alpha, numItems, decayFactor, decayFactor]
+    UNPACK_ALPHA()                    // [alpha, numItems, decayFactor, decayFactor]
     dup1                              // [alpha, alpha, numItems, decayFactor, decayFactor]
     swap3                             // [decayFactor, alpha, numItems, alpha, decayFactor] 
     swap2                             // [numItems, alpha, decayFactor, alpha, decayFactor]
@@ -92,32 +101,48 @@
     swap2                             // [decayFactor, alphaPowN_e18, alphaPowN_e18, alpha, decayFactor]
     swap1                             // [alphaPowN_e18, decayFactor, alphaPowN_e18, alpha, decayFactor]    
 
-
     // calculate new spotprice
-    0x04 calldataload                 // [spotPrice, alphaPowN_e18, decayFactor, alphaPowN_e18, alpha, decayFactor]
+    UNPACK_SPOTPRICE()                // [spotPrice, alphaPowN_e18, decayFactor, alphaPowN_e18, alpha, decayFactor]
     MUL_WAD_UP(fail)                  // [spotPrice * alphaPowN_e18, decayFactor, alphaPowN_e18, alpha, decayFactor]    
     DIV_WAD_UP(fail)                  // [spotPrice * alphaPowN_e18 / decayFactor, alphaPowN_e18, alpha, decayFactor]
 
-    // check if spotPrice is too large or small
-    [UINT128_MAX]                     // [UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
-    dup2                              // [newSpotPrice, UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    //check if spotPrice scaled is too large
+    [UINT64_MAX]                     // [UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    dup2                             // [newSpotPrice, UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    [SCALE_FACTOR_6]                 // [SCALE_FACTOR_6, newSpotPrice, UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    swap1                            // [newSpotPrice, SCALE_FACTOR_6, UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    div                              // [newSpotPrice / SCALE_FACTOR_6, UINT128_MAX, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
     gt iszero spotprice_not_overflow jumpi
         [SPOT_PRICE_OVERFLOW] 0x00 mstore
         0xC0 0x00 return
     spotprice_not_overflow:
 
-    [MIN_PRICE]                       // [MIN_PRICE, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    [MIN_PRICE]                       // [MIN_PRICE, newSpotPrice, alphaPowN_e18, alpha, decayFactor]    
     dup2                              // [newSpotPrice, MIN_PRICE, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
     lt iszero spotprice_not_underflow jumpi
         [SPOT_PRICE_UNDERFLOW] 0x00 mstore
         0xC0 0x00 return
     spotprice_not_underflow:
 
+    // check against floor bound
+    UNPACK_BOUND()                    // [floor, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    dup2                              // [newSpotPrice, floor, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    lt iszero spotprice_not_under_floor jumpi
+        pop                           // [alphaPowN_e18, alpha, decayFactor]
+        UNPACK_BOUND()                // [newSpotPrice = floor, alphaPowN_e18, alpha, decayFactor]
+    spotprice_not_under_floor:        // [newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+
+    // pack new spotprice, bound, endTime
+    [SCALE_FACTOR_6] swap1 div        // [newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    0x40 shl                          // [newSpotPrice << 64, alphaPowN_e18, alpha, decayFactor]
+    0x04 calldataload                 // [spotPrice, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    [MASK_64] and                     // [MASK_64 && spotPrice, newSpotPrice, alphaPowN_e18, alpha, decayFactor]
+    or                                // [newSpotPricePacked, alphaPowN_e18, alpha, decayFactor]
     0x20 mstore                       // [alphaPowN_e18, alpha, decayFactor]
 
     // calculate inputValue
     [WAD] swap1 sub                   // [alphaPowN_e18 - 1e18, alpha, decayFactor]
-    0x04 calldataload                 // [spotPrice, alphaPowN_e18 - 1e18, alpha, decayFactor]
+    UNPACK_SPOTPRICE()                // [spotPrice, alphaPowN_e18 - 1e18, alpha, decayFactor]
     MUL_WAD_UP(fail)                  // [spotPrice * (alphaPowN_e18 - 1e18), alpha, decayFactor]
     swap1                             // [alpha, spotPrice * (alphaPowN_e18 - 1e18), decayFactor]
     [WAD] swap1 sub                   // [alpha - 1e18, spotPrice * (alphaPowN_e18 - 1e18), decayFactor]
@@ -141,9 +166,9 @@
 
     // update newDelta
     0x24 calldataload                 // [delta]
-    0x30 shr                          // [delta >> 48]
-    0x30 shl                          // [(delta >> 48) << 48]
-    timestamp or                      // [timestamp | (delta >> 48) << 48]
+    0x20 shr                          // [delta >> 32]
+    0x20 shl                          // [(delta >> 32) << 32]
+    timestamp or                      // [timestamp | (delta >> 32) << 32]
     0x40 mstore                       // []
 
     [OK] 0x00 mstore
@@ -152,6 +177,13 @@
 
 #define macro GET_SELL_INFO() = takes(0) returns (0) {
 
+    // check endTime > timestamp
+    timestamp UNPACK_ENDTIME()        // [endTime, timestamp]
+    lt iszero auction_not_ended jumpi
+        [AUCTION_ENDED] 0x00 mstore
+        0xC0 0x00 return
+    auction_not_ended:
+
     // check numItems > 0
     0x44 calldataload numitems_not_zero jumpi
         [INVALID_NUMITEMS] 0x00 mstore
@@ -159,13 +191,8 @@
     numitems_not_zero:
 
     // unpack delta -> (alpha, lambda, prevTime)
-    0x24 calldataload dup1            // [delta, delta]
-    0x30 shr                          // [delta >> 48, delta] 
-    [LAMBDA_MASK] and                 // [LAMBDA_MASK & (delta >> 48), delta]
-    [SCALE_FACTOR] mul                // [(delta >> 48) * 1e9, delta]
-
-    swap1                             // [delta, lambda]
-    [PREV_TIME_MASK] and              // [PREV_TIME_MASK & delta, lambda]
+    UNPACK_LAMBDA()                   // [lambda]
+    UNPACK_PREVTIME()                 // [prevTime, lambda]
     timestamp sub                     // [timestamp - prevTime, lambda]
     mul                               // [exponent]
 
@@ -183,8 +210,7 @@
 
     // calculate alphaPowN
     0x44 calldataload                 // [numItems, boostFactor, boostFactor]
-    0x24 calldataload 0x58 shr        // [delta >> 88, numItems, boostFactor, boostFactor]    
-    [SCALE_FACTOR] mul                // [alpha, numItems, boostFactor, boostFactor]
+    UNPACK_ALPHA()                    // [alpha, numItems, boostFactor, boostFactor]
     dup1                              // [alpha, alpha, numItems, boostFactor, boostFactor]
     swap4                             // [boostFactor, alpha, numItems, boostFactor, alpha] 
     swap2                             // [numItems, alpha, boostFactor, boostFactor, alpha]
@@ -195,13 +221,16 @@
     swap2                             // [boostFactor, alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]
 
     // calculate new spotprice
-    0x04 calldataload                 // [spotPrice, boostFactor, alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]
+    UNPACK_SPOTPRICE()                // [spotPrice, boostFactor, alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]
     MUL_WAD_UP(fail)                  // [spotPrice * boostFactor, alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]    
     DIV_WAD_UP(fail)                  // [spotPrice * boostFactor / alphaPowN_e18, alphaPowN_e18, boostFactor, alpha]
 
-    // check if spotPrice is too large or small
-    [UINT128_MAX]                     // [UINT128_MAX, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    // check if spotPrice scaled is too large
+    [UINT64_MAX]                      // [UINT128_MAX, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
     dup2                              // [newSpotPrice, UINT128_MAX, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    [SCALE_FACTOR_6]                  // [SCALE_FACTOR_6, newSpotPrice, UINT128_MAX, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    swap1                             // [newSpotPrice, SCALE_FACTOR_6, UINT128_MAX, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    div                               // [newSpotPrice / SCALE_FACTOR_6, UINT128_MAX, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
     gt iszero spotprice_not_overflow jumpi
         [SPOT_PRICE_OVERFLOW] 0x00 mstore
         0xC0 0x00 return
@@ -214,6 +243,20 @@
         0xC0 0x00 return
     spotprice_not_underflow:
 
+    // check against ceiling bound
+    UNPACK_BOUND()                    // [ceiling, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    dup2                              // [newSpotPrice, ceiling, newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    gt iszero spotprice_not_under_floor jumpi
+        pop                           // [alphaPowN_e18, boostFactor, alpha]
+        UNPACK_BOUND()                // [newSpotPrice = ceiling, alphaPowN_e18, boostFactor, alpha]
+    spotprice_not_under_floor:
+    
+    // pack new spotprice, bound, timestamp
+    [SCALE_FACTOR_6] swap1 div        // [newSpotPrice, alphaPowN_e18, boostFactor, alpha]
+    0x40 shl                          // [newSpotPrice << 64, alphaPowN_e18, boostFactor, alpha]
+    0x04 calldataload                 // [spotPrice, newSpotPrice << 64, alphaPowN_e18, boostFactor, alpha]
+    [MASK_64] and                     // [MASK_64 && spotPrice, newSpotPrice << 64, alphaPowN_e18, boostFactor, alpha]
+    or                                // [newSpotPricePacked, alphaPowN_e18, boostFactor, alpha]
     0x20 mstore                       // [alphaPowN_e18, boostFactor, alpha]
 
     // calculate outputValue
@@ -223,7 +266,7 @@
     dup1                              // [alpha, alpha, alphaPowN_e18, boostFactor, alphaPowN_e18 - 1e18]
     [WAD] swap1 sub                   // [alpha - 1e18, alpha, alphaPowN_e18, boostFactor, alphaPowN_e18 - 1e18]
     swap3                             // [boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
-    0x04 calldataload                 // [spotPrice, boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
+    UNPACK_SPOTPRICE()                // [spotPrice, boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
     MUL_WAD_UP(fail)                  // [spotPrice * boostFactor, alpha, alphaPowN_e18, alpha - 1e18, alphaPowN_e18 - 1e18]
     swap2                             // [alphaPowN_e18, alpha, spotPrice * boostFactor, alpha - 1e18, alphaPowN_e18 - 1e18]
     DIV_WAD_UP(fail)                  // [alphaPowN_e18 / alpha, spotPrice * boostFactor, alpha - 1e18, alphaPowN_e18 - 1e18]
@@ -248,13 +291,45 @@
 
     // update newDelta
     0x24 calldataload                 // [delta]
-    0x30 shr                          // [delta >> 48]
-    0x30 shl                          // [(delta >> 48) << 48]
-    timestamp or                      // [timestamp | (delta >> 48) << 48]
+    0x20 shr                          // [delta >> 32]
+    0x20 shl                          // [(delta >> 32) << 32]
+    timestamp or                      // [timestamp | (delta >> 32) << 32]
     0x40 mstore                       // []
 
     [OK] 0x00 mstore
     0xC0 0x00 return
+}
+
+#define macro UNPACK_SPOTPRICE() = takes (0) returns (1) {
+    0x04 calldataload 0x40 shr        // [spotPrice >> 64]
+    [SCALE_FACTOR_6] mul              // [spotPrice]
+}
+
+#define macro UNPACK_BOUND() = takes (0) returns (1) {
+    0x04 calldataload                 // [spotPrice]
+    [MASK_64] and                     // [spotPrice && MASK_64]
+    [SCALE_FACTOR_6] mul              // [bound]
+}
+
+#define macro UNPACK_ENDTIME() = takes (0) returns (1) {
+    0x24 calldataload 0x20 shr        // [delta >> 32]   
+    [MASK_32] and                     // [endTime]
+}
+
+#define macro UNPACK_ALPHA() = takes (0) returns (1) {
+    0x24 calldataload 0x60 shr        // [delta >> 96]
+    [SCALE_FACTOR] mul                // [alpha]
+}
+
+#define macro UNPACK_LAMBDA() = takes (0) returns (1) {
+    0x24 calldataload 0x40 shr        // [delta >> 64]
+    [MASK_32] and                     // [(delta >> 64) && MASK_32]
+    [SCALE_FACTOR] mul                // [lambda]
+}
+
+#define macro UNPACK_PREVTIME() = takes (0) returns (1) {
+    0x24 calldataload                 // [delta]
+    [MASK_32] and                     // [prevTime]
 }
 
 #define macro MAIN() = takes(0) returns (0) {
