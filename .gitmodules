@@ -28,3 +28,6 @@
 [submodule "lib/seaport-types"]
 	path = lib/seaport-types
 	url = https://github.com/ProjectOpenSea/seaport-types
+[submodule "lib/seaport-core"]
+	path = lib/seaport-core
+	url = https://github.com/ProjectOpenSea/seaport-core
