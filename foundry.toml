@@ -11,6 +11,8 @@ remappings = [
   "clones-with-immutable-args/=lib/clones-with-immutable-args/src/",
   "ds-test/=lib/clones-with-immutable-args/lib/ds-test/src/",
   "forge-std/=lib/forge-std/src/",
+  "seaport/=lib/seaport-core/src/",
+  "seaport-types/=lib/seaport-types/"
 ]
 verbosity = 1
 auto_detect_remappings = false
