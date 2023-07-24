@@ -25,3 +25,6 @@
 [submodule "lib/libraries-solidity"]
 	path = lib/libraries-solidity
 	url = https://github.com/manifoldxyz/libraries-solidity
+[submodule "lib/seaport-types"]
+	path = lib/seaport-types
+	url = https://github.com/ProjectOpenSea/seaport-types
