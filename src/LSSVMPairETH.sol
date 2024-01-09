@@ -65,7 +65,7 @@ abstract contract LSSVMPairETH is LSSVMPair {
 
         // Take protocol fee
         if (protocolFee != 0) {
-            payable(address(factory())).safeTransferETH(protocolFee);
+            payable(factory().getProtocolFeeRecipient(referralAddress)).safeTransferETH(protocolFee);
         }
     }
 
@@ -106,6 +106,10 @@ abstract contract LSSVMPairETH is LSSVMPair {
     function withdrawETH(uint256 amount) public onlyOwner {
         payable(msg.sender).safeTransferETH(amount);
 
+        if (address(hook) != address(0)) {
+            hook.afterTokenWithdrawal(amount);
+        }
+
         // emit event since ETH is the pair token
         emit TokenWithdrawal(amount);
     }
@@ -122,6 +126,11 @@ abstract contract LSSVMPairETH is LSSVMPair {
      * for the owner to top up the pair's token reserves.
      */
     receive() external payable {
+        if (address(hook) != address(0)) {
+            uint256[] memory empty = new uint256[](0);
+            hook.syncForPair(address(this), msg.value, empty);
+        }
+
         emit TokenDeposit(msg.value);
     }
 
@@ -132,8 +141,12 @@ abstract contract LSSVMPairETH is LSSVMPair {
     fallback() external payable {
         // Only allow calls without function selector
         require(msg.data.length == _immutableParamsLength());
+
+        if (address(hook) != address(0)) {
+            uint256[] memory empty = new uint256[](0);
+            hook.syncForPair(address(this), msg.value, empty);
+        }
+
         emit TokenDeposit(msg.value);
     }
-
-    function _preCallCheck(address) internal pure override {}
 }

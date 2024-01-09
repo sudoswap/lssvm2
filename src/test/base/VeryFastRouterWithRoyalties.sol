@@ -202,7 +202,8 @@ abstract contract VeryFastRouterWithRoyalties is Test, ERC721Holder, ERC1155Hold
                     _idList: nftIdsToDeposit,
                     initialTokenBalance: depositAmount,
                     routerAddress: address(router),
-                    propertyChecker: _propertyChecker
+                    propertyChecker: _propertyChecker,
+                    hookAddress: address(0)
                 })
             );
         }
@@ -229,7 +230,8 @@ abstract contract VeryFastRouterWithRoyalties is Test, ERC721Holder, ERC1155Hold
                 nftId: ID_1155,
                 initialNFTBalance: numNFTsToDeposit,
                 initialTokenBalance: depositAmount,
-                routerAddress: address(router)
+                routerAddress: address(router),
+                hookAddress: address(0)
             })
         );
     }

@@ -41,7 +41,17 @@ abstract contract UsingETH is Configurable, RouterCaller {
         address
     ) public payable override returns (LSSVMPair) {
         LSSVMPairETH pair = factory.createPairERC721ETH{value: msg.value}(
-            nft, bondingCurve, assetRecipient, poolType, delta, fee, spotPrice, address(0), _idList
+            nft,
+            bondingCurve,
+            assetRecipient,
+            poolType,
+            delta,
+            fee,
+            spotPrice,
+            address(0),
+            _idList,
+            address(0),
+            address(0)
         );
         return pair;
     }
@@ -56,7 +66,9 @@ abstract contract UsingETH is Configurable, RouterCaller {
             params.fee,
             params.spotPrice,
             params.nftId,
-            params.initialNFTBalance
+            params.initialNFTBalance,
+            params.hookAddress,
+            address(0)
         );
         return pair;
     }
@@ -76,7 +88,9 @@ abstract contract UsingETH is Configurable, RouterCaller {
             params.fee,
             params.spotPrice,
             params.propertyChecker,
-            params._idList
+            params._idList,
+            params.hookAddress,
+            address(0)
         );
     }
 
@@ -133,5 +147,9 @@ abstract contract UsingETH is Configurable, RouterCaller {
 
     function getTokenAddress() public pure override returns (address) {
         return address(0);
+    }
+
+    function isETHPool() public pure override returns (bool) {
+        return true;
     }
 }

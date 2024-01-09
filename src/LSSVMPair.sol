@@ -4,8 +4,6 @@ pragma solidity ^0.8.0;
 import {IRoyaltyEngineV1} from "manifoldxyz/IRoyaltyEngineV1.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -13,6 +11,7 @@ import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155
 
 import {LSSVMRouter} from "./LSSVMRouter.sol";
 import {ICurve} from "./bonding-curves/ICurve.sol";
+import {IPairHooks} from "./hooks/IPairHooks.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 import {CurveErrorCodes} from "./bonding-curves/CurveErrorCodes.sol";
 import {IOwnershipTransferReceiver} from "./lib/IOwnershipTransferReceiver.sol";
@@ -24,12 +23,6 @@ import {OwnableWithTransferCallback} from "./lib/OwnableWithTransferCallback.sol
  * @notice This implements the core swap logic from NFT to TOKEN
  */
 abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC1155Holder {
-    /**
-     * Library usage **
-     */
-
-    using Address for address;
-
     /**
      *  Enums **
      */
@@ -89,13 +82,23 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
     address payable internal assetRecipient;
 
     /**
+     * @notice The IPairHooks contract to use for callbacks, if any.
+     */
+    IPairHooks public hook;
+
+    /**
+     * @notice The referral address to use, if any.
+     */
+    address public referralAddress;
+
+    /**
      *  Events
      */
 
-    event SwapNFTInPair(uint256 amountOut, uint256[] ids);
-    event SwapNFTInPair(uint256 amountOut, uint256 numNFTs);
-    event SwapNFTOutPair(uint256 amountIn, uint256[] ids);
-    event SwapNFTOutPair(uint256 amountIn, uint256 numNFTs);
+    event SwapNFTInPair(uint256 amountOut, uint256[] ids, uint256 royaltyAmount);
+    event SwapNFTInPair(uint256 amountOut, uint256 numNFTs, uint256 royaltyAmount);
+    event SwapNFTOutPair(uint256 amountIn, uint256[] ids, uint256 royaltyAmount);
+    event SwapNFTOutPair(uint256 amountIn, uint256 numNFTs, uint256 royaltyAmount);
     event SpotPriceUpdate(uint128 newSpotPrice);
     event TokenDeposit(uint256 amount);
     event TokenWithdrawal(uint256 amount);
@@ -103,14 +106,12 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
     event NFTWithdrawal(uint256 numNFTs);
     event DeltaUpdate(uint128 newDelta);
     event FeeUpdate(uint96 newFee);
-    event AssetRecipientChange(address indexed a);
 
     /**
      *  Errors
      */
 
     error LSSVMPair__NotRouter();
-    error LSSVMPair__CallFailed();
     error LSSVMPair__InvalidDelta();
     error LSSVMPair__WrongPoolType();
     error LSSVMPair__OutputTooSmall();
@@ -147,7 +148,9 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         address payable _assetRecipient,
         uint128 _delta,
         uint96 _fee,
-        uint128 _spotPrice
+        uint128 _spotPrice,
+        address _hookAddress,
+        address _referralAddress
     ) external {
         if (owner() != address(0)) revert LSSVMPair__AlreadyInitialized();
         __Ownable_init(_owner);
@@ -167,6 +170,12 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         if (!_bondingCurve.validateSpotPrice(_spotPrice)) revert LSSVMPair__InvalidSpotPrice();
         delta = _delta;
         spotPrice = _spotPrice;
+        hook = IPairHooks(_hookAddress);
+        referralAddress = _referralAddress;
+
+        if (_hookAddress != address(0)) {
+            hook.afterNewPair();
+        }
     }
 
     /**
@@ -240,11 +249,8 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
             bondingCurve().getBuyInfo(spotPrice, delta, numNFTs, fee, factory().protocolFeeMultiplier());
 
         if (numNFTs != 0) {
-            // Calculate the inputAmount minus tradeFee and protocolFee
-            uint256 inputAmountMinusFees = inputAmount - tradeFee - protocolFee;
-
             // Compute royalties
-            (,, royaltyAmount) = calculateRoyaltiesView(assetId, inputAmountMinusFees);
+            (,, royaltyAmount) = calculateRoyaltiesView(assetId, inputAmount - tradeFee - protocolFee);
 
             inputAmount += royaltyAmount;
         }
@@ -287,30 +293,21 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
     function pairVariant() public pure virtual returns (ILSSVMPairFactoryLike.PairVariant);
 
     function factory() public pure returns (ILSSVMPairFactoryLike _factory) {
-        uint256 paramsLength = _immutableParamsLength();
-        assembly {
-            _factory := shr(0x60, calldataload(sub(calldatasize(), paramsLength)))
-        }
+        return ILSSVMPairFactoryLike(_getArgAddress(0));
     }
 
     /**
      * @notice Returns the type of bonding curve that parameterizes the pair
      */
     function bondingCurve() public pure returns (ICurve _bondingCurve) {
-        uint256 paramsLength = _immutableParamsLength();
-        assembly {
-            _bondingCurve := shr(0x60, calldataload(add(sub(calldatasize(), paramsLength), 20)))
-        }
+        return ICurve(_getArgAddress(20));
     }
 
     /**
      * @notice Returns the address of NFT collection that parameterizes the pair
      */
     function nft() public pure returns (address _nft) {
-        uint256 paramsLength = _immutableParamsLength();
-        assembly {
-            _nft := shr(0x60, calldataload(add(sub(calldatasize(), paramsLength), 40)))
-        }
+        return _getArgAddress(40);
     }
 
     /**
@@ -361,91 +358,40 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      */
 
     /**
-     * @notice Calculates the amount needed to be sent into the pair for a buy and adjusts spot price or delta if necessary
+     * @notice Calculates the amount needed to be sent into the pair for a swap and adjusts spot price or delta if necessary
      * @param numNFTs The amount of NFTs to purchase from the pair
      * @param _bondingCurve The bonding curve to use for price calculation
      * @param _factory The factory to use for protocol fee lookup
      * @return tradeFee The amount of tokens to send as trade fee
      * @return protocolFee The amount of tokens to send as protocol fee
-     * @return inputAmount The amount of tokens total tokens receive
+     * @return swapAmount The amount of tokens total tokens received or sent
      */
-    function _calculateBuyInfoAndUpdatePoolParams(uint256 numNFTs, ICurve _bondingCurve, ILSSVMPairFactoryLike _factory)
-        internal
-        returns (uint256 tradeFee, uint256 protocolFee, uint256 inputAmount)
-    {
-        CurveErrorCodes.Error error;
-        // Save on 2 SLOADs by caching
-        uint128 currentSpotPrice = spotPrice;
-        uint128 currentDelta = delta;
-        uint128 newDelta;
-        uint128 newSpotPrice;
-        (error, newSpotPrice, newDelta, inputAmount, tradeFee, protocolFee) =
-            _bondingCurve.getBuyInfo(currentSpotPrice, currentDelta, numNFTs, fee, _factory.protocolFeeMultiplier());
-
-        // Revert if bonding curve had an error
-        if (error != CurveErrorCodes.Error.OK) {
-            revert LSSVMPair__BondingCurveError(error);
-        }
-
-        // Consolidate writes to save gas
-        if (currentSpotPrice != newSpotPrice || currentDelta != newDelta) {
-            spotPrice = newSpotPrice;
-            delta = newDelta;
-        }
-
-        // Emit spot price update if it has been updated
-        if (currentSpotPrice != newSpotPrice) {
-            emit SpotPriceUpdate(newSpotPrice);
-        }
-
-        // Emit delta update if it has been updated
-        if (currentDelta != newDelta) {
-            emit DeltaUpdate(newDelta);
-        }
-    }
-
-    /**
-     * @notice Calculates the amount needed to be sent by the pair for a sell and adjusts spot price or delta if necessary
-     * @param numNFTs The amount of NFTs to send to the the pair
-     * @param _bondingCurve The bonding curve to use for price calculation
-     * @param _factory The factory to use for protocol fee lookup
-     * @return protocolFee The amount of tokens to send as protocol fee
-     * @return outputAmount The amount of tokens total tokens receive
-     */
-    function _calculateSellInfoAndUpdatePoolParams(
+    function _calculateSwapInfoAndUpdatePoolParams(
         uint256 numNFTs,
         ICurve _bondingCurve,
-        ILSSVMPairFactoryLike _factory
-    ) internal returns (uint256 protocolFee, uint256 outputAmount) {
+        ILSSVMPairFactoryLike _factory,
+        bool isBuy
+    ) internal returns (uint256 tradeFee, uint256 protocolFee, uint256 swapAmount) {
         CurveErrorCodes.Error error;
-        // Save on 2 SLOADs by caching
-        uint128 currentSpotPrice = spotPrice;
-        uint128 currentDelta = delta;
-        uint128 newSpotPrice;
+
         uint128 newDelta;
-        (error, newSpotPrice, newDelta, outputAmount, /*tradeFee*/, protocolFee) =
-            _bondingCurve.getSellInfo(currentSpotPrice, currentDelta, numNFTs, fee, _factory.protocolFeeMultiplier());
+        uint128 newSpotPrice;
+
+        (error, newSpotPrice, newDelta, swapAmount, tradeFee, protocolFee) = isBuy
+            ? _bondingCurve.getBuyInfo(spotPrice, delta, numNFTs, fee, _factory.protocolFeeMultiplier())
+            : _bondingCurve.getSellInfo(spotPrice, delta, numNFTs, fee, _factory.protocolFeeMultiplier());
+        if (!isBuy) tradeFee = 0;
 
         // Revert if bonding curve had an error
         if (error != CurveErrorCodes.Error.OK) {
             revert LSSVMPair__BondingCurveError(error);
         }
 
-        // Consolidate writes to save gas
-        if (currentSpotPrice != newSpotPrice || currentDelta != newDelta) {
-            spotPrice = newSpotPrice;
-            delta = newDelta;
-        }
-
-        // Emit spot price update if it has been updated
-        if (currentSpotPrice != newSpotPrice) {
-            emit SpotPriceUpdate(newSpotPrice);
-        }
-
-        // Emit delta update if it has been updated
-        if (currentDelta != newDelta) {
-            emit DeltaUpdate(newDelta);
-        }
+        // Update pool parameters and emit events
+        spotPrice = newSpotPrice;
+        delta = newDelta;
+        emit SpotPriceUpdate(newSpotPrice);
+        emit DeltaUpdate(newDelta);
     }
 
     /**
@@ -488,21 +434,19 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      */
     function _immutableParamsLength() internal pure virtual returns (uint256);
 
+    function _getArgAddress(uint256 offset) internal pure returns (address arg) {
+        uint256 paramsLength = _immutableParamsLength();
+        assembly {
+            arg := shr(0x60, calldataload(add(sub(calldatasize(), paramsLength), offset)))
+        }
+    }
+
     /**
      * Royalty support functions
      */
 
-    function _calculateRoyalties(uint256 assetId, uint256 saleAmount)
-        internal
-        returns (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal)
-    {
-        (address payable[] memory recipients, uint256[] memory amounts) =
-            ROYALTY_ENGINE.getRoyalty(nft(), assetId, saleAmount);
-        return _calculateRoyaltiesLogic(recipients, amounts, saleAmount);
-    }
-
     /**
-     * @dev Same as _calculateRoyalties, but uses getRoyaltyView to avoid state mutations and is public for external callers
+     * @dev Uses getRoyaltyView to avoid state mutations and is public for external callers
      */
     function calculateRoyaltiesView(uint256 assetId, uint256 saleAmount)
         public
@@ -594,9 +538,11 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
     function changeSpotPrice(uint128 newSpotPrice) external onlyOwner {
         ICurve _bondingCurve = bondingCurve();
         if (!_bondingCurve.validateSpotPrice(newSpotPrice)) revert LSSVMPair__InvalidSpotPrice();
-        if (spotPrice != newSpotPrice) {
-            spotPrice = newSpotPrice;
-            emit SpotPriceUpdate(newSpotPrice);
+        uint128 oldSpotPrice = spotPrice;
+        spotPrice = newSpotPrice;
+        emit SpotPriceUpdate(newSpotPrice);
+        if (address(hook) != address(0)) {
+            hook.afterSpotPriceUpdate(oldSpotPrice, newSpotPrice);
         }
     }
 
@@ -607,9 +553,11 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
     function changeDelta(uint128 newDelta) external onlyOwner {
         ICurve _bondingCurve = bondingCurve();
         if (!_bondingCurve.validateDelta(newDelta)) revert LSSVMPair__InvalidDelta();
-        if (delta != newDelta) {
-            delta = newDelta;
-            emit DeltaUpdate(newDelta);
+        uint128 oldDelta = delta;
+        delta = newDelta;
+        emit DeltaUpdate(newDelta);
+        if (address(hook) != address(0)) {
+            hook.afterDeltaUpdate(oldDelta, newDelta);
         }
     }
 
@@ -622,9 +570,13 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
         PoolType _poolType = poolType();
         if (_poolType != PoolType.TRADE) revert LSSVMPair__NonTradePoolWithTradeFee();
         if (newFee > MAX_TRADE_FEE) revert LSSVMPair__TradeFeeTooLarge();
-        if (fee != newFee) {
+        uint96 oldFee = fee;
+        if (oldFee != newFee) {
             fee = newFee;
             emit FeeUpdate(newFee);
+        }
+        if (address(hook) != address(0)) {
+            hook.afterFeeUpdate(oldFee, newFee);
         }
     }
 
@@ -634,43 +586,15 @@ abstract contract LSSVMPair is OwnableWithTransferCallback, ERC721Holder, ERC115
      * @param newRecipient The new asset recipient
      */
     function changeAssetRecipient(address payable newRecipient) external onlyOwner {
-        if (assetRecipient != newRecipient) {
-            assetRecipient = newRecipient;
-            emit AssetRecipientChange(newRecipient);
-        }
+        assetRecipient = newRecipient;
     }
 
-    function _preCallCheck(address target) internal virtual;
-
     /**
-     * @notice Allows the pair to make arbitrary external calls to contracts
-     * whitelisted by the protocol. Only callable by the owner.
-     * @param target The contract to call
-     * @param data The calldata to pass to the contract
+     * @notice Changes the referral address
+     * @param newReferral The new referral
      */
-    function call(address payable target, bytes calldata data) external onlyOwner {
-        ILSSVMPairFactoryLike _factory = factory();
-        if (!_factory.callAllowed(target)) revert LSSVMPair__TargetNotAllowed();
-
-        // Ensure the call isn't calling a banned function
-        bytes4 sig = bytes4(data[:4]);
-        if (
-            sig == IOwnershipTransferReceiver.onOwnershipTransferred.selector
-                || sig == LSSVMRouter.pairTransferERC20From.selector || sig == LSSVMRouter.pairTransferNFTFrom.selector
-                || sig == LSSVMRouter.pairTransferERC1155From.selector || sig == ILSSVMPairFactoryLike.openLock.selector
-                || sig == ILSSVMPairFactoryLike.closeLock.selector
-        ) {
-            revert LSSVMPair__FunctionNotAllowed();
-        }
-
-        // Prevent calling the pair's underlying nft
-        // (We ban calling the underlying NFT/ERC20 to avoid maliciously transferring assets approved for the pair to spend)
-        if (target == nft()) revert LSSVMPair__TargetNotAllowed();
-
-        _preCallCheck(target);
-
-        (bool success,) = target.call{value: 0}(data);
-        if (!success) revert LSSVMPair__CallFailed();
+    function changeReferralAddress(address newReferral) external onlyOwner {
+        referralAddress = newReferral;
     }
 
     /**

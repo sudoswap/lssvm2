@@ -23,6 +23,7 @@ import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {IMintable} from "../interfaces/IMintable.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
+import {LSSVMPairERC721} from "../../erc721/LSSVMPairERC721.sol";
 import {TestPairManager} from "../../mocks/TestPairManager.sol";
 import {TestPairManager2} from "../../mocks/TestPairManager2.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
@@ -100,6 +101,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
                 startingId,
                 numItems,
                 tokenAmount,
+                address(0),
                 address(0)
             )
         );
@@ -180,6 +182,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
                 0,
                 0,
                 modifyInputAmount(tokenAmount),
+                address(0),
                 address(0)
             )
         );
@@ -197,6 +200,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
                 0,
                 0,
                 modifyInputAmount(tokenAmount),
+                address(0),
                 address(0)
             )
         );
@@ -272,6 +276,12 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
     function test_rescueTokensERC721() public {
         pair.withdrawERC721(test721, idList);
         pair.withdrawERC20(testERC20, 1 ether);
+
+        // Check the id list is now empty
+        assertEq(LSSVMPairERC721(address(pair)).numIdsHeld(), 0);
+        uint256[] memory storedIds =
+            LSSVMPairERC721(address(pair)).getIds(0, LSSVMPairERC721(address(pair)).numIdsHeld());
+        assertEq(storedIds.length, 0);
     }
 
     function test_rescueTokensERC1155() public {
@@ -415,107 +425,6 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
     function testFail_withdraw() public {
         pair.transferOwnership(address(1000), "");
         withdrawTokens(pair);
-    }
-
-    function testFail_callMint721() public {
-        bytes memory data = abi.encodeWithSelector(Test721.mint.selector, address(this), 1000);
-        pair.call(payable(address(test721)), data);
-    }
-
-    function testFail_callMint1155() public {
-        bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 1000);
-        pair1155.call(payable(address(test1155)), data);
-    }
-
-    function test_callBannedFunction() public {
-        factory.setCallAllowed(payable(address(pairManager)), true);
-
-        bytes memory data =
-            abi.encodeWithSelector(IOwnershipTransferReceiver.onOwnershipTransferred.selector, address(this), "");
-        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
-        pair.call(payable(address(pairManager)), data);
-
-        data =
-            abi.encodeWithSelector(LSSVMRouter.pairTransferERC20From.selector, vm.addr(1), vm.addr(2), vm.addr(3), 1000);
-        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
-        pair.call(payable(address(pairManager)), data);
-
-        data = abi.encodeWithSelector(LSSVMRouter.pairTransferNFTFrom.selector, vm.addr(1), vm.addr(2), vm.addr(3), 10);
-        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
-        pair.call(payable(address(pairManager)), data);
-
-        uint256[] memory idsAndAmounts = new uint256[](0);
-        data = abi.encodeWithSelector(
-            LSSVMRouter.pairTransferERC1155From.selector,
-            vm.addr(1),
-            vm.addr(2),
-            vm.addr(3),
-            idsAndAmounts,
-            idsAndAmounts
-        );
-        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
-        pair.call(payable(address(pairManager)), data);
-
-        factory.setCallAllowed(payable(address(factory)), true);
-        data = abi.encodeWithSelector(ILSSVMPairFactoryLike.openLock.selector, address(this), "");
-        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
-        pair.call(payable(address(factory)), data);
-
-        data = abi.encodeWithSelector(ILSSVMPairFactoryLike.closeLock.selector, address(this), "");
-        vm.expectRevert(LSSVMPair.LSSVMPair__FunctionNotAllowed.selector);
-        pair.call(payable(address(factory)), data);
-    }
-
-    function test_callBannedTarget721() public {
-        factory.setCallAllowed(payable(address(test721)), true);
-        bytes memory data = abi.encodeWithSelector(Test721.mint.selector, address(this), 1000);
-        vm.expectRevert(LSSVMPair.LSSVMPair__TargetNotAllowed.selector);
-        pair.call(payable(address(test721)), data);
-    }
-
-    function test_callBannedTarget1155() public {
-        factory.setCallAllowed(payable(address(test1155)), true);
-        bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 0, 2, "");
-        vm.expectRevert(LSSVMPair.LSSVMPair__TargetNotAllowed.selector);
-        pair1155.call(payable(address(test1155)), data);
-    }
-
-    function test_callBannedTargetERC20() public {
-        // Only for ERC20 pairs
-        if (getTokenAddress() != address(0)) {
-            factory.setCallAllowed(payable(getTokenAddress()), true);
-            bytes memory data = abi.encodeWithSelector(Test20.mint.selector, address(this), 1000);
-            vm.expectRevert(LSSVMPair.LSSVMPair__TargetNotAllowed.selector);
-            pair.call(payable(getTokenAddress()), data);
-        }
-    }
-
-    function test_callMint721() public {
-        // arbitrary call (just call mint on a new Test721 NFT) works as expected
-        Test721 newTest721 = new Test721();
-
-        // add to whitelist
-        factory.setCallAllowed(payable(address(newTest721)), true);
-
-        bytes memory data = abi.encodeWithSelector(Test721.mint.selector, address(this), 1000);
-        pair.call(payable(address(newTest721)), data);
-
-        // verify NFT ownership
-        assertEq(newTest721.ownerOf(1000), address(this));
-    }
-
-    function test_callMint1155() public {
-        // deploy new 1155
-        Test1155 newTest1155 = new Test1155();
-
-        // add to whitelist
-        factory.setCallAllowed(payable(address(newTest1155)), true);
-
-        bytes memory data = abi.encodeWithSelector(Test1155.mint.selector, address(this), 0, 2, "");
-        pair1155.call(payable(address(newTest1155)), data);
-
-        // verify NFT ownership
-        assertEq(newTest1155.balanceOf(address(this), 0), 2);
     }
 
     function test_withdraw1155() public {
@@ -663,6 +572,7 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
                 startingId,
                 numItems,
                 tokenAmount,
+                address(0),
                 address(0)
             )
         );
@@ -676,6 +586,30 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
         pair1155.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             nftIds, inputAmount, address(this), false, address(0)
         );
+    }
+
+    function test_pairIdSet() public {
+        // Check ID list
+        uint256[] memory storedIds = LSSVMPairERC721(address(pair)).getIds(0, idList.length);
+        assertEq(storedIds.length, idList.length);
+        for (uint256 i = 1; i <= numItems; i++) {
+            LSSVMPairERC721(address(pair)).hasId(i);
+        }
+
+        uint256[] memory storedIdsAll = LSSVMPairERC721(address(pair)).getAllIds();
+        for (uint256 i = 1; i <= numItems; i++) {
+            LSSVMPairERC721(address(pair)).hasId(i);
+        }
+    }
+
+    function test_depositModifiesPairIdSet() public {
+        // Call deposit NFTs from the pair factory
+        IERC721Mintable(address(test721)).mint(address(this), 69);
+        uint256[] memory id = new uint256[](1);
+        id[0] = 69;
+        factory.depositNFTs(IERC721(address(test721)), id, address(pair));
+        assertEq(LSSVMPairERC721(address(pair)).numIdsHeld(), numItems + 1);
+        assertEq(LSSVMPairERC721(address(pair)).hasId(69), true);
     }
 
     /**
@@ -733,11 +667,11 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
     }
 
     function testFail_reInitPoolERC721() public {
-        pair.initialize(address(0), payable(address(0)), 0, 0, 0);
+        pair.initialize(address(0), payable(address(0)), 0, 0, 0, address(0), address(0));
     }
 
     function testFail_reInitPoolERC1155() public {
-        pair.initialize(address(0), payable(address(0)), 0, 0, 0);
+        pair.initialize(address(0), payable(address(0)), 0, 0, 0, address(0), address(0));
     }
 
     function testFail_swapForNFTNotInPoolERC721() public {
@@ -770,9 +704,26 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
      * Test Admin functions
      */
 
-    function test_changeFeeRecipient() public {
-        factory.changeProtocolFeeRecipient(payable(address(69)));
-        assertEq(factory.protocolFeeRecipient(), address(69));
+    function test_changeDefaultProtocolFeeRecipient() public {
+        factory.changeDefaultProtocolFeeRecipient(payable(address(69)));
+        assertEq(factory.defaultProtocolFeeRecipient(), address(69));
+
+        vm.prank(address(1));
+        vm.expectRevert();
+        factory.changeDefaultProtocolFeeRecipient(payable(address(69)));
+    }
+
+    function test_addProtocolFeeReferral() public {
+        factory.addProtocolFeeRecipientReferral(address(101), payable(address(102)));
+        assertEq(factory.protocolFeeRecipientReferral(address(101)), address(102));
+
+        vm.prank(address(1));
+        vm.expectRevert();
+        factory.addProtocolFeeRecipientReferral(address(101), payable(address(102)));
+
+        // Check getProtocolFeeRecipient()
+        assertEq(factory.getProtocolFeeRecipient(address(101)), address(102));
+        assertEq(factory.getProtocolFeeRecipient(address(0)), address(factory));
     }
 
     function test_withdrawFees() public {
@@ -804,21 +755,5 @@ abstract contract PairAndFactory is Test, ERC721Holder, ERC1155Holder, Configura
     function test_changeFeeMultiplier() public {
         factory.changeProtocolFeeMultiplier(5e15);
         assertEq(factory.protocolFeeMultiplier(), 5e15);
-    }
-
-    function test_cannotAddBothRouterAndCallTarget() public {
-        address payable callTarget = payable(address(348324239));
-        factory.setCallAllowed(callTarget, true);
-        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__CannotCallRouter.selector);
-        factory.setRouterAllowed(LSSVMRouter(callTarget), true);
-
-        address payable routerTarget = payable(address(348139));
-        factory.setRouterAllowed(LSSVMRouter(routerTarget), true);
-        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__CannotCallRouter.selector);
-        factory.setCallAllowed(routerTarget, true);
-
-        factory.setRouterAllowed(LSSVMRouter(routerTarget), false);
-        vm.expectRevert(LSSVMPairFactory.LSSVMPairFactory__CannotCallRouter.selector);
-        factory.setCallAllowed(routerTarget, true);
     }
 }

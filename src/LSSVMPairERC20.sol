@@ -46,9 +46,11 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
         address _assetRecipient = getAssetRecipient();
 
         // Transfer tokens
+        inputAmountExcludingRoyalty -= protocolFee;
         if (isRouter) {
             // Verify if router is allowed
             // Locally scoped to avoid stack too deep
+            ERC20 token_ = token();
             {
                 (bool routerAllowed,) = factory().routerStatus(LSSVMRouter(payable(msg.sender)));
                 if (!routerAllowed) revert LSSVMPair__NotRouter();
@@ -57,12 +59,11 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
             // Cache state and then call router to transfer tokens from user
             uint256 beforeBalance = token().balanceOf(_assetRecipient);
             LSSVMRouter(payable(msg.sender)).pairTransferERC20From(
-                token(), routerCaller, _assetRecipient, inputAmountExcludingRoyalty - protocolFee
+                token_, routerCaller, _assetRecipient, inputAmountExcludingRoyalty
             );
 
             // Verify token transfer (protect pair against malicious router)
-            ERC20 token_ = token();
-            if (token_.balanceOf(_assetRecipient) - beforeBalance != (inputAmountExcludingRoyalty - protocolFee)) {
+            if (token_.balanceOf(_assetRecipient) - beforeBalance != inputAmountExcludingRoyalty) {
                 revert LSSVMPairERC20__AssetRecipientNotPaid();
             }
 
@@ -83,13 +84,13 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
             // Take protocol fee (if it exists)
             if (protocolFee != 0) {
                 LSSVMRouter(payable(msg.sender)).pairTransferERC20From(
-                    token_, routerCaller, address(factory()), protocolFee
+                    token_, routerCaller, factory().getProtocolFeeRecipient(referralAddress), protocolFee
                 );
             }
         } else {
             // Transfer tokens directly (sans the protocol fee)
             ERC20 token_ = token();
-            token_.safeTransferFrom(msg.sender, _assetRecipient, inputAmountExcludingRoyalty - protocolFee);
+            token_.safeTransferFrom(msg.sender, _assetRecipient, inputAmountExcludingRoyalty);
 
             // Transfer royalties (if they exists)
             for (uint256 i; i < royaltyRecipients.length;) {
@@ -101,7 +102,7 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
 
             // Take protocol fee (if it exists)
             if (protocolFee != 0) {
-                token_.safeTransferFrom(msg.sender, address(factory()), protocolFee);
+                token_.safeTransferFrom(msg.sender, factory().getProtocolFeeRecipient(referralAddress), protocolFee);
             }
         }
         // Send trade fee if it exists, is TRADE pool, and fee recipient != pool address
@@ -138,12 +139,12 @@ abstract contract LSSVMPairERC20 is LSSVMPair {
         a.safeTransfer(msg.sender, amount);
 
         if (a == token()) {
+            if (address(hook) != address(0)) {
+                hook.afterTokenWithdrawal(amount);
+            }
+
             // emit event since it is the pair token
             emit TokenWithdrawal(amount);
         }
-    }
-
-    function _preCallCheck(address target) internal pure override {
-        if (target == address(token())) revert LSSVMPair__TargetNotAllowed();
     }
 }

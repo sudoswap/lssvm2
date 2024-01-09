@@ -6,6 +6,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {LSSVMPair} from "../LSSVMPair.sol";
 import {LSSVMRouter} from "../LSSVMRouter.sol";
@@ -19,8 +20,15 @@ import {IPropertyChecker} from "../property-checking/IPropertyChecker.sol";
  * @notice An NFT/Token pair for an ERC721 NFT
  */
 abstract contract LSSVMPairERC721 is LSSVMPair {
+    using EnumerableSet for EnumerableSet.UintSet;
+
     error LSSVMPairERC721__PropertyCheckFailed();
     error LSSVMPairERC721__NeedPropertyChecking();
+
+    /**
+     * @notice The NFT IDs held by this contract
+     */
+    EnumerableSet.UintSet private idSet;
 
     /**
      * External state-changing functions
@@ -51,11 +59,11 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         uint256 tradeFee;
         uint256 inputAmountExcludingRoyalty;
         (tradeFee, protocolFee, inputAmountExcludingRoyalty) =
-            _calculateBuyInfoAndUpdatePoolParams(nftIds.length, bondingCurve(), factory());
+            _calculateSwapInfoAndUpdatePoolParams(nftIds.length, bondingCurve(), factory(), true);
 
         // Calculate royalties
         (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal) =
-            _calculateRoyalties(nftIds[0], inputAmountExcludingRoyalty - protocolFee - tradeFee);
+            calculateRoyaltiesView(nftIds[0], inputAmountExcludingRoyalty - protocolFee - tradeFee);
 
         // Revert if the input amount is too large
         if (royaltyTotal + inputAmountExcludingRoyalty > maxExpectedTokenInput) {
@@ -75,15 +83,38 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
 
         {
             _sendSpecificNFTsToRecipient(IERC721(nft()), nftRecipient, nftIds);
+            syncNFTIds(nftIds);
         }
 
         _refundTokenToSender(royaltyTotal + inputAmountExcludingRoyalty);
 
+        if (address(hook) != address(0)) {
+            _afterSwapNFTOutPairHook(
+                afterSwapNFTOutPairArgs({
+                    _tokensIn: royaltyTotal + inputAmountExcludingRoyalty,
+                    _tokensInProtocolFee: protocolFee,
+                    _tokensInRoyalty: royaltyTotal,
+                    _nftsOut: nftIds
+                })
+            );
+        }
+
         factory().closeLock();
 
-        emit SwapNFTOutPair(royaltyTotal + inputAmountExcludingRoyalty, nftIds);
+        emit SwapNFTOutPair(royaltyTotal + inputAmountExcludingRoyalty, nftIds, royaltyTotal);
 
         return (royaltyTotal + inputAmountExcludingRoyalty);
+    }
+
+    struct afterSwapNFTOutPairArgs {
+        uint256 _tokensIn;
+        uint256 _tokensInProtocolFee;
+        uint256 _tokensInRoyalty;
+        uint256[] _nftsOut;
+    }
+
+    function _afterSwapNFTOutPairHook(afterSwapNFTOutPairArgs memory args) internal {
+        hook.afterSwapNFTOutPair(args._tokensIn, args._tokensInProtocolFee, args._tokensInRoyalty, args._nftsOut);
     }
 
     /**
@@ -169,11 +200,11 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
 
         // Call bonding curve for pricing information
         uint256 protocolFee;
-        (protocolFee, outputAmount) = _calculateSellInfoAndUpdatePoolParams(nftIds.length, bondingCurve(), _factory);
+        (, protocolFee, outputAmount) = _calculateSwapInfoAndUpdatePoolParams(nftIds.length, bondingCurve(), _factory, false);
 
         // Compute royalties
         (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal) =
-            _calculateRoyalties(nftIds[0], outputAmount);
+            calculateRoyaltiesView(nftIds[0], outputAmount);
 
         // Deduct royalties from outputAmount
         unchecked {
@@ -184,6 +215,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         if (outputAmount < minExpectedTokenOutput) revert LSSVMPair__OutputTooSmall();
 
         _takeNFTsFromSender(IERC721(nft()), nftIds, _factory, isRouter, routerCaller);
+        syncNFTIds(nftIds);
 
         _sendTokenOutput(tokenRecipient, outputAmount);
         for (uint256 i; i < royaltyRecipients.length;) {
@@ -193,11 +225,33 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
             }
         }
 
-        _sendTokenOutput(payable(address(_factory)), protocolFee);
+        _sendTokenOutput(payable(factory().getProtocolFeeRecipient(referralAddress)), protocolFee);
+
+        if (address(hook) != address(0)) {
+            _afterSwapNFTInPairHook(
+                afterSwapNFTInPairArgs({
+                    _tokensOut: outputAmount,
+                    _tokensOutProtocolFee: protocolFee,
+                    _tokensOutRoyalty: royaltyTotal,
+                    _nftsIn: nftIds
+                })
+            );
+        }
 
         _factory.closeLock();
 
-        emit SwapNFTInPair(outputAmount, nftIds);
+        emit SwapNFTInPair(outputAmount, nftIds, royaltyTotal);
+    }
+
+    struct afterSwapNFTInPairArgs {
+        uint256 _tokensOut;
+        uint256 _tokensOutProtocolFee;
+        uint256 _tokensOutRoyalty;
+        uint256[] _nftsIn;
+    }
+
+    function _afterSwapNFTInPairHook(afterSwapNFTInPairArgs memory args) internal {
+        hook.afterSwapNFTInPair(args._tokensOut, args._tokensOutProtocolFee, args._tokensOutRoyalty, args._nftsIn);
     }
 
     /**
@@ -213,10 +267,8 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         virtual
     {
         // Send NFTs to recipient
-        uint256 numNFTs = nftIds.length;
-        for (uint256 i; i < numNFTs;) {
+        for (uint256 i; i < nftIds.length;) {
             _nft.transferFrom(address(this), nftRecipient, nftIds[i]);
-
             unchecked {
                 ++i;
             }
@@ -249,29 +301,12 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
                 if (!routerAllowed) revert LSSVMPair__NotRouter();
 
                 // Call router to pull NFTs
-                // If more than 1 NFT is being transfered, and there is no property checker, we can do a balance check
-                // instead of an ownership check, as pools are indifferent between NFTs from the same collection
-                if ((numNFTs > 1) && (propertyChecker() == address(0))) {
-                    uint256 beforeBalance = _nft.balanceOf(_assetRecipient);
-                    for (uint256 i; i < numNFTs;) {
-                        router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i]);
-
-                        unchecked {
-                            ++i;
-                        }
-                    }
-                    if (_nft.balanceOf(_assetRecipient) - beforeBalance != numNFTs) {
-                        revert LSSVMPair__NftNotTransferred();
-                    }
-                }
-                // Otherwise we need to pull each asset 1 at a time and verify ownership
-                else {
-                    for (uint256 i; i < numNFTs;) {
-                        router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i]);
-                        if (_nft.ownerOf(nftIds[i]) != _assetRecipient) revert LSSVMPair__NftNotTransferred();
-                        unchecked {
-                            ++i;
-                        }
+                // Pull each asset 1 at a time and verify ownership
+                for (uint256 i; i < numNFTs;) {
+                    router.pairTransferNFTFrom(_nft, routerCaller, _assetRecipient, nftIds[i]);
+                    if (_nft.ownerOf(nftIds[i]) != _assetRecipient) revert LSSVMPair__NftNotTransferred();
+                    unchecked {
+                        ++i;
                     }
                 }
             } else {
@@ -296,8 +331,7 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
      * @param nftIds The list of IDs of the NFTs to send to the owner
      */
     function withdrawERC721(IERC721 a, uint256[] calldata nftIds) external virtual override onlyOwner {
-        uint256 numNFTs = nftIds.length;
-        for (uint256 i; i < numNFTs;) {
+        for (uint256 i; i < nftIds.length;) {
             a.safeTransferFrom(address(this), msg.sender, nftIds[i]);
             unchecked {
                 ++i;
@@ -305,6 +339,12 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         }
 
         if (a == IERC721(nft())) {
+            syncNFTIds(nftIds);
+
+            if (address(hook) != address(0)) {
+                hook.afterNFTWithdrawal(nftIds);
+            }
+
             emit NFTWithdrawal(nftIds);
         }
     }
@@ -322,5 +362,45 @@ abstract contract LSSVMPairERC721 is LSSVMPair {
         onlyOwner
     {
         a.safeBatchTransferFrom(address(this), msg.sender, ids, amounts, "");
+    }
+
+    /**
+     * @notice Syncs the ID set based on ownership checking
+     * @param ids The NFT IDs to transfer
+     */
+    function syncNFTIds(uint256[] calldata ids) public {
+        for (uint256 i; i < ids.length;) {
+            if (IERC721(nft()).ownerOf(ids[i]) == address(this)) {
+                idSet.add(ids[i]);
+            } else {
+                idSet.remove(ids[i]);
+            }
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function numIdsHeld() public view returns (uint256) {
+        return idSet.length();
+    }
+
+    function hasId(uint256 id) public view returns (bool) {
+        return idSet.contains(id);
+    }
+
+    function getAllIds() public view returns (uint256[] memory ids) {
+        return getIds(0, numIdsHeld());
+    }
+
+    function getIds(uint256 start, uint256 end) public view returns (uint256[] memory ids) {
+        uint256 length = end - start;
+        ids = new uint256[](length);
+        for (uint256 i; i < length;) {
+            ids[i] = idSet.at(start + i);
+            unchecked {
+                ++i;
+            }
+        }
     }
 }

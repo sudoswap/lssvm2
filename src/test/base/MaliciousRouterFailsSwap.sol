@@ -137,7 +137,8 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
                 _idList: nftIdsToDeposit,
                 initialTokenBalance: depositAmount,
                 routerAddress: address(router),
-                propertyChecker: _propertyChecker
+                propertyChecker: _propertyChecker,
+                hookAddress: address(0)
             })
         );
     }
@@ -163,7 +164,8 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
                 _idList: nftIdsToDeposit,
                 initialTokenBalance: depositAmount,
                 routerAddress: address(router),
-                propertyChecker: _propertyChecker
+                propertyChecker: _propertyChecker,
+                hookAddress: address(0)
             })
         );
     }
@@ -295,7 +297,8 @@ abstract contract MaliciousRouterFailsSwap is Test, ERC721Holder, ERC1155Holder,
                 nftId: 1,
                 initialNFTBalance: 0,
                 initialTokenBalance: 10 ether,
-                routerAddress: address(router)
+                routerAddress: address(router),
+                hookAddress: address(0)
             })
         );
         uint256[] memory nftInfo = new uint256[](1);

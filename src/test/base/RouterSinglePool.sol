@@ -14,6 +14,7 @@ import {RoyaltyEngine} from "../../RoyaltyEngine.sol";
 import {ICurve} from "../../bonding-curves/ICurve.sol";
 import {RouterCaller} from "../mixins/RouterCaller.sol";
 import {LSSVMPairFactory} from "../../LSSVMPairFactory.sol";
+import {LSSVMPairERC721} from "../../erc721/LSSVMPairERC721.sol";
 import {IERC721Mintable} from "../interfaces/IERC721Mintable.sol";
 import {ConfigurableWithRoyalties} from "../mixins/ConfigurableWithRoyalties.sol";
 
@@ -75,6 +76,12 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
     }
 
     function test_swapTokenForSingleSpecificNFT() public {
+        // Assert that all IDs are held by the contract
+        assertEq(LSSVMPairERC721(address(pair)).numIdsHeld(), numInitialNFTs);
+        for (uint256 i = 1; i <= numInitialNFTs; i++) {
+            assertEq(LSSVMPairERC721(address(pair)).hasId(i), true);
+        }
+
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = 1;
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
@@ -84,6 +91,12 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
             router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
         );
+
+        // Ensure that we no longer have ID 1
+        assertEq(LSSVMPairERC721(address(pair)).numIdsHeld(), numInitialNFTs - 1);
+        for (uint256 i = 2; i <= numInitialNFTs; i++) {
+            assertEq(LSSVMPairERC721(address(pair)).hasId(i), true);
+        }
     }
 
     function test_swapTokenForSingleNFTWithFeeRecipient() public {
@@ -109,6 +122,32 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         assertEq(getBalance(tradeFeeRecipient), 2 * inputAmount / 11);
     }
 
+    function test_swapTokenForSingleNFTWithFeeRecipientWithReferral() public {
+        // Set referral on pair
+        pair.changeReferralAddress(address(1));
+        address payable REFERRAL_RECIPIENT = payable(address(69));
+        factory.addProtocolFeeRecipientReferral(address(1), REFERRAL_RECIPIENT);
+        factory.changeProtocolFeeMultiplier(0.1 ether);
+
+        // Set 10% fee to go to tradeFeeRecipient (whatever)
+        pair.changeAssetRecipient(tradeFeeRecipient);
+        pair.changeFee(0.1e18);
+
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = 1;
+        LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        uint256 inputAmount;
+        uint256 protocolFeeAmount;
+        (,,, inputAmount, protocolFeeAmount,) = pair.getBuyNFTQuote(1, 1);
+        this.swapTokenForSpecificNFTs{value: modifyInputAmount(inputAmount)}(
+            router, swapList, payable(address(this)), address(this), block.timestamp, inputAmount
+        );
+
+        // Assert the protocol fee is paid to REFERRAL_RECIPIENT
+        assertEq(getBalance(REFERRAL_RECIPIENT), protocolFeeAmount);
+    }
+
     function test_swapSingleNFTForToken() public {
         uint256[] memory nftIds = new uint256[](1);
         nftIds[0] = numInitialNFTs + 1;
@@ -116,6 +155,37 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
+
+        // Ensure we have 1 more NFT
+        assertEq(LSSVMPairERC721(address(pair)).numIdsHeld(), numInitialNFTs + 1);
+        for (uint256 i = 1; i <= numInitialNFTs + 1; i++) {
+            assertEq(LSSVMPairERC721(address(pair)).hasId(i), true);
+        }
+    }
+
+    function test_swapSingleNFTForTokenWithReferral() public {
+        // Set referral on pair
+        pair.changeReferralAddress(address(1));
+        address payable REFERRAL_RECIPIENT = payable(address(69));
+        factory.addProtocolFeeRecipientReferral(address(1), REFERRAL_RECIPIENT);
+        factory.changeProtocolFeeMultiplier(0.1 ether);
+
+        // Construct the swap
+        uint256[] memory nftIds = new uint256[](1);
+        nftIds[0] = numInitialNFTs + 1;
+        (,,, uint256 outputAmount, uint256 protocolFeeAmount,) = pair.getSellNFTQuote(nftIds[0], 1);
+        LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
+        swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
+        router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
+
+        // Ensure we have 1 more NFT
+        assertEq(LSSVMPairERC721(address(pair)).numIdsHeld(), numInitialNFTs + 1);
+        for (uint256 i = 1; i <= numInitialNFTs + 1; i++) {
+            assertEq(LSSVMPairERC721(address(pair)).hasId(i), true);
+        }
+
+        // Assert the protocol fee is paid to REFERRAL_RECIPIENT
+        assertEq(getBalance(REFERRAL_RECIPIENT), protocolFeeAmount);
     }
 
     function testGas_swapSingleNFTForToken5Times() public {
@@ -126,6 +196,11 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
             LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
             swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
             router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
+        }
+        // Ensure we have 5 more NFTs
+        assertEq(LSSVMPairERC721(address(pair)).numIdsHeld(), numInitialNFTs + 5);
+        for (uint256 i = 1; i <= numInitialNFTs + 5; i++) {
+            assertEq(LSSVMPairERC721(address(pair)).hasId(i), true);
         }
     }
 
@@ -175,6 +250,12 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         );
         uint256 endBalance = test721.balanceOf(address(this));
         require((endBalance - startBalance) == 5, "Too few NFTs acquired");
+
+        // Ensure we have 5 less NFTs
+        assertEq(LSSVMPairERC721(address(pair)).numIdsHeld(), numInitialNFTs - 5);
+        for (uint256 i = 6; i <= numInitialNFTs; i++) {
+            assertEq(LSSVMPairERC721(address(pair)).hasId(i), true);
+        }
     }
 
     function test_swap5NFTsForToken() public {
@@ -186,6 +267,12 @@ abstract contract RouterSinglePool is Test, ERC721Holder, ConfigurableWithRoyalt
         LSSVMRouter.PairSwapSpecific[] memory swapList = new LSSVMRouter.PairSwapSpecific[](1);
         swapList[0] = LSSVMRouter.PairSwapSpecific({pair: pair, nftIds: nftIds});
         router.swapNFTsForToken(swapList, outputAmount, payable(address(this)), block.timestamp);
+
+        // Ensure we have 5 more NFTs
+        assertEq(LSSVMPairERC721(address(pair)).numIdsHeld(), numInitialNFTs + 5);
+        for (uint256 i = 1; i <= numInitialNFTs + 5; i++) {
+            assertEq(LSSVMPairERC721(address(pair)).hasId(i), true);
+        }
     }
 
     function testFail_swapTokenForSingleSpecificNFTSlippage() public {

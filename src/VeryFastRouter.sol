@@ -522,7 +522,7 @@ contract VeryFastRouter {
         uint128 delta = pair.delta();
 
         uint256 feeMultiplierAndBondingCurve =
-            uint96(pair.fee()) << FEE_MULTIPLIER_SHIFT_AMOUNT | uint160(address(pair.bondingCurve()));
+            uint256(pair.fee()) << FEE_MULTIPLIER_SHIFT_AMOUNT | uint160(address(pair.bondingCurve()));
 
         // Perform binary search
         while (start <= end) {

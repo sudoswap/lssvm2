@@ -114,6 +114,7 @@ abstract contract SettingsE2E is Test, ERC721Holder, ERC1155Holder, Configurable
                 88,
                 5,
                 tokenAmount,
+                address(0),
                 address(0)
             )
         );

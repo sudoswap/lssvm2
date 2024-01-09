@@ -102,6 +102,7 @@ abstract contract RouterSinglePoolWithRoyalties is
                 startingId,
                 numInitialNFTs,
                 tokenAmount,
+                address(0),
                 address(0)
             )
         );

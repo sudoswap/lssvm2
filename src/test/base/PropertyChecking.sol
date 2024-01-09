@@ -88,7 +88,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             _idList: emptyList,
             initialTokenBalance: tokenAmount,
             routerAddress: address(0),
-            propertyChecker: address(checker)
+            propertyChecker: address(checker),
+            hookAddress: address(0)
         });
 
         LSSVMPairERC721 pair =
@@ -124,7 +125,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             _idList: emptyList,
             initialTokenBalance: tokenAmount,
             routerAddress: address(0),
-            propertyChecker: address(checker)
+            propertyChecker: address(checker),
+            hookAddress: address(0)
         });
 
         LSSVMPairERC721 pair =
@@ -171,7 +173,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             _idList: emptyList,
             initialTokenBalance: tokenAmount,
             routerAddress: address(0),
-            propertyChecker: address(checker)
+            propertyChecker: address(checker),
+            hookAddress: address(0)
         });
 
         LSSVMPairERC721 pair =
@@ -219,7 +222,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             _idList: emptyList,
             initialTokenBalance: tokenAmount,
             routerAddress: address(0),
-            propertyChecker: address(checker)
+            propertyChecker: address(checker),
+            hookAddress: address(0)
         });
 
         LSSVMPairERC721 pair =
@@ -278,7 +282,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             _idList: emptyList,
             initialTokenBalance: tokenAmount,
             routerAddress: address(0),
-            propertyChecker: address(checker)
+            propertyChecker: address(checker),
+            hookAddress: address(0)
         });
 
         LSSVMPairERC721 pair =
@@ -331,7 +336,8 @@ abstract contract PropertyChecking is Test, ERC721Holder, ConfigurableWithRoyalt
             _idList: emptyList,
             initialTokenBalance: tokenAmount,
             routerAddress: address(0),
-            propertyChecker: address(checker)
+            propertyChecker: address(checker),
+            hookAddress: address(0)
         });
 
         LSSVMPairERC721 pair =

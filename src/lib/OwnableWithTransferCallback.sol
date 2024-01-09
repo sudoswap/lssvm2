@@ -2,14 +2,9 @@
 
 pragma solidity ^0.8.4;
 
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-
 import {IOwnershipTransferReceiver} from "./IOwnershipTransferReceiver.sol";
 
 abstract contract OwnableWithTransferCallback {
-    using ERC165Checker for address;
-    using Address for address;
 
     bytes4 constant TRANSFER_CALLBACK = type(IOwnershipTransferReceiver).interfaceId;
 
@@ -54,7 +49,7 @@ abstract contract OwnableWithTransferCallback {
         if (newOwner == address(0)) revert Ownable_NewOwnerZeroAddress();
         _transferOwnership(newOwner);
 
-        if (newOwner.isContract()) {
+        if (newOwner.code.length > 0) {
             try IOwnershipTransferReceiver(newOwner).onOwnershipTransferred{value: msg.value}(msg.sender, data) {}
             // If revert...
             catch (bytes memory reason) {

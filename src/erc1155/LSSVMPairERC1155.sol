@@ -54,10 +54,10 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
         uint256 protocolFee;
         uint256 inputAmountExcludingRoyalty;
         (tradeFee, protocolFee, inputAmountExcludingRoyalty) =
-            _calculateBuyInfoAndUpdatePoolParams(numNFTs[0], bondingCurve(), factory());
+            _calculateSwapInfoAndUpdatePoolParams(numNFTs[0], bondingCurve(), factory(), true);
 
         (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal) =
-            _calculateRoyalties(nftId(), inputAmountExcludingRoyalty - protocolFee - tradeFee);
+            calculateRoyaltiesView(nftId(), inputAmountExcludingRoyalty - protocolFee - tradeFee);
 
         // Revert if the input amount is too large
         if (royaltyTotal + inputAmountExcludingRoyalty > maxExpectedTokenInput) {
@@ -79,9 +79,15 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
         _refundTokenToSender(royaltyTotal + inputAmountExcludingRoyalty);
 
+        if (address(hook) != address(0)) {
+            uint256[] memory nftAmount = new uint256[](1);
+            nftAmount[0] = numNFTs[0];
+            hook.afterSwapNFTOutPair(royaltyTotal + inputAmountExcludingRoyalty, protocolFee, royaltyTotal, nftAmount);
+        }
+
         factory().closeLock();
 
-        emit SwapNFTOutPair(royaltyTotal + inputAmountExcludingRoyalty, numNFTs[0]);
+        emit SwapNFTOutPair(royaltyTotal + inputAmountExcludingRoyalty, numNFTs[0], royaltyTotal);
 
         return (royaltyTotal + inputAmountExcludingRoyalty);
     }
@@ -119,11 +125,11 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
         // Call bonding curve for pricing information
         uint256 protocolFee;
-        (protocolFee, outputAmount) = _calculateSellInfoAndUpdatePoolParams(numNFTs[0], _bondingCurve, _factory);
+        (, protocolFee, outputAmount) = _calculateSwapInfoAndUpdatePoolParams(numNFTs[0], _bondingCurve, _factory, false);
 
         // Compute royalties
         (address payable[] memory royaltyRecipients, uint256[] memory royaltyAmounts, uint256 royaltyTotal) =
-            _calculateRoyalties(nftId(), outputAmount);
+            calculateRoyaltiesView(nftId(), outputAmount);
 
         // Deduct royalties from outputAmount
         unchecked {
@@ -137,18 +143,26 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
 
         _sendTokenOutput(tokenRecipient, outputAmount);
 
+        uint256 totalRoyalty;
         for (uint256 i; i < royaltyRecipients.length;) {
             _sendTokenOutput(royaltyRecipients[i], royaltyAmounts[i]);
+            totalRoyalty += royaltyAmounts[i];
             unchecked {
                 ++i;
             }
         }
 
-        _sendTokenOutput(payable(address(_factory)), protocolFee);
+        _sendTokenOutput(factory().getProtocolFeeRecipient(referralAddress), protocolFee);
+
+        if (address(hook) != address(0)) {
+            uint256[] memory nftAmount = new uint256[](1);
+            nftAmount[0] = numNFTs[0];
+            hook.afterSwapNFTInPair(outputAmount, protocolFee, totalRoyalty, nftAmount);
+        }
 
         _factory.closeLock();
 
-        emit SwapNFTInPair(outputAmount, numNFTs[0]);
+        emit SwapNFTInPair(outputAmount, numNFTs[0], totalRoyalty);
     }
 
     /**
@@ -268,6 +282,12 @@ abstract contract LSSVMPairERC1155 is LSSVMPair {
             if (numPairNFTsWithdrawn != 0) {
                 // Only emit for the pair's NFT
                 emit NFTWithdrawal(numPairNFTsWithdrawn);
+
+                if (address(hook) != address(0)) {
+                    uint256[] memory nftAmount = new uint256[](1);
+                    nftAmount[0] = numPairNFTsWithdrawn;
+                    hook.afterNFTWithdrawal(nftAmount);
+                }
             }
         }
 

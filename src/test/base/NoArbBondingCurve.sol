@@ -148,6 +148,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
                 startingId,
                 0,
                 0,
+                address(0),
                 address(0)
             )
         );
@@ -309,6 +310,7 @@ abstract contract NoArbBondingCurve is Test, ERC721Holder, ERC1155Holder, Config
                 startingId,
                 numItems,
                 0,
+                address(0),
                 address(0)
             )
         );

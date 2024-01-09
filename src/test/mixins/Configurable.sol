@@ -89,6 +89,7 @@ abstract contract Configurable {
         uint256 initialNFTBalance;
         uint256 initialTokenBalance;
         address routerAddress;
+        address hookAddress;
     }
 
     function setupPairERC1155(CreateERC1155PairParams memory params) public payable virtual returns (LSSVMPair);
@@ -106,6 +107,7 @@ abstract contract Configurable {
         uint256 initialTokenBalance;
         address routerAddress;
         address propertyChecker;
+        address hookAddress;
     }
 
     function setupPairWithPropertyCheckerERC721(PairCreationParamsWithPropertyCheckerERC721 memory params)
@@ -148,6 +150,8 @@ abstract contract Configurable {
     function getTokenAddress() public virtual returns (address);
 
     function getReasonableDeltaAndSpotPrice() public virtual returns (uint128 delta, uint128 spotPrice);
+
+    function isETHPool() public virtual returns (bool);
 
     receive() external payable {}
 }

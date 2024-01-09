@@ -81,7 +81,7 @@ contract ZeroExRouter {
 
     error InsufficientETH();
 
-    function onERC721Received(address , address from, uint256 id, bytes memory data) public returns (bytes4) {
+    function onERC721Received(address, address from, uint256 id, bytes memory data) public returns (bytes4) {
         (
             address pairAddress,
             uint256 minTokenOutput,
@@ -127,7 +127,7 @@ contract ZeroExRouter {
         return this.onERC721Received.selector;
     }
 
-    function onERC1155Received(address , address from, uint256 , uint256 amount, bytes memory data)
+    function onERC1155Received(address, address from, uint256, uint256 amount, bytes memory data)
         public
         returns (bytes4)
     {

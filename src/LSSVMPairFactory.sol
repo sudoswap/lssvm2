@@ -8,6 +8,7 @@ import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
+import {IPairHooks} from "./hooks/IPairHooks.sol";
 import {LSSVMPair} from "./LSSVMPair.sol";
 import {LSSVMRouter} from "./LSSVMRouter.sol";
 import {ICurve} from "./bonding-curves/ICurve.sol";
@@ -15,6 +16,7 @@ import {LSSVMPairCloner} from "./lib/LSSVMPairCloner.sol";
 import {LSSVMPairERC1155} from "./erc1155/LSSVMPairERC1155.sol";
 import {ILSSVMPairFactoryLike} from "./ILSSVMPairFactoryLike.sol";
 import {LSSVMPairERC20} from "./LSSVMPairERC20.sol";
+import {LSSVMPairERC721} from "./erc721/LSSVMPairERC721.sol";
 import {LSSVMPairERC721ETH} from "./erc721/LSSVMPairERC721ETH.sol";
 import {LSSVMPairERC1155ETH} from "./erc1155/LSSVMPairERC1155ETH.sol";
 import {LSSVMPairERC721ERC20} from "./erc721/LSSVMPairERC721ERC20.sol";
@@ -52,13 +54,13 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     LSSVMPairERC721ERC20 public immutable erc721ERC20Template;
     LSSVMPairERC1155ETH public immutable erc1155ETHTemplate;
     LSSVMPairERC1155ERC20 public immutable erc1155ERC20Template;
-    address payable public override protocolFeeRecipient;
+    address payable public override defaultProtocolFeeRecipient;
 
     // Units are in base 1e18
     uint256 public override protocolFeeMultiplier;
 
     mapping(ICurve => bool) public bondingCurveAllowed;
-    mapping(address => bool) public override callAllowed;
+    mapping(address => address payable) public protocolFeeRecipientReferral;
 
     // Data structures for settings logic
     mapping(address => mapping(address => bool)) public settingsForCollection;
@@ -79,7 +81,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     event ERC20Deposit(address indexed poolAddress, uint256 amount);
     event NFTDeposit(address indexed poolAddress, uint256[] ids);
     event ERC1155Deposit(address indexed poolAddress, uint256 indexed id, uint256 amount);
-    event ProtocolFeeRecipientUpdate(address indexed recipientAddress);
+    event DefaultProtocolFeeRecipientUpdate(address indexed recipientAddress);
+    event ProtocolFeeRecipientReferralAdded(address indexed referrerAddress, address indexed recipientAddress);
     event ProtocolFeeMultiplierUpdate(uint256 newMultiplier);
     event BondingCurveStatusUpdate(ICurve indexed bondingCurve, bool isAllowed);
     event CallTargetStatusUpdate(address indexed target, bool isAllowed);
@@ -108,7 +111,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         erc721ERC20Template = _erc721ERC20Template;
         erc1155ETHTemplate = _erc1155ETHTemplate;
         erc1155ERC20Template = _erc1155ERC20Template;
-        protocolFeeRecipient = _protocolFeeRecipient;
+        defaultProtocolFeeRecipient = _protocolFeeRecipient;
         if (_protocolFeeMultiplier > MAX_PROTOCOL_FEE) revert LSSVMPairFactory__FeeTooLarge();
         protocolFeeMultiplier = _protocolFeeMultiplier;
         _caller = _NOT_ENTERED;
@@ -130,6 +133,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @param _spotPrice The initial selling spot price
      * @param _propertyChecker The contract to use for verifying properties of IDs sent in
      * @param _initialNFTIDs The list of IDs of NFTs to transfer from the sender to the pair
+     * @param _hookAddress The address of the hook to use with the pair (address(0) if none)
+     * @param _referralAddress The address of the referral to use with the pair (address(0) if none)
      * @return pair The new pair
      */
     function createPairERC721ETH(
@@ -141,7 +146,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint96 _fee,
         uint128 _spotPrice,
         address _propertyChecker,
-        uint256[] calldata _initialNFTIDs
+        uint256[] calldata _initialNFTIDs,
+        address _hookAddress,
+        address _referralAddress
     ) external payable returns (LSSVMPairERC721ETH pair) {
         if (!bondingCurveAllowed[_bondingCurve]) revert LSSVMPairFactory__BondingCurveNotWhitelisted();
 
@@ -153,7 +160,10 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             )
         );
 
-        _initializePairERC721ETH(pair, _nft, _assetRecipient, _delta, _fee, _spotPrice, _initialNFTIDs);
+        _initializePairERC721ETH(
+            pair, _nft, _assetRecipient, _delta, _fee, _spotPrice, _initialNFTIDs, _hookAddress, _referralAddress
+        );
+        LSSVMPairERC721(payable(address(pair))).syncNFTIds(_initialNFTIDs);
         emit NewERC721Pair(address(pair), _initialNFTIDs);
     }
 
@@ -169,6 +179,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         address propertyChecker;
         uint256[] initialNFTIDs;
         uint256 initialTokenBalance;
+        address hookAddress;
+        address referralAddress;
     }
 
     /**
@@ -187,6 +199,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * - propertyChecker: The contract to use for verifying properties of IDs sent in
      * - initialNFTIDs: The list of IDs of NFTs to transfer from the sender to the pair
      * - initialTokenBalance: The initial token balance sent from the sender to the new pair
+     * - hookAddress The address of the hook to use with the pair (address(0) if none)
+     * - referralAddress The address of the referral to use with the pair (address(0) if none)
      * @return pair The new pair
      */
     function createPairERC721ERC20(CreateERC721ERC20PairParams calldata params)
@@ -203,17 +217,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             )
         );
 
-        _initializePairERC721ERC20(
-            pair,
-            params.token,
-            params.nft,
-            params.assetRecipient,
-            params.delta,
-            params.fee,
-            params.spotPrice,
-            params.initialNFTIDs,
-            params.initialTokenBalance
-        );
+        _initializePairERC721ERC20(pair, params);
+        LSSVMPairERC721(payable(address(pair))).syncNFTIds(params.initialNFTIDs);
         emit NewERC721Pair(address(pair), params.initialNFTIDs);
     }
     /**
@@ -228,6 +233,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @param _spotPrice The initial selling spot price
      * @param _nftId The ID of the NFT to trade
      * @param _initialNFTBalance The amount of NFTs to transfer from the sender to the pair
+     * @param _hookAddress The address of the hook to use with the pair (address(0) if none)
+     * @param _referralAddress The address of the referral to use with the pair (address(0) if none)
      * @return pair The new pair
      */
 
@@ -240,7 +247,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint96 _fee,
         uint128 _spotPrice,
         uint256 _nftId,
-        uint256 _initialNFTBalance
+        uint256 _initialNFTBalance,
+        address _hookAddress,
+        address _referralAddress
     ) external payable returns (LSSVMPairERC1155ETH pair) {
         if (!bondingCurveAllowed[_bondingCurve]) revert LSSVMPairFactory__BondingCurveNotWhitelisted();
 
@@ -250,7 +259,18 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             )
         );
 
-        _initializePairERC1155ETH(pair, _nft, _assetRecipient, _delta, _fee, _spotPrice, _nftId, _initialNFTBalance);
+        _initializePairERC1155ETH(
+            pair,
+            _nft,
+            _assetRecipient,
+            _delta,
+            _fee,
+            _spotPrice,
+            _nftId,
+            _initialNFTBalance,
+            _hookAddress,
+            _referralAddress
+        );
         emit NewERC1155Pair(address(pair), _initialNFTBalance);
     }
 
@@ -266,6 +286,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint256 nftId;
         uint256 initialNFTBalance;
         uint256 initialTokenBalance;
+        address hookAddress;
+        address referralAddress;
     }
 
     /**
@@ -283,6 +305,8 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * - nftId: The ERC1155 nft id that this pair trades
      * - initialNFTBalance: The initial NFT balance sent from the sender to the new pair
      * - initialTokenBalance: The initial token balance sent from the sender to the new pair
+     * - hookAddress The address of the hook to use with the pair (address(0) if none)
+     * - referralAddress The address of the referral to use with the pair (address(0) if none)
      * @return pair The new pair
      */
     function createPairERC1155ERC20(CreateERC1155ERC20PairParams calldata params)
@@ -309,9 +333,19 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             params.spotPrice,
             params.nftId,
             params.initialNFTBalance,
-            params.initialTokenBalance
+            params.initialTokenBalance,
+            params.hookAddress,
+            params.referralAddress
         );
         emit NewERC1155Pair(address(pair), params.initialNFTBalance);
+    }
+
+    function getProtocolFeeRecipient(address referrerAddress) public view returns (address payable) {
+        address payable potentialReferral = protocolFeeRecipientReferral[referrerAddress];
+        if (potentialReferral == address(0)) {
+            return payable(address(this));
+        }
+        return potentialReferral;
     }
 
     function isValidPair(address pairAddress) public view returns (bool) {
@@ -418,7 +452,7 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * Only callable by the owner.
      */
     function withdrawETHProtocolFees() external onlyOwner {
-        protocolFeeRecipient.safeTransferETH(address(this).balance);
+        defaultProtocolFeeRecipient.safeTransferETH(address(this).balance);
     }
 
     /**
@@ -427,17 +461,25 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
      * @param amount The amount of tokens to transfer
      */
     function withdrawERC20ProtocolFees(ERC20 token, uint256 amount) external onlyOwner {
-        token.safeTransfer(protocolFeeRecipient, amount);
+        token.safeTransfer(defaultProtocolFeeRecipient, amount);
     }
 
     /**
      * @notice Changes the protocol fee recipient address. Only callable by the owner.
-     * @param _protocolFeeRecipient The new fee recipient
+     * @param _defaultProtocolFeeRecipient The new fee recipient
      */
-    function changeProtocolFeeRecipient(address payable _protocolFeeRecipient) external onlyOwner {
-        if (_protocolFeeRecipient == address(0)) revert LSSVMPairFactory__ZeroAddress();
-        protocolFeeRecipient = _protocolFeeRecipient;
-        emit ProtocolFeeRecipientUpdate(_protocolFeeRecipient);
+    function changeDefaultProtocolFeeRecipient(address payable _defaultProtocolFeeRecipient) external onlyOwner {
+        if (_defaultProtocolFeeRecipient == address(0)) revert LSSVMPairFactory__ZeroAddress();
+        defaultProtocolFeeRecipient = _defaultProtocolFeeRecipient;
+        emit DefaultProtocolFeeRecipientUpdate(_defaultProtocolFeeRecipient);
+    }
+
+    function addProtocolFeeRecipientReferral(address referrerAddress, address payable recipientAddress)
+        external
+        onlyOwner
+    {
+        protocolFeeRecipientReferral[referrerAddress] = recipientAddress;
+        emit ProtocolFeeRecipientReferralAdded(referrerAddress, recipientAddress);
     }
 
     /**
@@ -461,33 +503,12 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
     }
 
     /**
-     * @notice Sets the whitelist status of a contract to be called arbitrarily by a pair.
-     * Only callable by the owner.
-     * @param target The target contract
-     * @param isAllowed True to whitelist, false to remove from whitelist
-     */
-    function setCallAllowed(address payable target, bool isAllowed) external onlyOwner {
-        // Ensure target is not / was not ever a router
-        if (isAllowed) {
-            if (routerStatus[LSSVMRouter(target)].wasEverTouched) revert LSSVMPairFactory__CannotCallRouter();
-        }
-
-        callAllowed[target] = isAllowed;
-        emit CallTargetStatusUpdate(target, isAllowed);
-    }
-
-    /**
      * @notice Updates the router whitelist. Only callable by the owner.
      * @param _router The router
      * @param isAllowed True to whitelist, false to remove from whitelist
      */
     function setRouterAllowed(LSSVMRouter _router, bool isAllowed) external onlyOwner {
-        // Ensure target is not arbitrarily callable by pairs
-        if (isAllowed) {
-            if (callAllowed[address(_router)]) revert LSSVMPairFactory__CannotCallRouter();
-        }
         routerStatus[_router] = RouterStatus({allowed: isAllowed, wasEverTouched: true});
-
         emit RouterStatusUpdate(_router, isAllowed);
     }
 
@@ -563,11 +584,10 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint128 _delta,
         uint96 _fee,
         uint128 _spotPrice,
-        uint256[] calldata _initialNFTIDs
+        uint256[] calldata _initialNFTIDs,
+        address _hookAddress,
+        address _referralAddress
     ) internal {
-        // Initialize pair
-        _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
-
         // Transfer initial ETH to pair
         if (msg.value != 0) payable(address(_pair)).safeTransferETH(msg.value);
 
@@ -580,36 +600,39 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
                 ++i;
             }
         }
+
+        // Initialize pair
+        _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice, _hookAddress, _referralAddress);
     }
 
-    function _initializePairERC721ERC20(
-        LSSVMPairERC721ERC20 _pair,
-        ERC20 _token,
-        IERC721 _nft,
-        address payable _assetRecipient,
-        uint128 _delta,
-        uint96 _fee,
-        uint128 _spotPrice,
-        uint256[] calldata _initialNFTIDs,
-        uint256 _initialTokenBalance
-    ) internal {
-        // Initialize pair
-        _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
-
+    function _initializePairERC721ERC20(LSSVMPairERC721ERC20 _pair, CreateERC721ERC20PairParams memory params)
+        internal
+    {
         // Transfer initial tokens to pair (if != 0)
-        if (_initialTokenBalance != 0) {
-            _token.safeTransferFrom(msg.sender, address(_pair), _initialTokenBalance);
+        if (params.initialTokenBalance != 0) {
+            params.token.safeTransferFrom(msg.sender, address(_pair), params.initialTokenBalance);
         }
 
         // Transfer initial NFTs from sender to pair
-        uint256 numNFTs = _initialNFTIDs.length;
+        uint256 numNFTs = params.initialNFTIDs.length;
         for (uint256 i; i < numNFTs;) {
-            _nft.transferFrom(msg.sender, address(_pair), _initialNFTIDs[i]);
+            params.nft.transferFrom(msg.sender, address(_pair), params.initialNFTIDs[i]);
 
             unchecked {
                 ++i;
             }
         }
+
+        // Initialize pair
+        _pair.initialize(
+            msg.sender,
+            params.assetRecipient,
+            params.delta,
+            params.fee,
+            params.spotPrice,
+            params.hookAddress,
+            params.referralAddress
+        );
     }
 
     function _initializePairERC1155ETH(
@@ -620,11 +643,10 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint96 _fee,
         uint128 _spotPrice,
         uint256 _nftId,
-        uint256 _initialNFTBalance
+        uint256 _initialNFTBalance,
+        address _hookAddress,
+        address _referralAddress
     ) internal {
-        // Initialize pair
-        _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
-
         // Transfer initial ETH to pair
         if (msg.value != 0) payable(address(_pair)).safeTransferETH(msg.value);
 
@@ -632,6 +654,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         if (_initialNFTBalance != 0) {
             _nft.safeTransferFrom(msg.sender, address(_pair), _nftId, _initialNFTBalance, bytes(""));
         }
+
+        // Initialize pair
+        _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice, _hookAddress, _referralAddress);
     }
 
     function _initializePairERC1155ERC20(
@@ -644,11 +669,10 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         uint128 _spotPrice,
         uint256 _nftId,
         uint256 _initialNFTBalance,
-        uint256 _initialTokenBalance
+        uint256 _initialTokenBalance,
+        address _hookAddress,
+        address _referralAddress
     ) internal {
-        // Initialize pair
-        _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice);
-
         // Transfer initial tokens to pair
         if (_initialTokenBalance != 0) {
             _token.safeTransferFrom(msg.sender, address(_pair), _initialTokenBalance);
@@ -658,6 +682,9 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
         if (_initialNFTBalance != 0) {
             _nft.safeTransferFrom(msg.sender, address(_pair), _nftId, _initialNFTBalance, bytes(""));
         }
+
+        // Initialize pair
+        _pair.initialize(msg.sender, _assetRecipient, _delta, _fee, _spotPrice, _hookAddress, _referralAddress);
     }
 
     /**
@@ -678,6 +705,12 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             }
         }
         if (isValidPair(recipient) && (address(_nft) == LSSVMPair(recipient).nft())) {
+            LSSVMPairERC721ETH(payable(address(recipient))).syncNFTIds(ids);
+
+            if (address(LSSVMPair(recipient).hook()) != address(0)) {
+                IPairHooks(LSSVMPair(recipient).hook()).syncForPair(recipient, 0, ids);
+            }
+
             emit NFTDeposit(recipient, ids);
         }
     }
@@ -694,6 +727,11 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             isValidPair(recipient) && getPairTokenType(recipient) == PairTokenType.ERC20
                 && token == LSSVMPairERC20(recipient).token()
         ) {
+            if (address(LSSVMPair(recipient).hook()) != address(0)) {
+                uint256[] memory empty = new uint256[](0);
+                IPairHooks(LSSVMPair(recipient).hook()).syncForPair(recipient, amount, empty);
+            }
+
             emit ERC20Deposit(recipient, amount);
         }
     }
@@ -710,6 +748,12 @@ contract LSSVMPairFactory is Owned, ILSSVMPairFactoryLike {
             isValidPair(recipient) && getPairNFTType(recipient) == PairNFTType.ERC1155
                 && address(nft) == LSSVMPair(recipient).nft() && id == LSSVMPairERC1155(recipient).nftId()
         ) {
+            if (address(LSSVMPair(recipient).hook()) != address(0)) {
+                uint256[] memory nftAmount = new uint256[](1);
+                nftAmount[0] = amount;
+                IPairHooks(LSSVMPair(recipient).hook()).syncForPair(recipient, 0, nftAmount);
+            }
+
             emit ERC1155Deposit(recipient, id, amount);
         }
     }

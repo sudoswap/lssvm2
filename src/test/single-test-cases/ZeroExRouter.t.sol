@@ -109,7 +109,9 @@ contract ZeroExRouterTest is Test, ERC1155Holder {
                 spotPrice: 1 ether,
                 propertyChecker: address(0),
                 initialNFTIDs: ids,
-                initialTokenBalance: 10 ether
+                initialTokenBalance: 10 ether,
+                hookAddress: address(0),
+                referralAddress: address(0)
             })
         );
 
@@ -126,7 +128,9 @@ contract ZeroExRouterTest is Test, ERC1155Holder {
                 spotPrice: 1 ether,
                 nftId: 0,
                 initialNFTBalance: 5,
-                initialTokenBalance: 10 ether
+                initialTokenBalance: 10 ether,
+                hookAddress: address(0),
+                referralAddress: address(0)
             })
         );
     }

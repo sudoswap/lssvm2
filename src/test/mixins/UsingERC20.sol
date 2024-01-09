@@ -75,7 +75,9 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
                 spotPrice,
                 address(0),
                 _idList,
-                initialTokenBalance
+                initialTokenBalance,
+                address(0),
+                address(0)
             )
         );
 
@@ -111,7 +113,9 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
                 params.spotPrice,
                 params.nftId,
                 params.initialNFTBalance,
-                params.initialTokenBalance
+                params.initialTokenBalance,
+                params.hookAddress,
+                address(0)
             )
         );
 
@@ -152,7 +156,9 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
                 params.spotPrice,
                 params.propertyChecker,
                 params._idList,
-                params.initialTokenBalance
+                params.initialTokenBalance,
+                params.hookAddress,
+                address(0)
             )
         );
 
@@ -212,5 +218,9 @@ abstract contract UsingERC20 is Configurable, RouterCaller {
 
     function getTokenAddress() public view override returns (address) {
         return address(test20);
+    }
+
+    function isETHPool() public pure override returns (bool) {
+        return false;
     }
 }

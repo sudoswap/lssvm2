@@ -28,9 +28,7 @@ interface ILSSVMPairFactoryLike {
 
     function protocolFeeMultiplier() external view returns (uint256);
 
-    function protocolFeeRecipient() external view returns (address payable);
-
-    function callAllowed(address target) external view returns (bool);
+    function defaultProtocolFeeRecipient() external view returns (address payable);
 
     function authAllowedForToken(address tokenAddress, address proposedAuthAddress) external view returns (bool);
 
@@ -47,6 +45,8 @@ interface ILSSVMPairFactoryLike {
     function getPairNFTType(address pairAddress) external pure returns (PairNFTType);
 
     function getPairTokenType(address pairAddress) external pure returns (PairTokenType);
+
+    function getProtocolFeeRecipient(address referrerAddress) external view returns (address payable);
 
     function openLock() external;
 

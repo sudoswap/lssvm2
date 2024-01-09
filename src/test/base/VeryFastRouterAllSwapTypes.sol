@@ -193,7 +193,8 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
                     _idList: nftIdsToDeposit,
                     initialTokenBalance: depositAmount,
                     routerAddress: address(router),
-                    propertyChecker: _propertyChecker
+                    propertyChecker: _propertyChecker,
+                    hookAddress: address(0)
                 })
             );
         }
@@ -220,7 +221,8 @@ abstract contract VeryFastRouterAllSwapTypes is Test, ERC721Holder, ERC1155Holde
                 nftId: ID_1155,
                 initialNFTBalance: numNFTsToDeposit,
                 initialTokenBalance: depositAmount,
-                routerAddress: address(router)
+                routerAddress: address(router),
+                hookAddress: address(0)
             })
         );
     }
