@@ -11,3 +11,4 @@ huffmate/=lib/huffmate/src/
 manifoldxyz/=lib/royalty-registry-solidity/contracts/
 solmate/=lib/solmate/src/
 stringutils/=lib/foundry-huff/lib/solidity-stringutils/
+solady/=lib/solady/src
