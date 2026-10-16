@@ -94,3 +94,6 @@ The contracts have been deployed on Ethereum Mainnet to the following addresses:
 - PropertyCheckerFactory: [0x031b216FaBec82310FEa3426b33455609b99AfC1](https://etherscan.io/address/0x031b216fabec82310fea3426b33455609b99afc1)
 - RoyaltyEngine: [0xBc40d21999b4BF120d330Ee3a2DE415287f626C9](https://etherscan.io/address/0xbc40d21999b4bf120d330ee3a2de415287f626c9)
 - ZeroExRouter: [0xe4ac8eDd513074BA5f78DCdDc57680EF68Fa0CaE](https://etherscan.io/address/0xe4ac8edd513074ba5f78dcddc57680ef68fa0cae)
+## Integrations
+
+- [Commons Protocol](https://github.com/TerexitariusStomp/commons-protocol) — public-goods NFT marketplace using lssvm2 as its NFT↔stablecoin AMM layer (vendored AGPL submodule), plus the bundled Manifold royalty registry for per-project sale proceeds routing.
